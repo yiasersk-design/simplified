@@ -154,7 +154,7 @@
             z-index: 999;
         } </style>
 </head>
-<body class="h-screen w-full flex flex-col font-sans overflow-hidden select-none">
+<body class="h-[100dvh] w-full flex flex-col font-sans overflow-hidden select-none relative">
 
     <!-- উপরের হেডার বার -->
     <header class="h-[56px] w-full header-gradient px-4 shrink-0 text-gray-800 z-10 shadow-sm border-b border-gray-200">
@@ -210,7 +210,7 @@
      
 
     <!-- মূল ওয়ার্কস্পেস (ক্যানভাস এরিয়া) -->
-    <main class="flex-1 w-full overflow-hidden flex justify-center items-center p-4 sm:p-8 relative">
+    <main class="flex-1 w-full overflow-hidden flex justify-center items-center p-4 sm:p-8 pb-[calc(80px+env(safe-area-inset-bottom))] relative">
         <div id="design-canvas" class="bg-white shadow-[0_0_25px_rgba(0,0,0,0.15)] w-full max-w-[650px] aspect-square relative flex flex-col justify-center items-center overflow-hidden transition-all duration-300">
             <img id="main-bg-image" src="https://placehold.co/800x800/ffffff/ffffff?text=+" alt="Canvas Artwork" class="w-full h-full object-cover pointer-events-none">
         </div>
@@ -249,7 +249,7 @@
     </main>
 
     <!-- বটম ডাইনামিক টুলবার -->
-    <footer class="bg-transparent w-full shrink-0 z-10 pb-[env(safe-area-inset-bottom)]">
+    <footer class="fixed bottom-0 left-0 right-0 w-full bg-[#F3F4F6] shrink-0 z-40 pb-[env(safe-area-inset-bottom)] border-t border-gray-200">
         <div class="menu-container">
             
             <!-- ================= MAIN MENU ================= -->
