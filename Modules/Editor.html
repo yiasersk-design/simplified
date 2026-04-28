@@ -1,0 +1,1696 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Design Interface</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- HTML2Canvas for Download Feature -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    
+    <style>
+        /* মূল ব্যাকগ্রাউন্ড এবং সাধারণ স্টাইল */
+        body {
+            background-color: #F3F4F6;
+            -webkit-tap-highlight-color: transparent;
+            overscroll-behavior-y: contain; /* Prevent pull-to-refresh on mobile */
+        }
+        
+        .header-gradient {
+            background: linear-gradient(90deg, #FFFFFF 0%, #F9FAFB 100%);
+        }
+        
+        .toolbar-text {
+            font-size: 10px;
+            line-height: 12px;
+            margin-top: 4px;
+            color: inherit;
+            font-weight: 500;
+            letter-spacing: 0.3px;
+        }
+        
+        .toolbar-item, .submenu-item, .back-btn {
+            color: #5F6368;
+            background-color: transparent;
+            transition: color 0.2s ease-in-out;
+        }
+        
+        .toolbar-item:hover, .toolbar-item:active,
+        .submenu-item:hover, .submenu-item:active,
+        .back-btn:hover, .back-btn:active {
+            color: #202124;
+            background-color: transparent;
+        }
+
+        .hide-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .hide-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+        
+        .menu-container {
+            position: relative;
+            width: 100%;
+            height: 64px;
+            overflow: hidden; 
+        }
+
+        .menu-panel {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            align-items: center;
+        }
+
+        #main-menu {
+            z-index: 10;
+        }
+
+        .submenu-panel {
+            z-index: 20;
+            background-color: #F3F4F6; 
+            transform: translateY(100%); 
+            transition: transform 0.4s cubic-bezier(0.22, 1, 0.36, 1); 
+        }
+
+        .submenu-panel.active-state {
+            transform: translateY(0);
+        }
+
+        /* Grid Pattern for design alignment */
+        .grid-bg {
+            background-size: 20px 20px;
+            background-image: linear-gradient(to right, rgba(0,0,0,0.05) 1px, transparent 1px),
+                              linear-gradient(to bottom, rgba(0,0,0,0.05) 1px, transparent 1px);
+        }
+    /* ================= COLOR PICKER 3D STYLES (Inline) ================= */
+        .color-picker-container {
+            display: flex;
+            transform-style: preserve-3d;
+            transform: perspective(1000px);
+            align-items: center;
+        }
+
+        .item-color {
+            position: relative;
+            flex-shrink: 0;
+            width: 32px;
+            height: 32px;
+            border: none;
+            outline: none;
+            transition: 500ms cubic-bezier(0.175, 0.885, 0.32, 1.1);
+            cursor: pointer;
+            background: transparent;
+        }
+
+        .item-color::after {
+            position: absolute;
+            content: "";
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            background-color: var(--color);
+            border-radius: 6px;
+            pointer-events: none;
+            transition: 500ms cubic-bezier(0.175, 0.885, 0.32, 1.1);
+        }
+
+        .item-color[style*="#ffffff"]::after {
+            border: 1px solid #d1d5db;
+        }
+
+        .item-color:hover {
+            transform: scale(1.5);
+            z-index: 99999;
+        }
+
+        .item-color:active::after {
+            transform: scale(0.9);
+        }
+
+        .item-color:hover + * {
+            transform: scale(1.3);
+            z-index: 9999;
+        }
+
+        .item-color:hover + * + * {
+            transform: scale(1.15);
+            z-index: 999;
+        }
+
+        .item-color:has(+ *:hover) {
+            transform: scale(1.3);
+            z-index: 9999;
+        }
+
+        .item-color:has(+ * + *:hover) {
+            transform: scale(1.15);
+            z-index: 999;
+        } </style>
+</head>
+<body class="h-screen w-full flex flex-col font-sans overflow-hidden select-none">
+
+    <!-- উপরের হেডার বার -->
+    <header class="h-[56px] w-full header-gradient px-4 shrink-0 text-gray-800 z-10 shadow-sm border-b border-gray-200">
+        
+        <!-- Normal Mode Header Content -->
+        <div id="normal-header-content" class="w-full h-full flex items-center justify-between">
+            <div class="flex items-center gap-5">
+                <!-- Back/Home Navigation Button -->
+<button onclick="window.location.href='/index.html'" class="opacity-100 hover:opacity-80 active:scale-95 transition-all outline-none" title="Back to Home">
+    <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none">
+        <path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3.75 5.25h16.5m-16.5 4.5h16.5m-16.5 4.5h16.5m-16.5 4.5h16.5"/>
+    </svg>
+</button>
+<!-- Dummy element: এটি অ্যাপের ভেতরের পুরনো জাভাস্ক্রিপ্ট কোডকে Error বা ক্র্যাশ হওয়া থেকে রক্ষা করবে -->
+<div id="btn-menu" style="display: none;"></div>
+                <button id="btn-undo" class="opacity-50 transition-all outline-none" disabled>
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7v6h6"></path><path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13"></path></svg>
+                </button>
+                <button id="btn-redo" class="opacity-50 transition-all outline-none" disabled>
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 7v6h-6"></path><path d="M3 17a9 9 0 0 1 9-9 9 9 0 0 1 6 2.3l3 2.7"></path></svg>
+                </button>
+            </div>
+
+            <div class="flex items-center gap-5">
+                <button id="btn-canvas-only-mode" class="opacity-100 hover:opacity-80 active:scale-95 transition-all outline-none text-gray-700">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 32 32" fill="currentColor"><path fill="currentColor" d="M4 4v9h2V6h7V4H4zm15 0v2h7v7h2V4h-9zM4 19v9h9v-2H6v-7H4zm22 0v7h-7v2h9v-9h-2z"/></svg>
+                </button>
+                <button id="btn-export" class="opacity-100 hover:opacity-80 active:scale-95 transition-all outline-none text-blue-600">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5"/></svg>
+                </button>
+            </div>
+        </div>
+
+        <!-- Canvas Mode Header Content (Hidden by default) -->
+        <div id="canvas-mode-header-content" class="w-full h-full hidden items-center justify-between">
+            
+            <!-- Gesture Zoom Toggle (Aligned Left) -->
+            <div class="flex items-center gap-1.5">
+                <button id="btn-zoom-toggle" class="text-gray-700 hover:text-blue-600 outline-none transition-colors active:scale-95 p-1.5 rounded-full hover:bg-gray-100" title="Toggle Gesture Zoom Mode">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                </button>
+                <!-- Transparent and larger percentage text -->
+                <span id="zoom-percentage-text" class="text-[14px] font-bold text-blue-600 bg-transparent hidden transition-all select-none">100%</span>
+            </div>
+
+            <!-- Transparent Back Button (Aligned Right, Icon Only) -->
+            <button id="btn-exit-canvas-mode" class="opacity-100 hover:opacity-80 active:scale-95 transition-all outline-none text-gray-700">
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="-1 -1 16 16"><path fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round" d="m8.5 5.5l5-5m-4 0h4v4m-8 1l-5-5m4 0h-4v4m8 4l5 5m-4 0h4v-4m-8-1l-5 5m4 0h-4v-4"/></svg>
+            </button>
+        </div>
+    </header>
+
+     
+
+    <!-- মূল ওয়ার্কস্পেস (ক্যানভাস এরিয়া) -->
+    <main class="flex-1 w-full overflow-hidden flex justify-center items-center p-4 sm:p-8 relative">
+        <div id="design-canvas" class="bg-white shadow-[0_0_25px_rgba(0,0,0,0.15)] w-full max-w-[650px] aspect-square relative flex flex-col justify-center items-center overflow-hidden transition-all duration-300">
+            <img id="main-bg-image" src="https://placehold.co/800x800/ffffff/ffffff?text=+" alt="Canvas Artwork" class="w-full h-full object-cover pointer-events-none">
+        </div>
+
+        <!-- Floating Formatting Toolbox (Visible only in Full Canvas Mode) -->
+        <div id="floating-toolbox" class="fixed right-4 top-24 z-[150] hidden flex-col items-center gap-1">
+            <!-- Toolbox Toggle Button (Draggable) -->
+            <button id="btn-toolbox-toggle" class="w-11 h-11 bg-white rounded-md shadow-[0_2px_10px_rgba(0,0,0,0.1)] border border-gray-100 flex justify-center items-center text-gray-700 hover:text-blue-600 transition-all active:scale-95 outline-none z-10 cursor-grab touch-none">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"><path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M8.557 2.75H4.682A1.932 1.932 0 0 0 2.75 4.682v3.875a1.942 1.942 0 0 0 1.932 1.942h3.875a1.942 1.942 0 0 0 1.942-1.942V4.682A1.942 1.942 0 0 0 8.557 2.75m10.761 0h-3.875a1.942 1.942 0 0 0-1.942 1.932v3.875a1.943 1.943 0 0 0 1.942 1.942h3.875a1.942 1.942 0 0 0 1.932-1.942V4.682a1.932 1.932 0 0 0-1.932-1.932m0 10.75h-3.875a1.942 1.942 0 0 0-1.942 1.933v3.875a1.942 1.942 0 0 0 1.942 1.942h3.875a1.942 1.942 0 0 0 1.932-1.942v-3.875a1.932 1.932 0 0 0-1.932-1.932M8.557 13.5H4.682a1.943 1.943 0 0 0-1.932 1.943v3.875a1.932 1.932 0 0 0 1.932 1.932h3.875a1.942 1.942 0 0 0 1.942-1.932v-3.875a1.942 1.942 0 0 0-1.942-1.942"/></svg>
+            </button>
+            
+            <!-- Expandable Vertical Options -->
+            <div id="toolbox-options" class="flex flex-col gap-1 transition-all duration-300 origin-top transform scale-y-0 opacity-0 pointer-events-none -translate-y-2">
+                <!-- Bold -->
+                <button class="toolbox-btn w-10 h-10 bg-white rounded-md shadow-sm border border-gray-100 flex justify-center items-center text-gray-700 hover:bg-gray-50 active:scale-95 outline-none" data-tool="bold">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 4h8a4 4 0 0 1 4 4 4 4 0 0 1-4 4H6z"/><path d="M6 12h9a4 4 0 0 1 4 4 4 4 0 0 1-4 4H6z"/></svg>
+                </button>
+                <!-- Italic -->
+                <button class="toolbox-btn w-10 h-10 bg-white rounded-md shadow-sm border border-gray-100 flex justify-center items-center text-gray-700 hover:bg-gray-50 active:scale-95 outline-none" data-tool="italic">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="4" x2="10" y2="4"/><line x1="14" y1="20" x2="5" y2="20"/><line x1="15" y1="4" x2="9" y2="20"/></svg>
+                </button>
+                <!-- Underline -->
+                <button class="toolbox-btn w-10 h-10 bg-white rounded-md shadow-sm border border-gray-100 flex justify-center items-center text-gray-700 hover:bg-gray-50 active:scale-95 outline-none" data-tool="underline">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 4v6a6 6 0 0 0 12 0V4"/><line x1="4" y1="20" x2="20" y2="20"/></svg>
+                </button>
+                <!-- Strikethrough -->
+                <button class="toolbox-btn w-10 h-10 bg-white rounded-md shadow-sm border border-gray-100 flex justify-center items-center text-gray-700 hover:bg-gray-50 active:scale-95 outline-none" data-tool="strike">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M16 4H9a3 3 0 0 0-2.83 4"/><path d="M14 12a4 4 0 0 1 0 8H6"/><line x1="4" y1="12" x2="20" y2="12"/></svg>
+                </button>
+                <!-- Marker -->
+                <button class="toolbox-btn w-10 h-10 bg-white rounded-md shadow-sm border border-gray-100 flex justify-center items-center text-gray-700 hover:bg-gray-50 active:scale-95 outline-none" data-tool="marker">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8"><path d="m17.674 11.408l-1.905 5.716a.6.6 0 0 1-.398.385L3.693 20.981a.6.6 0 0 1-.74-.765L6.745 8.842a.6.6 0 0 1 .34-.365l5.387-2.218a.6.6 0 0 1 .653.13l4.404 4.405a.6.6 0 0 1 .145.614ZM3.296 20.602l6.364-6.364"/><path fill="currentColor" stroke="none" d="m18.403 3.182l2.364 2.364a1.846 1.846 0 1 1-2.61 2.61l-2.365-2.364a1.846 1.846 0 0 1 2.61-2.61Z"/><path d="M11.781 12.116a1.5 1.5 0 1 0-2.121 2.121a1.5 1.5 0 0 0 2.121-2.121Z"/></svg>
+                </button>
+            </div>
+        </div>
+    </main>
+
+    <!-- বটম ডাইনামিক টুলবার -->
+    <footer class="bg-transparent w-full shrink-0 z-10 pb-[env(safe-area-inset-bottom)]">
+        <div class="menu-container">
+            
+            <!-- ================= MAIN MENU ================= -->
+            <div id="main-menu" class="menu-panel overflow-x-auto hide-scrollbar px-2 gap-1">
+                <button id="btn-template" class="main-tool toolbar-item min-w-[72px] shrink-0 flex flex-col items-center justify-center h-[56px] outline-none" data-target="none">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"><path d="M2.25 12.75V12A2.25 2.25 0 0 1 4.5 9.75h15A2.25 2.25 0 0 1 21.75 12v.75m-8.69-6.44l-2.12-2.12a1.5 1.5 0 0 0-1.061-.44H4.5A2.25 2.25 0 0 0 2.25 6v12a2.25 2.25 0 0 0 2.25 2.25h15A2.25 2.25 0 0 0 21.75 18V9a2.25 2.25 0 0 0-2.25-2.25h-5.379a1.5 1.5 0 0 1-1.06-.44Z"/></svg>
+                    <span class="toolbar-text">Template</span>
+                </button>
+                <button class="main-tool toolbar-item min-w-[72px] shrink-0 flex flex-col items-center justify-center h-[56px] outline-none" data-target="submenu-layout">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 18H6V3"/><path d="M3 6h15v15"/></svg>
+                    <span class="toolbar-text">Layout</span>
+                </button>
+                <button class="main-tool toolbar-item min-w-[72px] shrink-0 flex flex-col items-center justify-center h-[56px] outline-none" data-target="submenu-textstyle">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7V4h16v3"></path><path d="M9 20h6"></path><path d="M12 4v16"></path></svg>
+                    <span class="toolbar-text">Text Style</span>
+                </button>
+                
+                <!-- New Alignment Button -->
+                <button class="main-tool toolbar-item min-w-[72px] shrink-0 flex flex-col items-center justify-center h-[56px] outline-none" data-target="submenu-alignment">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><line x1="21" y1="6" x2="3" y2="6"></line><line x1="15" y1="12" x2="3" y2="12"></line><line x1="17" y1="18" x2="3" y2="18"></line></svg>
+                    <span class="toolbar-text">Align</span>
+                </button>
+                
+                <button class="main-tool toolbar-item min-w-[72px] shrink-0 flex flex-col items-center justify-center h-[56px] outline-none" data-target="submenu-insert">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="12" y1="8" x2="12" y2="16"></line><line x1="8" y1="12" x2="16" y2="12"></line></svg>
+                    <span class="toolbar-text">Insert</span>
+                </button>
+                <button class="main-tool toolbar-item min-w-[72px] shrink-0 flex flex-col items-center justify-center h-[56px] outline-none" data-target="submenu-effects">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"><g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"><path d="M7 2h9.5L21 6.5V19"/><path d="M3 20.5v-14A1.5 1.5 0 0 1 4.5 5h9.752a.6.6 0 0 1 .424.176l3.148 3.148A.6.6 0 0 1 18 8.75V20.5a1.5 1.5 0 0 1-1.5 1.5h-12A1.5 1.5 0 0 1 3 20.5Z"/><path d="M14 5v3.4a.6.6 0 0 0 .6.6H18"/></g></svg>
+                    <span class="toolbar-text">Effects</span>
+                </button>
+                <button id="btn-reset" class="main-tool toolbar-item min-w-[72px] shrink-0 flex flex-col items-center justify-center h-[56px] outline-none text-red-500 hover:text-red-700" data-target="none">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path><path d="M3 3v5h5"></path></svg>
+                    <span class="toolbar-text text-inherit">Reset</span>
+                </button>
+            </div>
+
+            <!-- ================= SUB-MENUS ================= -->
+            
+            <!-- 1. Layout Submenu -->
+            <div id="submenu-layout" class="menu-panel submenu-panel overflow-x-auto hide-scrollbar px-2 gap-1">
+                <button class="back-btn shrink-0 flex flex-col items-center justify-center h-[56px] w-[36px] outline-none">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"><path d="m15.583 4l-6.587 6.587a2.013 2.013 0 0 0 0 2.826L15.583 20"/></svg>
+                </button>
+                <div class="w-px h-8 bg-gray-300 mx-1 shrink-0"></div>
+                <button id="btn-margin" class="submenu-item min-w-[72px] shrink-0 flex flex-col items-center justify-center h-[56px] outline-none">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 100 100" fill="currentColor"><path fill="currentColor" d="M76.647 30.353a2 2 0 0 1-2-2v-3h-3a2 2 0 0 1 0-4h5a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2zm-13.659-5h-8.659a2 2 0 0 1 0-4h8.659a2 2 0 0 1 0 4zm-17.318 0h-8.659a2 2 0 0 1 0-4h8.659a2 2 0 0 1 0 4zm-22.317 5a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h5a2 2 0 0 1 0 4h-3v3a2 2 0 0 1-2 2zm0 34.635a2 2 0 0 1-2-2v-8.659a2 2 0 0 1 4 0v8.659a2 2 0 0 1-2 2zm0-17.318a2 2 0 0 1-2-2v-8.659a2 2 0 0 1 4 0v8.659a2 2 0 0 1-2 2zm5 30.977h-5a2 2 0 0 1-2-2v-5a2 2 0 0 1 4 0v3h3a2 2 0 0 1 0 4zm34.635 0h-8.659a2 2 0 0 1 0-4h8.659a2 2 0 0 1 0 4zm-17.318 0h-8.659a2 2 0 0 1 0-4h8.659a2 2 0 0 1 0 4zm30.977 0h-5a2 2 0 0 1 0-4h3v-3a2 2 0 0 1 4 0v5a2 2 0 0 1-2 2zm0-13.659a2 2 0 0 1-2-2v-8.659a2 2 0 0 1 4 0v8.659a2 2 0 0 1-2 2zm0-17.318a2 2 0 0 1-2-2v-8.659a2 2 0 0 1 4 0v8.659a2 2 0 0 1-2 2z"/><path fill="currentColor" d="M90.216 92.216H9.784a2 2 0 0 1-2-2V9.784a2 2 0 0 1 2-2h80.432a2 2 0 0 1 2 2v80.432a2 2 0 0 1-2 2zm-78.432-4h76.432V11.784H11.784v76.432z"/></svg>
+                    <span class="toolbar-text">Margin</span>
+                </button>
+                <button id="btn-canvas-size" class="submenu-item min-w-[72px] shrink-0 flex flex-col items-center justify-center h-[56px] outline-none">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"><path d="M20.375 20.375L3.625 3.625m11.163 16.75h5.587v-5.587M3.625 9.212V3.625h5.587M3.625 14.788v5.587h5.587m5.576-16.75h5.587v5.587M3.625 20.375l16.75-16.75"/></svg>
+                    <span class="toolbar-text">Canvas</span>
+                </button>
+                <button id="btn-canvas-color" class="submenu-item min-w-[72px] shrink-0 flex flex-col items-center justify-center h-[56px] outline-none">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 36 36" fill="currentColor"><path fill="currentColor" d="M33 4H3a1 1 0 0 0-1 1v1.67a1.79 1.79 0 0 0 .53 1.27L14 19.58v10.2l2 .76V19a1 1 0 0 0-.29-.71L4 6.59V6h28v.61L20.33 18.29A1 1 0 0 0 20 19v13.21l2 .79V19.5L33.47 8A1.81 1.81 0 0 0 34 6.7V5a1 1 0 0 0-1-1Z"/><path fill="none" d="M0 0h36v36H0z"/></svg>
+                    <span class="toolbar-text">Color</span>
+                </button>
+                <button id="btn-border" class="submenu-item min-w-[72px] shrink-0 flex flex-col items-center justify-center h-[56px] outline-none">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 14 14"><path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" d="M12.5.5h-11a1 1 0 0 0-1 1v11a1 1 0 0 0 1 1h11a1 1 0 0 0 1-1v-11a1 1 0 0 0-1-1"/></svg>
+                    <span class="toolbar-text">Border</span>
+                </button>
+            </div>
+
+            <!-- 2. Text Style Submenu -->
+            <div id="submenu-textstyle" class="menu-panel submenu-panel overflow-x-auto hide-scrollbar px-2 gap-1">
+                <button class="back-btn shrink-0 flex flex-col items-center justify-center h-[56px] w-[36px] outline-none">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"><path d="m15.583 4l-6.587 6.587a2.013 2.013 0 0 0 0 2.826L15.583 20"/></svg>
+                </button>
+                <div class="w-px h-8 bg-gray-300 mx-1 shrink-0"></div>
+                <button class="submenu-item min-w-[72px] shrink-0 flex flex-col items-center justify-center h-[56px] outline-none"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7V4h16v3"/><path d="M12 4v16"/><path d="M9 20h6"/></svg><span class="toolbar-text">Size</span></button>
+                <button id="btn-text-color" class="submenu-item min-w-[72px] shrink-0 flex flex-col items-center justify-center h-[56px] outline-none">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"><path d="M2.75 9.938v4.124m3.7-7.217v10.31m3.7-13.918v17.526m3.7-13.631v9.736m3.7-7.302v4.868m3.7-3.465v2.062"/></svg>
+                    <span class="toolbar-text">Colour</span>
+                </button>
+                <button class="submenu-item min-w-[72px] shrink-0 flex flex-col items-center justify-center h-[56px] outline-none"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 4h8a4 4 0 0 1 4 4 4 4 0 0 1-4 4H6z"/><path d="M6 12h9a4 4 0 0 1 4 4 4 4 0 0 1-4 4H6z"/></svg><span class="toolbar-text">Bold</span></button>
+                <button class="submenu-item min-w-[72px] shrink-0 flex flex-col items-center justify-center h-[56px] outline-none"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="4" x2="10" y2="4"/><line x1="14" y1="20" x2="5" y2="20"/><line x1="15" y1="4" x2="9" y2="20"/></svg><span class="toolbar-text">Italic</span></button>
+                <button class="submenu-item min-w-[72px] shrink-0 flex flex-col items-center justify-center h-[56px] outline-none"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 4v6a6 6 0 0 0 12 0V4"/><line x1="4" y1="20" x2="20" y2="20"/></svg><span class="toolbar-text">Underline</span></button>
+                <button class="submenu-item min-w-[72px] shrink-0 flex flex-col items-center justify-center h-[56px] outline-none"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M16 4H9a3 3 0 0 0-2.83 4"/><path d="M14 12a4 4 0 0 1 0 8H6"/><line x1="4" y1="12" x2="20" y2="12"/></svg><span class="toolbar-text">Strike</span></button>
+            </div>
+
+            <!-- New Alignment Submenu -->
+            <div id="submenu-alignment" class="menu-panel submenu-panel overflow-x-auto hide-scrollbar px-2 gap-1">
+                <button class="back-btn shrink-0 flex flex-col items-center justify-center h-[56px] w-[36px] outline-none">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"><path d="m15.583 4l-6.587 6.587a2.013 2.013 0 0 0 0 2.826L15.583 20"/></svg>
+                </button>
+                <div class="w-px h-8 bg-gray-300 mx-1 shrink-0"></div>
+                <button class="align-btn submenu-item min-w-[72px] shrink-0 flex flex-col items-center justify-center h-[56px] outline-none" data-align="left">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><line x1="21" y1="6" x2="3" y2="6"></line><line x1="15" y1="12" x2="3" y2="12"></line><line x1="17" y1="18" x2="3" y2="18"></line></svg>
+                    <span class="toolbar-text">Left</span>
+                </button>
+                <button class="align-btn submenu-item min-w-[72px] shrink-0 flex flex-col items-center justify-center h-[56px] outline-none" data-align="center">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><line x1="21" y1="6" x2="3" y2="6"></line><line x1="19" y1="12" x2="5" y2="12"></line><line x1="21" y1="18" x2="3" y2="18"></line></svg>
+                    <span class="toolbar-text">Center</span>
+                </button>
+                <button class="align-btn submenu-item min-w-[72px] shrink-0 flex flex-col items-center justify-center h-[56px] outline-none" data-align="right">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><line x1="21" y1="6" x2="3" y2="6"></line><line x1="21" y1="12" x2="9" y2="12"></line><line x1="21" y1="18" x2="7" y2="18"></line></svg>
+                    <span class="toolbar-text">Right</span>
+                </button>
+                <button class="align-btn submenu-item min-w-[72px] shrink-0 flex flex-col items-center justify-center h-[56px] outline-none" data-align="justify">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><line x1="21" y1="6" x2="3" y2="6"></line><line x1="21" y1="12" x2="3" y2="12"></line><line x1="21" y1="18" x2="3" y2="18"></line></svg>
+                    <span class="toolbar-text">Justify</span>
+                </button>
+            </div>
+
+            <!-- 3. Insert Submenu -->
+            <div id="submenu-insert" class="menu-panel submenu-panel overflow-x-auto hide-scrollbar px-2 gap-1">
+                <button class="back-btn shrink-0 flex flex-col items-center justify-center h-[56px] w-[36px] outline-none">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"><path d="m15.583 4l-6.587 6.587a2.013 2.013 0 0 0 0 2.826L15.583 20"/></svg>
+                </button>
+                <div class="w-px h-8 bg-gray-300 mx-1 shrink-0"></div>
+                <button class="submenu-item min-w-[72px] shrink-0 flex flex-col items-center justify-center h-[56px] outline-none"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7V4h16v3"/><path d="M9 20h6"/><path d="M12 4v16"/></svg><span class="toolbar-text">Text</span></button>
+                <button class="submenu-item min-w-[72px] shrink-0 flex flex-col items-center justify-center h-[56px] outline-none"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12h16M4 4v16M20 4v16"/></svg><span class="toolbar-text">Heading</span></button>
+                <button class="submenu-item min-w-[72px] shrink-0 flex flex-col items-center justify-center h-[56px] outline-none"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg><span class="toolbar-text">Image</span></button>
+            </div>
+
+            <!-- 4. Effects Submenu -->
+            <div id="submenu-effects" class="menu-panel submenu-panel overflow-x-auto hide-scrollbar px-2 gap-1">
+                <button class="back-btn shrink-0 flex flex-col items-center justify-center h-[56px] w-[36px] outline-none">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"><path d="m15.583 4l-6.587 6.587a2.013 2.013 0 0 0 0 2.826L15.583 20"/></svg>
+                </button>
+                <div class="w-px h-8 bg-gray-300 mx-1 shrink-0"></div>
+                <button class="submenu-item min-w-[72px] shrink-0 flex flex-col items-center justify-center h-[56px] outline-none">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"><g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"><path d="m17.674 11.408l-1.905 5.716a.6.6 0 0 1-.398.385L3.693 20.981a.6.6 0 0 1-.74-.765L6.745 8.842a.6.6 0 0 1 .34-.365l5.387-2.218a.6.6 0 0 1 .653.13l4.404 4.405a.6.6 0 0 1 .145.614ZM3.296 20.602l6.364-6.364"/><path fill="currentColor" stroke="none" d="m18.403 3.182l2.364 2.364a1.846 1.846 0 1 1-2.61 2.61l-2.365-2.364a1.846 1.846 0 0 1 2.61-2.61Z"/><path d="M11.781 12.116a1.5 1.5 0 1 0-2.121 2.121a1.5 1.5 0 0 0 2.121-2.121Z"/></g></svg>
+                    <span class="toolbar-text">Marker</span>
+                </button>
+                <button class="submenu-item min-w-[72px] shrink-0 flex flex-col items-center justify-center h-[56px] outline-none">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"><path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="m7 13.161l5.464-5.464a1 1 0 0 1 1.415 0l2.12 2.12a1 1 0 0 1 0 1.415l-1.928 1.929m-7.071 0l-2.172 2.172a.999.999 0 0 0-.218.327l-1.028 2.496c-.508 1.233.725 2.466 1.958 1.959l2.497-1.028a.998.998 0 0 0 .326-.218l5.708-5.708m-7.071 0h7.071m-.193-9.707l2.121 2.121m4.243 4.243l-2.121-2.121m-2.122-2.122l1.414-1.414a1 1 0 0 1 1.415 0l.707.707a1 1 0 0 1 0 1.414L18.12 7.697m-2.122-2.122l2.122 2.122"/></svg>
+                    <span class="toolbar-text">Watermark</span>
+                </button>
+            </div>
+
+        </div>
+    </footer>
+
+    <!-- JavaScript For Full 100% Functionality -->
+    <!-- ================= FLOATING COLOR PICKER (Pops up above toolbar) ================= -->
+    <div id="floating-color-picker" class="fixed left-0 w-full pointer-events-none transition-all duration-300 ease-out translate-y-8 opacity-0 z-[5]" style="bottom: calc(64px + env(safe-area-inset-bottom));">
+        <div class="overflow-x-auto hide-scrollbar w-full pt-10 pb-4 px-2 flex justify-center">
+            <div class="color-picker-container w-max flex items-center justify-center gap-0.5 mx-auto">
+                <button class="item-color pointer-events-auto" style="--color: #ffffff"></button>
+                <button class="item-color pointer-events-auto" style="--color: #e11d48"></button>
+                <button class="item-color pointer-events-auto" style="--color: #f472b6"></button>
+                <button class="item-color pointer-events-auto" style="--color: #fb923c"></button>
+                <button class="item-color pointer-events-auto" style="--color: #facc15"></button>
+                <button class="item-color pointer-events-auto" style="--color: #84cc16"></button>
+                <button class="item-color pointer-events-auto" style="--color: #10b981"></button>
+                <button class="item-color pointer-events-auto" style="--color: #0ea5e9"></button>
+                <button class="item-color pointer-events-auto" style="--color: #3b82f6"></button>
+                <button class="item-color pointer-events-auto" style="--color: #8b5cf6"></button>
+            </div>
+        </div>
+    </div> <!-- ================= BORDER SLIDE-UP PANEL ================= -->
+    <div id="border-panel" class="fixed inset-0 z-[100] pointer-events-none flex flex-col justify-end">
+        <!-- Backdrop -->
+        <div id="border-backdrop" class="absolute inset-0 bg-black/40 opacity-0 transition-opacity duration-300 pointer-events-none"></div>
+        <!-- Panel Content -->
+        <div id="border-content" class="relative bg-[#F3F4F6] w-full rounded-t-2xl shadow-[0_-5px_15px_rgba(0,0,0,0.1)] transform translate-y-full transition-transform duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] pointer-events-auto flex flex-col pb-[env(safe-area-inset-bottom)]">
+            <!-- Drag Handle Indicator -->
+            <div class="w-full flex justify-center py-3">
+                <div class="w-12 h-1.5 bg-gray-300 rounded-full"></div>
+            </div>
+            <!-- Header -->
+            <div class="px-5 pb-3 flex justify-between items-center border-b border-gray-200">
+                <h3 class="font-semibold text-gray-800">Border Thickness</h3>
+                <button id="close-border-panel" class="p-1 rounded-full text-gray-500 hover:bg-gray-200 transition-colors outline-none">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                </button>
+            </div>
+            <!-- Border Options Grid -->
+            <div class="flex overflow-x-auto hide-scrollbar gap-4 px-5 py-6">
+                <!-- Option: None -->
+                <button class="border-size-btn flex flex-col items-center gap-2 shrink-0 outline-none" data-border="border-0">
+                    <div class="w-14 h-14 bg-white border border-gray-300 rounded-md shadow-sm flex items-center justify-center hover:border-blue-500 hover:shadow-md transition-all">
+                        <div class="w-10 h-10 bg-gray-100 rounded-sm"></div>
+                    </div>
+                    <span class="text-[11px] font-medium text-gray-600">None</span>
+                </button>
+                <!-- Option: Hairline (1px) -->
+                <button class="border-size-btn flex flex-col items-center gap-2 shrink-0 outline-none" data-border="border">
+                    <div class="w-14 h-14 bg-white border border-gray-300 rounded-md shadow-sm flex items-center justify-center hover:border-blue-500 hover:shadow-md transition-all">
+                        <div class="w-10 h-10 border border-gray-800 bg-gray-100 rounded-sm"></div>
+                    </div>
+                    <span class="text-[11px] font-medium text-gray-600">Hairline</span>
+                </button>
+                <!-- Option: Thin (2px) -->
+                <button class="border-size-btn flex flex-col items-center gap-2 shrink-0 outline-none" data-border="border-2">
+                    <div class="w-14 h-14 bg-white border border-gray-300 rounded-md shadow-sm flex items-center justify-center hover:border-blue-500 hover:shadow-md transition-all">
+                        <div class="w-10 h-10 border-2 border-gray-800 bg-gray-100 rounded-sm"></div>
+                    </div>
+                    <span class="text-[11px] font-medium text-gray-600">Thin</span>
+                </button>
+                <!-- Option: Medium (4px) -->
+                <button class="border-size-btn flex flex-col items-center gap-2 shrink-0 outline-none" data-border="border-4">
+                    <div class="w-14 h-14 bg-white border border-gray-300 rounded-md shadow-sm flex items-center justify-center hover:border-blue-500 hover:shadow-md transition-all">
+                        <div class="w-10 h-10 border-4 border-gray-800 bg-gray-100 rounded-sm"></div>
+                    </div>
+                    <span class="text-[11px] font-medium text-gray-600">Medium</span>
+                </button>
+                <!-- Option: Thick (8px) -->
+                <button class="border-size-btn flex flex-col items-center gap-2 shrink-0 outline-none" data-border="border-8">
+                    <div class="w-14 h-14 bg-white border border-gray-300 rounded-md shadow-sm flex items-center justify-center hover:border-blue-500 hover:shadow-md transition-all">
+                        <div class="w-10 h-10 border-[6px] border-gray-800 bg-gray-100 rounded-sm"></div>
+                    </div>
+                    <span class="text-[11px] font-medium text-gray-600">Thick</span>
+                </button>
+            </div>
+        </div>
+    </div>  <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            
+            const canvasContainer = document.getElementById('design-canvas');
+            let activeElement = null; 
+
+            // ==========================================
+            // 1. Menu Animations
+            // ==========================================
+            const mainTools = document.querySelectorAll('.main-tool');
+            const subPanels = document.querySelectorAll('.submenu-panel');
+            const backButtons = document.querySelectorAll('.back-btn');
+
+            mainTools.forEach(tool => {
+                tool.addEventListener('click', () => {
+                    const targetId = tool.getAttribute('data-target');
+                    if (targetId === 'none') return;
+                    const targetPanel = document.getElementById(targetId);
+                    if (targetPanel) {
+                        subPanels.forEach(p => p.classList.remove('active-state'));
+                        targetPanel.classList.add('active-state');
+                    }
+                });
+            });
+
+            backButtons.forEach(btn => {
+                btn.addEventListener('click', () => {
+                    subPanels.forEach(p => p.classList.remove('active-state'));
+                });
+            });
+
+            // ==========================================
+            // 2. Undo / Redo / History State Management
+            // ==========================================
+            let history =[];
+            let historyIndex = -1;
+
+            function saveState() {
+                // Remove selection border before saving
+                let previouslyActive = activeElement;
+                setActive(null);
+                
+                let currentState = canvasContainer.innerHTML;
+                
+                // If we are overriding undone history
+                if (historyIndex < history.length - 1) {
+                    history = history.slice(0, historyIndex + 1);
+                }
+                
+                history.push(currentState);
+                historyIndex++;
+                updateHeaderButtons();
+                
+                // Reselect the element after saving
+                if(previouslyActive) setActive(previouslyActive);
+            }
+
+            function updateHeaderButtons() {
+                const btnUndo = document.getElementById('btn-undo');
+                const btnRedo = document.getElementById('btn-redo');
+                
+                if (historyIndex > 0) {
+                    btnUndo.classList.replace('opacity-50', 'opacity-100');
+                    btnUndo.classList.add('hover:opacity-80', 'cursor-pointer');
+                    btnUndo.disabled = false;
+                } else {
+                    btnUndo.classList.replace('opacity-100', 'opacity-50');
+                    btnUndo.classList.remove('hover:opacity-80', 'cursor-pointer');
+                    btnUndo.disabled = true;
+                }
+
+                if (historyIndex < history.length - 1) {
+                    btnRedo.classList.replace('opacity-50', 'opacity-100');
+                    btnRedo.classList.add('hover:opacity-80', 'cursor-pointer');
+                    btnRedo.disabled = false;
+                } else {
+                    btnRedo.classList.replace('opacity-100', 'opacity-50');
+                    btnRedo.classList.remove('hover:opacity-80', 'cursor-pointer');
+                    btnRedo.disabled = true;
+                }
+            }
+
+            // Save Initial State
+            saveState();
+
+            document.getElementById('btn-undo').addEventListener('click', () => {
+                if (historyIndex > 0) {
+                    historyIndex--;
+                    restoreState(history[historyIndex]);
+                }
+            });
+
+            document.getElementById('btn-redo').addEventListener('click', () => {
+                if (historyIndex < history.length - 1) {
+                    historyIndex++;
+                    restoreState(history[historyIndex]);
+                }
+            });
+
+            function restoreState(content) {
+                setActive(null);
+                canvasContainer.innerHTML = content;
+                // Re-bind dragging and clicking events to elements restored from string
+                const elements = canvasContainer.querySelectorAll('.inserted-element');
+                elements.forEach(el => makeInteractive(el));
+                updateHeaderButtons();
+            }
+
+            // ==========================================
+            // 3. Selection, Drag/Drop & Resize Logic
+            // ==========================================
+            function createResizeHandle() {
+                let handle = document.createElement('div');
+                handle.id = 'resize-handle';
+                // একটি সুন্দর নীল রঙের গোলাকার বাটন (Resize dot)
+                handle.className = 'absolute w-6 h-6 bg-blue-600 border-[3px] border-white rounded-full shadow-md z-[60] cursor-se-resize touch-none flex justify-center items-center';
+                handle.innerHTML = '<div class="w-1.5 h-1.5 bg-white rounded-full pointer-events-none"></div>';
+                
+                let isResizing = false;
+                let startX, startY, startWidth, startHeight, startLeft, startTop;
+
+                function initResize(e) {
+                    e.stopPropagation();
+                    e.preventDefault();
+                    if (!activeElement) return;
+                    isResizing = true;
+                    
+                    let evt = e.type.includes('touch') ? e.touches[0] : e;
+                    startX = evt.clientX;
+                    startY = evt.clientY;
+                    startWidth = activeElement.offsetWidth;
+                    startHeight = activeElement.offsetHeight;
+                    startLeft = activeElement.offsetLeft;
+                    startTop = activeElement.offsetTop;
+
+                    document.addEventListener('mousemove', resizeElement);
+                    document.addEventListener('touchmove', resizeElement, { passive: false });
+                    document.addEventListener('mouseup', stopResize);
+                    document.addEventListener('touchend', stopResize);
+                }
+
+                function resizeElement(e) {
+                    if (!isResizing || !activeElement) return;
+                    e.preventDefault();
+
+                    // ক্যানভাস জুম অবস্থায় থাকলে তার পারফেক্ট ক্যালকুলেশন
+                    let scale = typeof currentScale !== 'undefined' ? currentScale : 1;
+                    
+                    let evt = e.type.includes('touch') ? e.touches[0] : e;
+                    let dx = (evt.clientX - startX) / scale;
+                    let dy = (evt.clientY - startY) / scale;
+
+                    if (activeElement.tagName === 'IMG') {
+                        // ছবির Aspect Ratio (মৌলিক আকার) ঠিক রাখার লজিক
+                        let ratio = startWidth / startHeight;
+                        let newWidth = Math.max(40, startWidth + dx); // কমপক্ষে 40px হতে হবে
+                        let newHeight = newWidth / ratio;
+                        activeElement.style.width = newWidth + 'px';
+                        activeElement.style.height = newHeight + 'px';
+                    } else {
+                        // টেক্সট বা অন্যান্য বক্সের জন্য ফ্রি-রিসাইজ
+                        activeElement.style.width = Math.max(40, startWidth + dx) + 'px';
+                        activeElement.style.height = Math.max(40, startHeight + dy) + 'px';
+                    }
+
+                    updateResizeHandlePosition();
+                }
+
+                function stopResize() {
+                    isResizing = false;
+                    document.removeEventListener('mousemove', resizeElement);
+                    document.removeEventListener('touchmove', resizeElement);
+                    document.removeEventListener('mouseup', stopResize);
+                    document.removeEventListener('touchend', stopResize);
+                    saveState(); // নতুন সাইজ সেভ হবে
+                }
+
+                handle.addEventListener('mousedown', initResize);
+                handle.addEventListener('touchstart', initResize, { passive: false });
+
+                canvasContainer.appendChild(handle);
+            }
+
+            function updateResizeHandlePosition() {
+                let handle = document.getElementById('resize-handle');
+                if (activeElement && handle) {
+                    // ডটের পজিশন ছবির ঠিক ডানদিকের নিচে কোণায় সেট হবে
+                    handle.style.left = (activeElement.offsetLeft + activeElement.offsetWidth - 12) + 'px';
+                    handle.style.top = (activeElement.offsetTop + activeElement.offsetHeight - 12) + 'px';
+                }
+            }
+
+            function setActive(el) {
+                if (activeElement) {
+                    activeElement.style.outline = 'none';
+                    activeElement.style.boxShadow = 'none';
+                }
+                
+                // নতুন কিছু সিলেক্ট করার আগে আগের ডট মুছে ফেলা
+                let handle = document.getElementById('resize-handle');
+                if (handle) handle.remove(); 
+                
+                activeElement = el;
+                
+                if (activeElement) {
+                    activeElement.style.outline = '2px dashed #3b82f6';
+                    activeElement.style.outlineOffset = '4px';
+                    
+                    // নতুন সিলেক্টেড ইলিমেন্টের সাথে ডট যুক্ত করা
+                    createResizeHandle();
+                    updateResizeHandlePosition();
+                }
+            }
+
+            // ক্যানভাসের ফাঁকা জায়গায় ক্লিক করলে সিলেকশন বাতিল হবে
+            canvasContainer.addEventListener('click', (e) => {
+                if (e.target === canvasContainer || e.target.id === 'main-bg-image' || e.target.id === 'canvas-watermark') {
+                    setActive(null);
+                }
+            });
+
+            function makeInteractive(el) {
+                el.classList.add('inserted-element');
+                
+                // Allow selection and text editing
+                el.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    setActive(el);
+                });
+
+                // Auto-save state when text is changed
+                if(el.contentEditable === 'true') {
+                    el.addEventListener('blur', saveState);
+                }
+
+                // Drag functionality
+                let pos1 = 0, pos2 = 0, pos3 = 0, pos4 = 0;
+                
+                el.onmousedown = dragMouseDown;
+                el.ontouchstart = dragMouseDown;
+
+                function dragMouseDown(e) {
+                    // ডটে ক্লিক করলে যাতে ড্র্যাগ না হয়, তার প্রটেকশন
+                    if (e.target.id === 'resize-handle' || e.target.closest('#resize-handle')) return;
+                    
+                    if (e.target !== el && !el.contains(e.target)) return;
+                    e.stopPropagation();
+                    setActive(el);
+                    
+                    let evt = e.type.includes('touch') ? e.touches[0] : e;
+                    pos3 = evt.clientX;
+                    pos4 = evt.clientY;
+                    
+                    document.onmouseup = closeDragElement;
+                    document.ontouchend = closeDragElement;
+                    document.onmousemove = elementDrag;
+                    document.ontouchmove = elementDrag;
+                }
+
+                function elementDrag(e) {
+                    if (e.cancelable) e.preventDefault(); 
+                    
+                    // জুম অবস্থায় ড্র্যাগিং স্পিড পারফেক্ট করার ক্যালকুলেশন
+                    let scale = typeof currentScale !== 'undefined' ? currentScale : 1;
+                    let evt = e.type.includes('touch') ? e.touches[0] : e;
+                    
+                    pos1 = (pos3 - evt.clientX) / scale;
+                    pos2 = (pos4 - evt.clientY) / scale;
+                    pos3 = evt.clientX;
+                    pos4 = evt.clientY;
+                    
+                    el.style.top = (el.offsetTop - pos2) + "px";
+                    el.style.left = (el.offsetLeft - pos1) + "px";
+                    
+                    updateResizeHandlePosition(); // ড্র্যাগ করার সময় ডট সাথে মুভ করবে
+                }
+
+                function closeDragElement() {
+                    document.onmouseup = null;
+                    document.onmousemove = null;
+                    document.ontouchend = null;
+                    document.ontouchmove = null;
+                    saveState(); // Save state after moving element
+                }
+            }
+
+            // ==========================================
+            // 4. Header Actions (Menu, Options, Export)
+            // ==========================================
+            
+            // Fullscreen Toggle
+            document.getElementById('btn-menu').addEventListener('click', () => {
+                if (!document.fullscreenElement) {
+                    document.documentElement.requestFullscreen().catch(err => {
+                        alert(`Error attempting to enable fullscreen: ${err.message}`);
+                    });
+                } else {
+                    document.exitFullscreen();
+                }
+            });
+
+            // Full Canvas Mode & Floating Toolbox Logic (with Drag Support)
+            const btnCanvasOnlyMode = document.getElementById('btn-canvas-only-mode');
+            const btnExitCanvasMode = document.getElementById('btn-exit-canvas-mode');
+            const normalHeaderContent = document.getElementById('normal-header-content');
+            const canvasModeHeaderContent = document.getElementById('canvas-mode-header-content');
+            const appFooter = document.querySelector('footer');
+            
+            // Floating Toolbox Elements
+            const floatingToolbox = document.getElementById('floating-toolbox');
+            const btnToolboxToggle = document.getElementById('btn-toolbox-toggle');
+            const toolboxOptions = document.getElementById('toolbox-options');
+            const toolboxBtns = document.querySelectorAll('.toolbox-btn');
+
+            // --- Gesture-Based Zoom & Pan Variables & Logic ---
+            let isZoomModeActive = false;
+            let currentScale = 1;
+            let currentPanX = 0;
+            let currentPanY = 0;
+
+            const btnZoomToggle = document.getElementById('btn-zoom-toggle');
+            const zoomPercentageText = document.getElementById('zoom-percentage-text');
+            const mainWorkspace = document.querySelector('main');
+
+            function updateCanvasTransform() {
+                if (canvasContainer) {
+                    // --- Improved Boundary Control Logic (Clamping) ---
+                    const canvasWidth = canvasContainer.offsetWidth;
+                    const canvasHeight = canvasContainer.offsetHeight;
+                    
+                    // Calculate exact visual panning limits regardless of canvas scale
+                    // Using Math.abs ensures smooth panning even if canvas is smaller than screen
+                    const maxPanX = Math.abs(mainWorkspace.clientWidth - (canvasWidth * currentScale)) / 2;
+                    const maxPanY = Math.abs(mainWorkspace.clientHeight - (canvasHeight * currentScale)) / 2;
+                    
+                    // Clamp (restrict) panning values to keep it within the screen boundaries safely
+                    currentPanX = Math.max(-maxPanX, Math.min(maxPanX, currentPanX));
+                    currentPanY = Math.max(-maxPanY, Math.min(maxPanY, currentPanY));
+                    
+                    // Apply smooth translation and scaling
+                    canvasContainer.style.transform = `translate(${currentPanX}px, ${currentPanY}px) scale(${currentScale})`;
+                }
+                if (zoomPercentageText) {
+                    zoomPercentageText.innerText = Math.round(currentScale * 100) + '%';
+                }
+            }
+
+            function enterCanvasOnlyMode() {
+                normalHeaderContent.classList.add('hidden');
+                normalHeaderContent.classList.remove('flex');
+                canvasModeHeaderContent.classList.remove('hidden');
+                canvasModeHeaderContent.classList.add('flex');
+                
+                appFooter.classList.add('hidden');
+                
+                if (floatingToolbox) {
+                    floatingToolbox.classList.remove('hidden');
+                    floatingToolbox.classList.add('flex');
+                }
+                
+                const floatingColorPicker = document.getElementById('floating-color-picker');
+                if (floatingColorPicker) {
+                    floatingColorPicker.classList.add('opacity-0', 'translate-y-8');
+                    floatingColorPicker.classList.remove('opacity-100', 'translate-y-0');
+                }
+            }
+
+            function exitCanvasOnlyMode() {
+                canvasModeHeaderContent.classList.add('hidden');
+                canvasModeHeaderContent.classList.remove('flex');
+                normalHeaderContent.classList.remove('hidden');
+                normalHeaderContent.classList.add('flex');
+                
+                appFooter.classList.remove('hidden');
+                
+                if (floatingToolbox) {
+                    floatingToolbox.classList.add('hidden');
+                    floatingToolbox.classList.remove('flex');
+                    toolboxOptions.classList.add('scale-y-0', 'opacity-0', 'pointer-events-none', '-translate-y-2');
+                    toolboxOptions.classList.remove('scale-y-100', 'opacity-100', 'pointer-events-auto', 'translate-y-0');
+                    btnToolboxToggle.classList.remove('bg-blue-50', 'text-blue-600', 'border-blue-200');
+                }
+
+                // Completely disable Zoom Mode and Reset Canvas when exiting Full Screen
+                if (isZoomModeActive) {
+                    toggleGestureZoomMode();
+                }
+            }
+
+            if (btnCanvasOnlyMode) btnCanvasOnlyMode.addEventListener('click', enterCanvasOnlyMode);
+            if (btnExitCanvasMode) btnExitCanvasMode.addEventListener('click', exitCanvasOnlyMode);
+
+            // --- Toggle Gesture Zoom Mode ---
+            function toggleGestureZoomMode() {
+                isZoomModeActive = !isZoomModeActive;
+                if (isZoomModeActive) {
+                    // Activate Zoom Mode
+                    btnZoomToggle.classList.add('bg-blue-100', 'text-blue-600');
+                    btnZoomToggle.classList.remove('text-gray-700');
+                    zoomPercentageText.classList.remove('hidden');
+                    zoomPercentageText.innerText = Math.round(currentScale * 100) + '%';
+                    
+                    // Remove transition for instant real-time finger tracking
+                    canvasContainer.classList.remove('transition-all', 'duration-300');
+                } else {
+                    // Deactivate and Reset Zoom Mode
+                    btnZoomToggle.classList.remove('bg-blue-100', 'text-blue-600');
+                    btnZoomToggle.classList.add('text-gray-700');
+                    zoomPercentageText.classList.add('hidden');
+                    
+                    currentScale = 1;
+                    currentPanX = 0;
+                    currentPanY = 0;
+                    
+                    // Add smooth transition back for the reset animation
+                    canvasContainer.classList.add('transition-all', 'duration-300');
+                    updateCanvasTransform();
+                }
+            }
+
+            if (btnZoomToggle) {
+                btnZoomToggle.addEventListener('click', toggleGestureZoomMode);
+            }
+
+            // --- Touch & Mouse Gestures for Zooming and Panning ---
+            let initialDistance = null;
+            let initialScale = 1;
+            let isPanningWorkspace = false;
+            let wsStartX = 0, wsStartY = 0;
+            let initialPanX = 0, initialPanY = 0;
+
+            mainWorkspace.addEventListener('touchstart', (e) => {
+                if (!isZoomModeActive) return;
+                // Ignore gestures if touching the floating toolbox UI
+                if (e.target.closest('#floating-toolbox')) return;
+
+                if (e.touches.length === 2) {
+                    // Pinch Zoom Start
+                    isPanningWorkspace = false;
+                    initialDistance = Math.hypot(
+                        e.touches[0].clientX - e.touches[1].clientX,
+                        e.touches[0].clientY - e.touches[1].clientY
+                    );
+                    initialScale = currentScale;
+                } else if (e.touches.length === 1) {
+                    // Pan Start
+                    isPanningWorkspace = true;
+                    wsStartX = e.touches[0].clientX;
+                    wsStartY = e.touches[0].clientY;
+                    initialPanX = currentPanX;
+                    initialPanY = currentPanY;
+                }
+            }, { passive: false });
+
+            mainWorkspace.addEventListener('touchmove', (e) => {
+                if (!isZoomModeActive) return;
+                if (e.target.closest('#floating-toolbox')) return;
+                
+                // Prevent screen refreshing/scrolling while zooming
+                if (e.cancelable) e.preventDefault();
+
+                if (e.touches.length === 2) {
+                    // Pinching
+                    isPanningWorkspace = false;
+                    const currentDistance = Math.hypot(
+                        e.touches[0].clientX - e.touches[1].clientX,
+                        e.touches[0].clientY - e.touches[1].clientY
+                    );
+                    if (initialDistance) {
+                        const scaleDiff = currentDistance / initialDistance;
+                        currentScale = Math.min(Math.max(initialScale * scaleDiff, 0.5), 5); // Limit 50% - 500%
+                        updateCanvasTransform();
+                    }
+                } else if (e.touches.length === 1 && isPanningWorkspace) {
+                    // Panning
+                    const dx = e.touches[0].clientX - wsStartX;
+                    const dy = e.touches[0].clientY - wsStartY;
+                    currentPanX = initialPanX + dx;
+                    currentPanY = initialPanY + dy;
+                    updateCanvasTransform();
+                }
+            }, { passive: false });
+
+            mainWorkspace.addEventListener('touchend', (e) => {
+                if (!isZoomModeActive) return;
+                if (e.touches.length < 2) initialDistance = null;
+                if (e.touches.length === 0) isPanningWorkspace = false;
+            });
+
+            // Desktop Mouse Support for Panning and Scroll Wheel for Zooming
+            mainWorkspace.addEventListener('mousedown', (e) => {
+                if (!isZoomModeActive) return;
+                if (e.target.closest('#floating-toolbox')) return;
+                
+                isPanningWorkspace = true;
+                wsStartX = e.clientX;
+                wsStartY = e.clientY;
+                initialPanX = currentPanX;
+                initialPanY = currentPanY;
+            });
+
+            window.addEventListener('mousemove', (e) => {
+                if (!isZoomModeActive || !isPanningWorkspace || e.touches) return;
+                e.preventDefault();
+                const dx = e.clientX - wsStartX;
+                const dy = e.clientY - wsStartY;
+                currentPanX = initialPanX + dx;
+                currentPanY = initialPanY + dy;
+                updateCanvasTransform();
+            });
+
+            window.addEventListener('mouseup', () => {
+                if (!isZoomModeActive || !isPanningWorkspace) return;
+                isPanningWorkspace = false;
+            });
+
+            mainWorkspace.addEventListener('wheel', (e) => {
+                if (!isZoomModeActive) return;
+                e.preventDefault();
+                if (e.ctrlKey || e.metaKey) {
+                    // Zoom using Trackpad/Scrollwheel
+                    const delta = e.deltaY * -0.01;
+                    currentScale = Math.min(Math.max(currentScale + delta, 0.5), 5);
+                } else {
+                    // Pan using Trackpad/Scrollwheel
+                    currentPanX -= e.deltaX;
+                    currentPanY -= e.deltaY;
+                }
+                updateCanvasTransform();
+            }, { passive: false });
+            
+            // --- Toolbox Drag & Drop Logic ---
+            let isDraggingToolbox = false;
+            let toolboxDragMoved = false;
+            let tbStartX, tbStartY, tbStartLeft, tbStartTop;
+
+            function onToolboxDragStart(e) {
+                // Only start drag from the main square button
+                if (!e.target.closest('#btn-toolbox-toggle')) return;
+                
+                isDraggingToolbox = true;
+                toolboxDragMoved = false;
+
+                let clientX = e.type.includes('touch') ? e.touches[0].clientX : e.clientX;
+                let clientY = e.type.includes('touch') ? e.touches[0].clientY : e.clientY;
+
+                tbStartX = clientX;
+                tbStartY = clientY;
+
+                const rect = floatingToolbox.getBoundingClientRect();
+                
+                // Convert position to fixed left/top for dragging
+                floatingToolbox.style.left = rect.left + 'px';
+                floatingToolbox.style.top = rect.top + 'px';
+                floatingToolbox.style.right = 'auto';
+                floatingToolbox.style.bottom = 'auto';
+
+                tbStartLeft = rect.left;
+                tbStartTop = rect.top;
+                
+                btnToolboxToggle.style.cursor = 'grabbing';
+            }
+
+            function onToolboxDragMove(e) {
+                if (!isDraggingToolbox) return;
+
+                let clientX = e.type.includes('touch') ? e.touches[0].clientX : e.clientX;
+                let clientY = e.type.includes('touch') ? e.touches[0].clientY : e.clientY;
+
+                let dx = clientX - tbStartX;
+                let dy = clientY - tbStartY;
+
+                // Threshold to differentiate a Click from a Drag (3 pixels)
+                if (Math.abs(dx) > 3 || Math.abs(dy) > 3) {
+                    toolboxDragMoved = true;
+                }
+
+                if (toolboxDragMoved) {
+                    e.preventDefault(); // Prevent scrolling on mobile while dragging
+
+                    let newLeft = tbStartLeft + dx;
+                    let newTop = tbStartTop + dy;
+
+                    // Calculate Boundaries to keep it inside the screen
+                    // We use rect width/height so even expanded options won't go off-screen
+                    const rect = floatingToolbox.getBoundingClientRect();
+                    const maxX = window.innerWidth - rect.width;
+                    const maxY = window.innerHeight - rect.height;
+
+                    if (newLeft < 0) newLeft = 0;
+                    if (newTop < 0) newTop = 0;
+                    if (newLeft > maxX) newLeft = maxX;
+                    if (newTop > maxY) newTop = maxY;
+
+                    floatingToolbox.style.left = newLeft + 'px';
+                    floatingToolbox.style.top = newTop + 'px';
+                }
+            }
+
+            function onToolboxDragEnd(e) {
+                if (isDraggingToolbox) {
+                    isDraggingToolbox = false;
+                    btnToolboxToggle.style.cursor = 'grab';
+                }
+            }
+
+            // Attach Drag Listeners globally for smooth dragging
+            btnToolboxToggle.addEventListener('mousedown', onToolboxDragStart);
+            btnToolboxToggle.addEventListener('touchstart', onToolboxDragStart, {passive: false});
+            document.addEventListener('mousemove', onToolboxDragMove);
+            document.addEventListener('touchmove', onToolboxDragMove, {passive: false});
+            document.addEventListener('mouseup', onToolboxDragEnd);
+            document.addEventListener('touchend', onToolboxDragEnd);
+            
+            // --- Toolbox Expand/Collapse Toggle ---
+            if (btnToolboxToggle && toolboxOptions) {
+                btnToolboxToggle.addEventListener('click', (e) => {
+                    // Ignore click if the user was just dragging the button
+                    if (toolboxDragMoved) {
+                        toolboxDragMoved = false; 
+                        return; 
+                    }
+
+                    if (toolboxOptions.classList.contains('scale-y-0')) {
+                        toolboxOptions.classList.remove('scale-y-0', 'opacity-0', 'pointer-events-none', '-translate-y-2');
+                        toolboxOptions.classList.add('scale-y-100', 'opacity-100', 'pointer-events-auto', 'translate-y-0');
+                        btnToolboxToggle.classList.add('bg-blue-50', 'text-blue-600', 'border-blue-200');
+                    } else {
+                        toolboxOptions.classList.add('scale-y-0', 'opacity-0', 'pointer-events-none', '-translate-y-2');
+                        toolboxOptions.classList.remove('scale-y-100', 'opacity-100', 'pointer-events-auto', 'translate-y-0');
+                        btnToolboxToggle.classList.remove('bg-blue-50', 'text-blue-600', 'border-blue-200');
+                    }
+                });
+            }
+            
+            // --- Toolbox Formatting Actions ---
+            toolboxBtns.forEach(btn => {
+                btn.addEventListener('click', () => {
+                    if (activeElement && activeElement.tagName === 'DIV' && activeElement.id !== 'canvas-watermark') {
+                        const tool = btn.getAttribute('data-tool');
+                        
+                        if (tool === 'bold') {
+                            let weight = window.getComputedStyle(activeElement).fontWeight;
+                            activeElement.style.fontWeight = (weight === '700' || weight === 'bold') ? 'normal' : 'bold';
+                        } 
+                        else if (tool === 'italic') {
+                            activeElement.style.fontStyle = activeElement.style.fontStyle === 'italic' ? 'normal' : 'italic';
+                        } 
+                        else if (tool === 'underline') {
+                            let dec = activeElement.style.textDecorationLine || '';
+                            if (dec.includes('underline')) {
+                                activeElement.style.textDecorationLine = dec.replace('underline', '').trim() || 'none';
+                            } else {
+                                activeElement.style.textDecorationLine = dec === 'none' ? 'underline' : dec + ' underline';
+                            }
+                        } 
+                        else if (tool === 'strike') {
+                            let dec = activeElement.style.textDecorationLine || '';
+                            if (dec.includes('line-through')) {
+                                activeElement.style.textDecorationLine = dec.replace('line-through', '').trim() || 'none';
+                            } else {
+                                activeElement.style.textDecorationLine = dec === 'none' ? 'line-through' : dec + ' line-through';
+                            }
+                        }
+                        else if (tool === 'marker') {
+                            activeElement.style.backgroundColor = activeElement.style.backgroundColor ? '' : 'rgba(253, 224, 71, 0.7)'; 
+                        }
+                        
+                        saveState(); // Record change for undo/redo
+                    } else {
+                        alert("Please select a text element first to apply formatting.");
+                    }
+                });
+            });
+
+            // Export / Download (html2canvas)
+            document.getElementById('btn-export').addEventListener('click', () => {
+                setActive(null); // Deselect anything before capturing
+                const btn = document.getElementById('btn-export');
+                btn.classList.add('animate-pulse'); // Loading effect
+                
+                html2canvas(canvasContainer, { 
+                    useCORS: true, 
+                    allowTaint: true, 
+                    scale: 2 // High quality
+                }).then(canvas => {
+                    const link = document.createElement('a');
+                    link.download = 'My-Design-App.png';
+                    link.href = canvas.toDataURL('image/png');
+                    link.click();
+                    btn.classList.remove('animate-pulse');
+                }).catch(err => {
+                    alert("Error exporting image!");
+                    btn.classList.remove('animate-pulse');
+                });
+            });
+
+            // ==========================================
+            // 5. Main Toolbar Actions
+            // ==========================================
+
+            // Template Menu
+            document.getElementById('btn-template').addEventListener('click', () => {
+                const bgImage = document.getElementById('main-bg-image');
+                // Fetch a random aesthetic image
+                const randomId = Math.floor(Math.random() * 1000);
+                bgImage.src = `https://picsum.photos/800/800?random=${randomId}`;
+                
+                // wait for image load to save state
+                bgImage.onload = () => saveState();
+            });
+
+            // Reset Workspace
+            document.getElementById('btn-reset').addEventListener('click', () => {
+                if(confirm("Are you sure you want to completely reset your workspace?")) {
+                    canvasContainer.className = 'bg-white shadow-[0_0_25px_rgba(0,0,0,0.15)] w-full max-w-[650px] aspect-square relative flex flex-col justify-center items-center overflow-hidden transition-all duration-300';
+                    canvasContainer.innerHTML = '<img id="main-bg-image" src="https://placehold.co/800x800/ffffff/ffffff?text=+" alt="Canvas Artwork" class="w-full h-full object-cover pointer-events-none">';
+                    setActive(null);
+                    saveState();
+                }
+            });
+
+            // ==========================================
+            // 6. Layout Submenu Functionalities
+            // ==========================================
+            const layoutBtns = document.querySelectorAll('#submenu-layout .submenu-item');
+            
+            // Margin Size Slide-up Panel Logic
+            const btnMargin = document.getElementById('btn-margin');
+            const marginPanel = document.getElementById('margin-panel');
+            const marginBackdrop = document.getElementById('margin-backdrop');
+            const marginContent = document.getElementById('margin-content');
+            const closeMarginPanelBtn = document.getElementById('close-margin-panel');
+            const marginSizeBtns = document.querySelectorAll('.margin-size-btn');
+
+            function openMarginPanel() {
+                marginPanel.classList.remove('pointer-events-none');
+                marginBackdrop.classList.remove('opacity-0', 'pointer-events-none');
+                marginBackdrop.classList.add('opacity-100', 'pointer-events-auto');
+                marginContent.classList.remove('translate-y-full');
+            }
+
+            function closeMarginPanel() {
+                marginBackdrop.classList.remove('opacity-100', 'pointer-events-auto');
+                marginBackdrop.classList.add('opacity-0', 'pointer-events-none');
+                marginContent.classList.add('translate-y-full');
+                setTimeout(() => {
+                    marginPanel.classList.add('pointer-events-none');
+                }, 300); // Wait for transition to complete
+            }
+
+            if (btnMargin) {
+                btnMargin.addEventListener('click', openMarginPanel);
+            } else {
+                layoutBtns[0].addEventListener('click', openMarginPanel); // Fallback
+            }
+            
+            closeMarginPanelBtn.addEventListener('click', closeMarginPanel);
+            marginBackdrop.addEventListener('click', closeMarginPanel);
+
+            // Applying the selected Margin
+            marginSizeBtns.forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const marginClass = btn.getAttribute('data-margin');
+                    
+                    // Remove all previous padding/margin classes from canvas container
+                    canvasContainer.classList.remove('p-0', 'p-1', 'p-2', 'p-4', 'p-6', 'p-8', 'p-10', 'p-12');
+                    
+                    // Add the new selected margin (padding) class
+                    canvasContainer.classList.add(marginClass);
+                    
+                    saveState(); // Save to undo/redo history
+                    closeMarginPanel(); // Close the slide-up panel
+                });
+            });
+            
+            // Canvas Size Slide-up Panel Logic
+            const btnCanvasSize = document.getElementById('btn-canvas-size');
+            const canvasSizePanel = document.getElementById('canvas-size-panel');
+            const canvasSizeBackdrop = document.getElementById('canvas-size-backdrop');
+            const canvasSizeContent = document.getElementById('canvas-size-content');
+            const closeCanvasPanelBtn = document.getElementById('close-canvas-panel');
+            const canvasSizeBtns = document.querySelectorAll('.canvas-size-btn');
+
+            function openCanvasPanel() {
+                canvasSizePanel.classList.remove('pointer-events-none');
+                canvasSizeBackdrop.classList.remove('opacity-0', 'pointer-events-none');
+                canvasSizeBackdrop.classList.add('opacity-100', 'pointer-events-auto');
+                canvasSizeContent.classList.remove('translate-y-full');
+            }
+
+            function closeCanvasPanel() {
+                canvasSizeBackdrop.classList.remove('opacity-100', 'pointer-events-auto');
+                canvasSizeBackdrop.classList.add('opacity-0', 'pointer-events-none');
+                canvasSizeContent.classList.add('translate-y-full');
+                setTimeout(() => {
+                    canvasSizePanel.classList.add('pointer-events-none');
+                }, 300); // Wait for transition to complete
+            }
+
+            // Click events for opening and closing the panel
+            if (btnCanvasSize) {
+                btnCanvasSize.addEventListener('click', openCanvasPanel);
+            } else {
+                layoutBtns[1].addEventListener('click', openCanvasPanel); // Fallback
+            }
+            closeCanvasPanelBtn.addEventListener('click', closeCanvasPanel);
+            canvasSizeBackdrop.addEventListener('click', closeCanvasPanel);
+
+            // Applying the selected Canvas Size smoothly
+            canvasSizeBtns.forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const ratio = btn.getAttribute('data-ratio');
+                    
+                    // Remove all previous aspect ratio classes
+                    canvasContainer.classList.remove('aspect-square', 'aspect-video', 'aspect-[3/4]', 'aspect-[4/5]', 'aspect-[9/16]');
+                    
+                    // Add the new selected aspect ratio class
+                    canvasContainer.classList.add(ratio);
+                    
+                    saveState(); // Save to undo/redo history
+                    closeCanvasPanel(); // Close the slide-up panel
+                });
+            });
+            
+            // Floating Canvas Color Logic (Pops up above toolbar) - Applies to Border & Text
+            const btnCanvasColor = document.getElementById('btn-canvas-color');
+            const btnTextColor = document.getElementById('btn-text-color');
+            const floatingColorPicker = document.getElementById('floating-color-picker');
+            const colorItems = document.querySelectorAll('.item-color');
+            
+            let colorPickerTarget = 'border'; // Track what we are coloring ('border' or 'text')
+
+            // Toggle floating picker visibility
+            function toggleFloatingPicker(e, target) {
+                if (e) e.stopPropagation();
+                
+                if (floatingColorPicker.classList.contains('opacity-0') || colorPickerTarget !== target) {
+                    // Show Picker and set target mode
+                    colorPickerTarget = target;
+                    floatingColorPicker.classList.remove('opacity-0', 'translate-y-8');
+                    floatingColorPicker.classList.add('opacity-100', 'translate-y-0');
+                } else {
+                    // Hide Picker
+                    floatingColorPicker.classList.add('opacity-0', 'translate-y-8');
+                    floatingColorPicker.classList.remove('opacity-100', 'translate-y-0');
+                }
+            }
+
+            // Hide floating picker when clicking anywhere outside of it
+            document.addEventListener('click', (e) => {
+                if (floatingColorPicker && !floatingColorPicker.classList.contains('opacity-0') && 
+                    !floatingColorPicker.contains(e.target) && 
+                    (!btnCanvasColor || !btnCanvasColor.contains(e.target)) &&
+                    (!btnTextColor || !btnTextColor.contains(e.target))) {
+                    
+                    floatingColorPicker.classList.add('opacity-0', 'translate-y-8');
+                    floatingColorPicker.classList.remove('opacity-100', 'translate-y-0');
+                }
+            });
+
+            // Bind click event to "Color" button in Layout submenu (for Border)
+            if (btnCanvasColor) {
+                btnCanvasColor.addEventListener('click', (e) => toggleFloatingPicker(e, 'border'));
+            }
+            
+            // Bind click event to "Colour" button in Text Style submenu (for Text)
+            if (btnTextColor) {
+                btnTextColor.addEventListener('click', (e) => {
+                    // Check if a text element is actively selected first
+                    if (activeElement && activeElement.tagName === 'DIV' && activeElement.id !== 'canvas-watermark') {
+                        toggleFloatingPicker(e, 'text');
+                    } else {
+                        alert("Please insert and select a text first.");
+                    }
+                });
+            }
+
+            // Applying the selected Color dynamically to Border or Text
+            colorItems.forEach(item => {
+                item.addEventListener('click', (e) => {
+                    e.stopPropagation(); // Prevent the document click event from firing
+                    
+                    const selectedColor = item.style.getPropertyValue('--color').trim();
+                    
+                    if (colorPickerTarget === 'border') {
+                        // Apply new color directly to Border
+                        canvasContainer.style.borderColor = selectedColor;
+                    } else if (colorPickerTarget === 'text') {
+                        // Apply new color to the active Text Element
+                        if (activeElement) {
+                            activeElement.style.color = selectedColor;
+                        }
+                    }
+                    
+                    saveState(); // Save to undo/redo history
+                    
+                    // Auto-hide the floating picker after selecting a color
+                    floatingColorPicker.classList.add('opacity-0', 'translate-y-8');
+                    floatingColorPicker.classList.remove('opacity-100', 'translate-y-0');
+                });
+            });
+            
+            // Border Size Slide-up Panel Logic
+            const btnBorder = document.getElementById('btn-border');
+            const borderPanel = document.getElementById('border-panel');
+            const borderBackdrop = document.getElementById('border-backdrop');
+            const borderContent = document.getElementById('border-content');
+            const closeBorderPanelBtn = document.getElementById('close-border-panel');
+            const borderSizeBtns = document.querySelectorAll('.border-size-btn');
+
+            function openBorderPanel() {
+                borderPanel.classList.remove('pointer-events-none');
+                borderBackdrop.classList.remove('opacity-0', 'pointer-events-none');
+                borderBackdrop.classList.add('opacity-100', 'pointer-events-auto');
+                borderContent.classList.remove('translate-y-full');
+            }
+
+            function closeBorderPanel() {
+                borderBackdrop.classList.remove('opacity-100', 'pointer-events-auto');
+                borderBackdrop.classList.add('opacity-0', 'pointer-events-none');
+                borderContent.classList.add('translate-y-full');
+                setTimeout(() => {
+                    borderPanel.classList.add('pointer-events-none');
+                }, 300); // Wait for transition to complete
+            }
+
+            if (btnBorder) {
+                btnBorder.addEventListener('click', openBorderPanel);
+            } else if (layoutBtns[3]) {
+                layoutBtns[3].addEventListener('click', openBorderPanel); // Fallback
+            }
+            
+            closeBorderPanelBtn.addEventListener('click', closeBorderPanel);
+            borderBackdrop.addEventListener('click', closeBorderPanel);
+
+            // Applying the selected Border
+            borderSizeBtns.forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const borderClass = btn.getAttribute('data-border');
+                    
+                    // Remove all previous border size and color classes
+                    canvasContainer.classList.remove('border-0', 'border', 'border-2', 'border-4', 'border-8', 'border-gray-800');
+                    
+                    // Add the new selected border class and color (if it's not 'None')
+                    if (borderClass !== 'border-0') {
+                        canvasContainer.classList.add(borderClass, 'border-gray-800'); 
+                    } else {
+                        canvasContainer.classList.add('border-0');
+                    }
+                    
+                    saveState(); // Save to undo/redo history
+                    closeBorderPanel(); // Close the slide-up panel
+                });
+            });
+
+            // ==========================================
+            // 7. Text Style Submenu Functionalities
+            // ==========================================
+            const textStyleBtns = document.querySelectorAll('#submenu-textstyle .submenu-item');
+            
+            function styleText(callback) {
+                if (activeElement && activeElement.tagName === 'DIV' && activeElement.id !== 'canvas-watermark') {
+                    callback();
+                    saveState();
+                } else {
+                    alert("Please insert and select a text first.");
+                }
+            }
+
+            textStyleBtns[0].addEventListener('click', () => styleText(() => { 
+                let currentSize = window.getComputedStyle(activeElement).fontSize;
+                let sizeNum = parseFloat(currentSize);
+                activeElement.style.fontSize = (sizeNum >= 64 ? 16 : sizeNum + 8) + 'px';
+            }));
+            
+             
+            
+            textStyleBtns[2].addEventListener('click', () => styleText(() => { 
+                let weight = window.getComputedStyle(activeElement).fontWeight;
+                activeElement.style.fontWeight = (weight === '700' || weight === 'bold') ? 'normal' : 'bold';
+            }));
+            
+            textStyleBtns[3].addEventListener('click', () => styleText(() => { 
+                activeElement.style.fontStyle = activeElement.style.fontStyle === 'italic' ? 'normal' : 'italic';
+            }));
+            
+            textStyleBtns[4].addEventListener('click', () => styleText(() => { 
+                let dec = activeElement.style.textDecorationLine || '';
+                if (dec.includes('underline')) {
+                    activeElement.style.textDecorationLine = dec.replace('underline', '').trim() || 'none';
+                } else {
+                    activeElement.style.textDecorationLine = dec === 'none' ? 'underline' : dec + ' underline';
+                }
+            }));
+            
+            textStyleBtns[5].addEventListener('click', () => styleText(() => { 
+                let dec = activeElement.style.textDecorationLine || '';
+                if (dec.includes('line-through')) {
+                    activeElement.style.textDecorationLine = dec.replace('line-through', '').trim() || 'none';
+                } else {
+                    activeElement.style.textDecorationLine = dec === 'none' ? 'line-through' : dec + ' line-through';
+                }
+            }));
+
+            // ==========================================
+            // Alignment Submenu Functionalities
+            // ==========================================
+            const alignBtns = document.querySelectorAll('.align-btn');
+            alignBtns.forEach(btn => {
+                btn.addEventListener('click', () => {
+                    styleText(() => {
+                        const alignment = btn.getAttribute('data-align');
+                        activeElement.style.textAlign = alignment;
+                        // Text Alignment যাতে ঠিকমতো দেখা যায় তার জন্য Width Adjust করা
+                        if (!activeElement.style.width || activeElement.style.width === 'fit-content') {
+                            activeElement.style.minWidth = '150px'; 
+                        }
+                    });
+                });
+            });
+
+            // ==========================================
+            // 8. Insert Submenu Functionalities
+            // ==========================================
+            const insertBtns = document.querySelectorAll('#submenu-insert .submenu-item');
+            
+            function createDraggableElement(type) {
+                if (type === 'img') {
+                    // Open Device Gallery/File Manager for Images
+                    const fileInput = document.createElement('input');
+                    fileInput.type = 'file';
+                    fileInput.accept = 'image/*'; // Only accept images
+                    
+                    fileInput.onchange = (e) => {
+                        const file = e.target.files[0];
+                        if (!file) return;
+
+                        // Read the file and convert it into a valid image source (Base64)
+                        const reader = new FileReader();
+                        reader.onload = (event) => {
+                            const el = document.createElement('img');
+                            el.className = 'absolute z-20 transition-colors shadow-sm object-cover w-32 h-32 rounded cursor-move';
+                            
+                            // Initial starting position (Center roughly)
+                            el.style.top = '100px';
+                            el.style.left = '100px';
+                            
+                            el.src = event.target.result;
+                            
+                            makeInteractive(el);
+                            canvasContainer.appendChild(el);
+                            setActive(el);
+                            saveState(); // Save state after image loads
+                        };
+                        reader.readAsDataURL(file);
+                    };
+                    
+                    fileInput.click(); // Trigger the file picker dialog
+                    
+                } else {
+                    // For Text and Heading
+                    const el = document.createElement('div');
+                    el.className = 'absolute z-20 transition-colors shadow-sm';
+                    
+                    // Initial starting position (Center roughly)
+                    el.style.top = '100px';
+                    el.style.left = '100px';
+
+                    el.contentEditable = "true";
+                    el.innerText = type === 'heading' ? "Heading Text" : "Simple Text";
+                    el.className += type === 'heading' ? ' text-3xl font-bold text-gray-900 px-2 py-1 outline-none' : ' text-base text-gray-800 px-2 py-1 outline-none';
+                    el.style.cursor = 'text';
+
+                    makeInteractive(el);
+                    canvasContainer.appendChild(el);
+                    setActive(el);
+                    saveState();
+                }
+            }
+            
+            insertBtns[0].addEventListener('click', () => createDraggableElement('text')); 
+            insertBtns[1].addEventListener('click', () => createDraggableElement('heading'));  
+            insertBtns[2].addEventListener('click', () => createDraggableElement('img'));
+
+            // ==========================================
+            // 9. Effects Submenu Functionalities
+            // ==========================================
+            const effectBtns = document.querySelectorAll('#submenu-effects .submenu-item');
+            
+            effectBtns[0].addEventListener('click', () => { 
+                if (activeElement && activeElement.tagName === 'DIV' && activeElement.id !== 'canvas-watermark') {
+                    activeElement.style.backgroundColor = activeElement.style.backgroundColor ? '' : 'rgba(253, 224, 71, 0.7)'; 
+                    saveState();
+                } else {
+                    alert("Please select a text element first.");
+                }
+            });
+            
+            effectBtns[1].addEventListener('click', () => { 
+                const existing = document.getElementById('canvas-watermark');
+                if (existing) {
+                    existing.remove();
+                } else {
+                    const wm = document.createElement('div');
+                    wm.id = 'canvas-watermark';
+                    wm.innerText = '© My Design';
+                    wm.className = 'absolute bottom-2 right-4 text-gray-500 font-bold text-sm opacity-50 z-10 pointer-events-none select-none';
+                    canvasContainer.appendChild(wm);
+                }
+                saveState();
+            });
+
+        });
+    </script>
+<!-- ================= MARGIN SLIDE-UP PANEL ================= -->
+    <div id="margin-panel" class="fixed inset-0 z-[100] pointer-events-none flex flex-col justify-end">
+        <!-- Backdrop -->
+        <div id="margin-backdrop" class="absolute inset-0 bg-black/40 opacity-0 transition-opacity duration-300 pointer-events-none"></div>
+        <!-- Panel Content -->
+        <div id="margin-content" class="relative bg-[#F3F4F6] w-full rounded-t-2xl shadow-[0_-5px_15px_rgba(0,0,0,0.1)] transform translate-y-full transition-transform duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] pointer-events-auto flex flex-col pb-[env(safe-area-inset-bottom)]">
+            <!-- Drag Handle Indicator -->
+            <div class="w-full flex justify-center py-3">
+                <div class="w-12 h-1.5 bg-gray-300 rounded-full"></div>
+            </div>
+            <!-- Header -->
+            <div class="px-5 pb-3 flex justify-between items-center border-b border-gray-200">
+                <h3 class="font-semibold text-gray-800">Margin Size</h3>
+                <button id="close-margin-panel" class="p-1 rounded-full text-gray-500 hover:bg-gray-200 transition-colors outline-none">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                </button>
+            </div>
+            <!-- Margin Options Grid -->
+            <div class="flex overflow-x-auto hide-scrollbar gap-4 px-5 py-6">
+                <!-- Option: None -->
+                <button class="margin-size-btn flex flex-col items-center gap-2 shrink-0 outline-none" data-margin="p-0">
+                    <div class="w-14 h-14 bg-white border border-gray-300 rounded-md shadow-sm flex items-center justify-center hover:border-blue-500 hover:shadow-md transition-all">
+                        <div class="w-10 h-10 border border-gray-400 bg-gray-100 rounded-sm"></div>
+                    </div>
+                    <span class="text-[11px] font-medium text-gray-600">None</span>
+                </button>
+                <!-- Option: Extra Thin -->
+                <button class="margin-size-btn flex flex-col items-center gap-2 shrink-0 outline-none" data-margin="p-1">
+                    <div class="w-14 h-14 bg-white border border-gray-300 rounded-md shadow-sm flex items-center justify-center hover:border-blue-500 hover:shadow-md transition-all">
+                        <div class="w-10 h-10 border-2 border-gray-400 border-dashed rounded-sm flex items-center justify-center">
+                            <div class="w-9 h-9 bg-gray-100 border border-gray-300 rounded-sm"></div>
+                        </div>
+                    </div>
+                    <span class="text-[11px] font-medium text-gray-600">X-Thin</span>
+                </button>
+                <!-- Option: Thin -->
+                <button class="margin-size-btn flex flex-col items-center gap-2 shrink-0 outline-none" data-margin="p-2">
+                    <div class="w-14 h-14 bg-white border border-gray-300 rounded-md shadow-sm flex items-center justify-center hover:border-blue-500 hover:shadow-md transition-all">
+                        <div class="w-10 h-10 border-2 border-gray-400 border-dashed rounded-sm flex items-center justify-center">
+                            <div class="w-7 h-7 bg-gray-100 border border-gray-300 rounded-sm"></div>
+                        </div>
+                    </div>
+                    <span class="text-[11px] font-medium text-gray-600">Thin</span>
+                </button>
+                <!-- Option: Medium -->
+                <button class="margin-size-btn flex flex-col items-center gap-2 shrink-0 outline-none" data-margin="p-4">
+                    <div class="w-14 h-14 bg-white border border-gray-300 rounded-md shadow-sm flex items-center justify-center hover:border-blue-500 hover:shadow-md transition-all">
+                        <div class="w-10 h-10 border-2 border-gray-400 border-dashed rounded-sm flex items-center justify-center">
+                            <div class="w-5 h-5 bg-gray-100 border border-gray-300 rounded-sm"></div>
+                        </div>
+                    </div>
+                    <span class="text-[11px] font-medium text-gray-600">Medium</span>
+                </button>
+                <!-- Option: Thick -->
+                <button class="margin-size-btn flex flex-col items-center gap-2 shrink-0 outline-none" data-margin="p-8">
+                    <div class="w-14 h-14 bg-white border border-gray-300 rounded-md shadow-sm flex items-center justify-center hover:border-blue-500 hover:shadow-md transition-all">
+                        <div class="w-10 h-10 border-2 border-gray-400 border-dashed rounded-sm flex items-center justify-center">
+                            <div class="w-2 h-2 bg-gray-100 border border-gray-300 rounded-sm"></div>
+                        </div>
+                    </div>
+                    <span class="text-[11px] font-medium text-gray-600">Thick</span>
+                </button>
+            </div>
+        </div>
+    </div>  <!-- ================= NEW CANVAS SIZE SLIDE-UP PANEL ================= -->
+    <div id="canvas-size-panel" class="fixed inset-0 z-[100] pointer-events-none flex flex-col justify-end">
+        <!-- Backdrop -->
+        <div id="canvas-size-backdrop" class="absolute inset-0 bg-black/40 opacity-0 transition-opacity duration-300 pointer-events-none"></div>
+        <!-- Panel Content -->
+        <div id="canvas-size-content" class="relative bg-[#F3F4F6] w-full rounded-t-2xl shadow-[0_-5px_15px_rgba(0,0,0,0.1)] transform translate-y-full transition-transform duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] pointer-events-auto flex flex-col pb-[env(safe-area-inset-bottom)]">
+            <!-- Drag Handle Indicator -->
+            <div class="w-full flex justify-center py-3">
+                <div class="w-12 h-1.5 bg-gray-300 rounded-full"></div>
+            </div>
+            <!-- Header -->
+            <div class="px-5 pb-3 flex justify-between items-center border-b border-gray-200">
+                <h3 class="font-semibold text-gray-800">Canvas Size</h3>
+                <button id="close-canvas-panel" class="p-1 rounded-full text-gray-500 hover:bg-gray-200 transition-colors outline-none">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                </button>
+            </div>
+            <!-- Size Options Grid -->
+            <div class="flex overflow-x-auto hide-scrollbar gap-5 px-5 py-6">
+                <!-- Option: 1:1 -->
+                <button class="canvas-size-btn flex flex-col items-center gap-2 shrink-0 outline-none" data-ratio="aspect-square">
+                    <div class="w-14 h-14 bg-white border border-gray-300 rounded-md shadow-sm flex items-center justify-center hover:border-blue-500 hover:shadow-md transition-all">
+                        <div class="w-8 h-8 border-[1.5px] border-gray-400 border-dashed rounded-sm"></div>
+                    </div>
+                    <span class="text-[11px] font-medium text-gray-600">1:1 Square</span>
+                </button>
+                <!-- Option: 4:5 -->
+                <button class="canvas-size-btn flex flex-col items-center gap-2 shrink-0 outline-none" data-ratio="aspect-[4/5]">
+                    <div class="w-14 h-14 bg-white border border-gray-300 rounded-md shadow-sm flex items-center justify-center hover:border-blue-500 hover:shadow-md transition-all">
+                        <div class="w-7 h-[35px] border-[1.5px] border-gray-400 border-dashed rounded-sm"></div>
+                    </div>
+                    <span class="text-[11px] font-medium text-gray-600">4:5 Portrait</span>
+                </button>
+                <!-- Option: 16:9 -->
+                <button class="canvas-size-btn flex flex-col items-center gap-2 shrink-0 outline-none" data-ratio="aspect-video">
+                    <div class="w-14 h-14 bg-white border border-gray-300 rounded-md shadow-sm flex items-center justify-center hover:border-blue-500 hover:shadow-md transition-all">
+                        <div class="w-[38px] h-[21px] border-[1.5px] border-gray-400 border-dashed rounded-sm"></div>
+                    </div>
+                    <span class="text-[11px] font-medium text-gray-600">16:9 Video</span>
+                </button>
+                <!-- Option: 9:16 -->
+                <button class="canvas-size-btn flex flex-col items-center gap-2 shrink-0 outline-none" data-ratio="aspect-[9/16]">
+                    <div class="w-14 h-14 bg-white border border-gray-300 rounded-md shadow-sm flex items-center justify-center hover:border-blue-500 hover:shadow-md transition-all">
+                        <div class="w-[21px] h-[38px] border-[1.5px] border-gray-400 border-dashed rounded-sm"></div>
+                    </div>
+                    <span class="text-[11px] font-medium text-gray-600">9:16 Story</span>
+                </button>
+                <!-- Option: 3:4 -->
+                <button class="canvas-size-btn flex flex-col items-center gap-2 shrink-0 outline-none" data-ratio="aspect-[3/4]">
+                    <div class="w-14 h-14 bg-white border border-gray-300 rounded-md shadow-sm flex items-center justify-center hover:border-blue-500 hover:shadow-md transition-all">
+                        <div class="w-[26px] h-[35px] border-[1.5px] border-gray-400 border-dashed rounded-sm"></div>
+                    </div>
+                    <span class="text-[11px] font-medium text-gray-600">3:4 Photo</span>
+                </button>
+            </div>
+        </div>
+    </div> </body>
+</html>
