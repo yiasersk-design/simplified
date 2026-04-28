@@ -1,0 +1,936 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Jevis - Meta AI Note Maker</title>
+    
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&display=swap');
+        
+        @font-face {
+            font-family: 'FutureFont';
+            src: url('https://raw.githubusercontent.com/yiasersk-design/Future/main/future.otf') format('opentype');
+            font-weight: normal; font-style: normal;
+        }
+
+        html, body {
+            width: 100vw;
+            height: 100dvh;
+            margin: 0;
+            padding: 0;
+            overflow: hidden !important;
+            overscroll-behavior: none !important;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            position: fixed !important;
+            top: 0; left: 0; right: 0; bottom: 0;
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar { width: 4px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #e5e7eb; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #d1d5db; }
+        .hide-scrollbar::-webkit-scrollbar { display: none; }
+        .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+        /* Animations */
+        .fade-in { animation: fadeIn 0.3s ease-in; }
+        .slide-up { animation: slideUp 0.3s ease-out forwards; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+
+        /* =========================================
+           Jevis Avatar Premium UI/UX CSS
+        ========================================= */
+        #jevisAvatarOverlay {
+            --accent: #3b82f6; 
+            --accent-hover: #2563eb;
+            --accent-glow: rgba(59, 130, 246, 0.4);
+            --bg-main: #f8fafc;
+            --surface: #ffffff;
+            --glass-bg: rgba(255, 255, 255, 0.6);
+            --glass-border: rgba(255, 255, 255, 0.8);
+            --text-main: #0f172a;
+            --text-muted: #475569;
+            --btn-red: #ef4444;
+            --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.04);
+            --shadow-lg: 0 12px 32px rgba(0, 0, 0, 0.08);
+            --radius-lg: 12px;
+            --radius-full: 9999px;
+        }
+
+        #jevisAvatarOverlay #avatar-container {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            z-index: 1; background: #e2e8f0; transition: all 0.5s cubic-bezier(0.25, 1, 0.5, 1);
+        }
+        #jevisAvatarOverlay #avatar-container.frame-square {
+            top: 50%; left: 50%; transform: translate(-50%, -50%); width: 300px; height: 300px;
+            border-radius: 8px; border: 2px solid var(--glass-border);
+            box-shadow: var(--shadow-lg); overflow: hidden; background: #ffffff;
+        }
+        #jevisAvatarOverlay #avatar-container video {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover;
+            opacity: 0; visibility: hidden; z-index: 1; transition: opacity 0.4s ease;
+        }
+        #jevisAvatarOverlay #avatar-container video.active { opacity: 1; visibility: visible; z-index: 2; }
+
+        #jevisAvatarOverlay .caption-container {
+            position: absolute; bottom: 140px; left: 0; right: 0; margin: 0 auto;
+            width: 90%; max-width: 400px; background: transparent; color: #000000;
+            border: none; text-shadow: none;
+            font-family: 'FutureFont', sans-serif; padding: 10px 15px; text-align: center !important;
+            font-size: 18px; font-weight: 600; letter-spacing: 0.5px; line-height: 1.4;
+            white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+            opacity: 0; transform: translateY(10px); transition: all 0.3s ease;
+            z-index: 60; pointer-events: none;
+        }
+        #jevisAvatarOverlay .caption-container.active { 
+            opacity: 1; transform: translateY(0); display: block !important; 
+        }
+        
+        #jevisAvatarOverlay #video-call-ui {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 10;
+            display: flex; flex-direction: column; justify-content: space-between; pointer-events: none;
+            background: linear-gradient(180deg, rgba(248, 250, 252, 0.9) 0%, rgba(248, 250, 252, 0) 20%, rgba(248, 250, 252, 0) 70%, rgba(248, 250, 252, 0.95) 100%);
+        }
+        #jevisAvatarOverlay .ui-element { pointer-events: auto; }
+        
+        #jevisAvatarOverlay .top-bar { display: flex; justify-content: space-between; padding: calc(env(safe-area-inset-top, 10px) + 12px) 20px 15px; align-items: flex-start; }
+        #jevisAvatarOverlay .top-left { display: flex; align-items: center; gap: 12px; }
+        
+        #jevisAvatarOverlay .btn-circle {
+            width: 46px; height: 46px; border-radius: var(--radius-full); display: flex; align-items: center; justify-content: center;
+            border: 1px solid var(--glass-border); cursor: pointer; background: var(--glass-bg);
+            backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
+            color: var(--text-main); transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); box-shadow: var(--shadow-sm);
+        }
+        #jevisAvatarOverlay .btn-circle:hover { background: #ffffff; transform: translateY(-2px); }
+        #jevisAvatarOverlay .btn-circle:active { transform: scale(0.92); }
+        
+        #jevisAvatarOverlay .btn-close { 
+            background: transparent !important; border: none !important; box-shadow: none !important; backdrop-filter: none !important; -webkit-backdrop-filter: none !important; color: var(--text-main); width: auto; height: auto; padding: 8px;
+        }
+        #jevisAvatarOverlay .btn-close:hover { background: transparent !important; transform: scale(1.1); color: var(--btn-red); }
+
+        #jevisAvatarOverlay .timer-pill { 
+            background-color: var(--glass-bg); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); border: 1px solid var(--glass-border); padding: 6px 14px; border-radius: 8px; font-size: 14px; font-weight: 600; color: var(--text-main); letter-spacing: 0.5px; box-shadow: var(--shadow-sm); 
+        }
+        
+        #jevisAvatarOverlay .top-right { display: flex; flex-direction: column; gap: 12px; }
+        
+        #jevisAvatarOverlay .bottom-controls { display: flex; justify-content: center; align-items: center; gap: 30px; padding: 0 30px calc(env(safe-area-inset-bottom, 20px) + 40px); }
+        
+        #jevisAvatarOverlay .side-btn { display: flex; flex-direction: column; align-items: center; gap: 8px; background: none; border: none; color: var(--text-muted); cursor: pointer; transition: all 0.2s; }
+        #jevisAvatarOverlay .side-btn:active .icon-circle { transform: scale(0.92); }
+        #jevisAvatarOverlay .side-btn:hover { color: var(--accent); }
+        #jevisAvatarOverlay .side-btn .icon-circle { width: 54px; height: 54px; border-radius: var(--radius-full); background: var(--glass-bg); border: 1px solid var(--glass-border); display: flex; align-items: center; justify-content: center; backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); color: currentColor; transition: all 0.2s; box-shadow: var(--shadow-sm); }
+        #jevisAvatarOverlay .side-btn:hover .icon-circle { background: #ffffff; }
+        #jevisAvatarOverlay .side-btn span { font-size: 12px; font-weight: 600; letter-spacing: 0.3px; }
+        
+        #jevisAvatarOverlay .mic-btn-container { position: relative; display: flex; justify-content: center; align-items: center; }
+        #jevisAvatarOverlay .mic-btn { width: 90px; height: 90px; border-radius: var(--radius-full); background: linear-gradient(135deg, var(--accent), #60a5fa); border: none; color: white; display: flex; align-items: center; justify-content: center; cursor: pointer; box-shadow: var(--shadow-mic); transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); z-index: 2; }
+        #jevisAvatarOverlay .mic-btn svg { width: 40px; height: 40px; transition: transform 0.3s; }
+        #jevisAvatarOverlay .mic-btn:hover { transform: translateY(-3px) scale(1.05); box-shadow: 0 12px 36px var(--accent-glow); }
+        #jevisAvatarOverlay .mic-btn:active { transform: scale(0.95); }
+        
+        @keyframes pulse-ring { 
+            0% { box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.7); } 
+            70% { box-shadow: 0 0 0 25px rgba(59, 130, 246, 0); } 
+            100% { box-shadow: 0 0 0 0 rgba(59, 130, 246, 0); } 
+        }
+        #jevisAvatarOverlay .mic-btn.listening { background: linear-gradient(135deg, #ef4444, #f87171); box-shadow: 0 8px 32px rgba(239, 68, 68, 0.4); animation: pulse-ring 1.5s cubic-bezier(0.215, 0.61, 0.355, 1) infinite; }
+        
+        #jevisAvatarOverlay #text-chat-ui { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 20; background: #f8fafc; display: none; flex-direction: column; font-family: 'Inter', sans-serif; }
+        
+        #jevisAvatarOverlay header { display: flex; align-items: center; justify-content: center; padding: calc(env(safe-area-inset-top, 15px) + 12px) 20px 12px; background: rgba(255, 255, 255, 0.85); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); border-bottom: 1px solid rgba(0,0,0,0.06); position: relative; z-index: 5; box-shadow: 0 2px 10px rgba(0,0,0,0.02); }
+        #jevisAvatarOverlay .top-btn { position: absolute; left: 15px; top: 50%; transform: translateY(-50%); background: #f1f5f9; border: none; color: #475569; width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: all 0.2s ease; }
+        #jevisAvatarOverlay .top-btn:active { transform: translateY(-50%) scale(0.92); background: #e2e8f0; }
+        #jevisAvatarOverlay .logo { font-size: 16px; font-weight: 700; color: #0f172a; display: flex; align-items: center; gap: 6px; }
+        #jevisAvatarOverlay .logo::before { content: ''; display: inline-block; width: 8px; height: 8px; background: #10b981; border-radius: 50%; box-shadow: 0 0 8px rgba(16, 185, 129, 0.5); }
+
+        #jevisAvatarOverlay #chat { flex: 1; overflow-y: auto; overflow-x: hidden; padding: 20px; display: flex; flex-direction: column; gap: 16px; scrollbar-width: none; scroll-behavior: smooth; }
+        #jevisAvatarOverlay .message { width: fit-content; max-width: 85%; padding: 12px 16px; border-radius: 7px; font-size: 15px; line-height: 1.45; word-wrap: break-word; animation: slideUpMsg 0.3s cubic-bezier(0.2, 0.8, 0.2, 1) forwards; }
+
+        @keyframes slideUpMsg { from { opacity: 0; transform: translateY(15px); } to { opacity: 1; transform: translateY(0); } }
+
+        #jevisAvatarOverlay .message.user { align-self: flex-end; background: #3b82f6; color: #ffffff; border-bottom-right-radius: 0px; box-shadow: 0 2px 8px rgba(59, 130, 246, 0.25); }
+        #jevisAvatarOverlay .message.assistant { align-self: flex-start; background: #ffffff; color: #1e293b; border-bottom-left-radius: 0px; border: 1px solid rgba(0,0,0,0.04); box-shadow: 0 2px 6px rgba(0,0,0,0.03); width: 100%; max-width: 100%; }
+
+        #jevisAvatarOverlay .input-area { padding-bottom: calc(env(safe-area-inset-bottom, 16px) + 12px); }
+        
+        #jevisAvatarOverlay .modal { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255, 255, 255, 0.85); display: none; align-items: center; justify-content: center; z-index: 1000; padding: 16px; }
+        
+        #jevisAvatarOverlay .modal-content { background: var(--surface); width: 100%; max-width: 310px; border-radius: var(--radius-lg); padding: 20px 16px; border: 1px solid rgba(0,0,0,0.08); box-shadow: var(--shadow-lg); }
+        #jevisAvatarOverlay .modal-content h2 { font-size: 18px; font-weight: 700; text-align: center; margin-bottom: 14px; color: var(--text-main); }
+        #jevisAvatarOverlay .modal-field { margin-bottom: 12px; }
+        #jevisAvatarOverlay .modal-field label { display: block; margin-bottom: 6px; font-size: 13px; font-weight: 600; color: var(--text-muted); }
+        #jevisAvatarOverlay .modal-field select, #jevisAvatarOverlay .modal-field input { width: 100%; padding: 10px 12px; background: var(--bg-main); border: 1px solid rgba(0,0,0,0.08); color: var(--text-main); border-radius: 8px; font-size: 14px; outline: none; appearance: none; transition: 0.2s; }
+        #jevisAvatarOverlay .modal-field select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1); }
+        
+        #jevisAvatarOverlay .radio-group { display: flex; gap: 8px; justify-content: center; margin-bottom: 16px; }
+        #jevisAvatarOverlay .radio-label { flex: 1; cursor: pointer; color: var(--text-main); font-size: 14px; display: flex; align-items: center; justify-content: center; gap: 6px; font-weight: 600; background: var(--bg-main); padding: 10px; border-radius: 8px; border: 1px solid rgba(0,0,0,0.08); transition: all 0.2s; }
+        #jevisAvatarOverlay .radio-label:has(input:checked) { border-color: var(--accent); background: rgba(59, 130, 246, 0.08); color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+        
+        #jevisAvatarOverlay .modal-buttons { display: flex; gap: 10px; margin-top: 16px; }
+        #jevisAvatarOverlay .modal-buttons button { flex: 1; padding: 10px; border-radius: 8px; font-weight: 600; font-size: 14px; cursor: pointer; border: none; transition: all 0.2s; }
+        #jevisAvatarOverlay .save-btn { background: var(--accent); color: #fff; box-shadow: 0 4px 15px var(--accent-glow); }
+        #jevisAvatarOverlay .save-btn:hover { background: var(--accent-hover); transform: translateY(-2px); }
+        #jevisAvatarOverlay .save-btn:active { transform: scale(0.95); }
+        #jevisAvatarOverlay .cancel-btn { background: var(--bg-main); color: var(--text-muted); border: 1px solid rgba(0,0,0,0.08); }
+        #jevisAvatarOverlay .cancel-btn:hover { background: #e2e8f0; color: var(--text-main); }
+    </style>
+</head>
+<body class="bg-gray-100 flex items-center justify-center w-full h-[100dvh] overflow-hidden overscroll-none">
+    
+    <div id="toastContainer" class="fixed top-5 left-1/2 transform -translate-x-1/2 z-[100] flex flex-col gap-2 pointer-events-none"></div>
+
+    <div class="w-full h-[100dvh] sm:h-[95dvh] sm:max-h-[850px] sm:max-w-[400px] bg-white relative flex flex-col sm:rounded-[2.5rem] sm:shadow-2xl sm:border-[8px] sm:border-gray-900 overflow-hidden">
+        
+        <!-- Jevis Layout (Not hidden, covers full wrapper) -->
+        <div id="jevisAvatarOverlay" class="absolute inset-0 z-[100] bg-white overflow-hidden text-left slide-up">
+            
+            <div id="avatar-container" class="frame-square">
+                <video id="intro-idle" muted playsinline preload="auto"></video>
+                <video id="thinking-loop" muted playsinline preload="auto"></video>
+                <video id="talking-start" muted playsinline preload="auto"></video>
+                <video id="talking-loop" muted playsinline preload="auto"></video>
+                <video id="ending-idle" muted playsinline preload="auto"></video>
+            </div>
+
+            <div id="video-call-ui">
+                <div class="top-bar ui-element">
+                    <div class="top-left">
+                        <button class="btn-circle btn-close" id="btn-end-call" title="End Session">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none">
+                                <path fill="none" stroke="currentColor" stroke-linecap="round" stroke-miterlimit="10" stroke-width="1.5" d="M7.254 16.205a17.147 17.147 0 0 1-3.424-4.74a11.244 11.244 0 0 1-.971-3.322a5.916 5.916 0 0 1 .37-3.463a6.389 6.389 0 0 1 1.035-1.278a1.802 1.802 0 0 1 1.278-.6c.505.075.962.34 1.278.741C7.51 4.31 8.25 5 8.979 5.728c.287.246.466.594.498.97c-.012.318-.134.62-.345.857c-.242.307-.536.588-.817.882a1.533 1.533 0 0 0-.46 1.277c.175.548.477 1.047.881 1.457c.486.664.971 1.278 1.52 1.93l.09.089m1.866 1.648c.472.387.976.733 1.507 1.035a1.277 1.277 0 0 0 1.278.153c.434-.243.82-.563 1.137-.945c.275-.335.669-.55 1.099-.601c.383.02.744.184 1.01.46c.344.294.638.639.958.958c.319.32.575.55.843.843c.321.283.624.586.907.908c.22.283.324.639.294.996c-.114.427-.36.807-.703 1.086a4.778 4.778 0 0 1-3.756 1.457a10.682 10.682 0 0 1-4.012-.958c-.307-.14-.614-.281-.92-.448a16.813 16.813 0 0 1-2.696-1.852m-5.264 1.622L18.012 5.72"/>
+                            </svg>
+                        </button>
+                        <div class="timer-pill" id="call-timer">00:00</div>
+                    </div>
+                    <div class="top-right">
+                        <button class="btn-circle btn-icon" id="btn-pause-audio" title="Pause/Resume Voice">
+                            <svg id="icon-pause" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="4" width="4" height="16"></rect><rect x="14" y="4" width="4" height="16"></rect></svg>
+                            <svg id="icon-play" style="display:none;" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+                        </button>
+                        <button class="btn-circle btn-icon" id="btn-voice-settings">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2"></path><line x1="12" y1="19" x2="12" y2="22"></line></svg>
+                        </button>
+                        <button class="btn-circle btn-icon" id="btn-toggle-frame" title="Toggle 1:1 Frame">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="12" cy="12" r="3"></circle></svg>
+                        </button>
+                    </div>
+                </div>
+
+                <div id="video-caption" class="caption-container"></div>
+
+                <div style="flex: 1; display: flex; flex-direction: column; justify-content: flex-end;">
+                    <div class="bottom-controls ui-element">
+                        <button class="side-btn" id="btn-minimize">
+                            <div class="icon-circle">
+                                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
+                            </div>
+                            <span>Message</span>
+                        </button>
+                        <div class="mic-btn-container">
+                            <button class="mic-btn" id="main-mic-btn">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2"></path><line x1="12" y1="19" x2="12" y2="22"></line></svg>
+                            </button>
+                        </div>
+                        <button class="side-btn" id="btn-inspire">
+                            <div class="icon-circle">
+                                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+                            </div>
+                            <span>Settings</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <div id="text-chat-ui">
+                <header>
+                    <button class="top-btn" id="btn-back-video">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
+                    </button>
+                    <div class="logo">Jevis Avatar</div>
+                </header>
+                <div id="chat"></div>
+                <div class="input-area flex-none bg-[#f8fafc] z-20 pb-3 relative">
+                    <div class="px-3 pt-1 w-full relative z-10">
+                        <div class="border border-gray-200 shadow-[0_2px_12px_rgba(0,0,0,0.03)] rounded-xl p-[10px] pb-3 bg-white flex flex-col relative transition-all">
+                            <textarea id="user-input" rows="1" placeholder="Message Jevis..." autocomplete="off" spellcheck="false" class="w-full bg-transparent text-[16px] px-1 py-1 outline-none placeholder-gray-400 text-gray-900 mb-[6px] resize-none max-h-[120px] leading-[1.3]"></textarea>
+                            <div class="flex justify-end items-center px-1">
+                                <div class="flex items-center gap-[10px]">
+                                    <button class="w-[42px] h-[42px] rounded-full bg-[#f4f4f5] flex items-center justify-center text-gray-900 hover:bg-gray-200 transition-colors focus:outline-none pointer-events-none">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="w-5 h-5"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" x2="12" y1="19" y2="22"/></svg>
+                                    </button>
+                                    <button id="send-btn" class="w-[42px] h-[42px] rounded-full bg-[#f4f4f5] flex items-center justify-center text-gray-900 hover:bg-gray-200 transition-colors focus:outline-none">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="w-5 h-5"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="settings-modal" class="modal">
+                <div class="modal-content">
+                    <h2>AI Model</h2>
+                    <div class="modal-field">
+                        <label>Select Active Model</label>
+                        <select id="active-model-select">
+                            <!-- Options will be loaded dynamically from Account & API Settings -->
+                        </select>
+                    </div>
+                    <div class="modal-buttons">
+                        <button class="cancel-btn" id="cancel-settings">Cancel</button>
+                        <button class="save-btn" id="save-settings">Save Changes</button>
+                    </div>
+                </div>
+            </div>
+
+            <div id="voice-modal" class="modal">
+                <div class="modal-content">
+                    <h2>Voice Settings</h2>
+                    <div class="radio-group">
+                        <label class="radio-label">
+                            <input type="radio" name="gender-filter" value="male" style="display:none;">
+                            👨 Male
+                        </label>
+                        <label class="radio-label">
+                            <input type="radio" name="gender-filter" value="female" checked style="display:none;">
+                            👩 Female
+                        </label>
+                    </div>
+                    <div class="modal-field">
+                        <label>Output Voice</label>
+                        <select id="voice-select"><option value="">Loading voices...</option></select>
+                    </div>
+                    <div class="modal-buttons">
+                        <button class="cancel-btn" id="cancel-voice">Cancel</button>
+                        <button class="save-btn" id="save-voice">Save Output</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+<script>
+window.showToast = function(msg, type) {
+    const tc = document.getElementById('toastContainer');
+    if(!tc) return;
+    const t = document.createElement('div');
+    t.className = `px-4 py-2 rounded-lg text-white text-sm shadow-lg ${type==='error'?'bg-red-500':'bg-green-500'} transition-opacity duration-300`;
+    t.innerText = msg;
+    tc.appendChild(t);
+    setTimeout(() => { t.style.opacity='0'; setTimeout(()=>t.remove(),300); }, 3000);
+};
+
+// ==========================================
+// Jevis App Logic (Isolated)
+// ==========================================
+(function() {
+    const overlay = document.getElementById('jevisAvatarOverlay');
+    const getEl = (id) => overlay.querySelector('#' + id);
+
+    const VIDEO_PATHS = {
+        introIdle: "https://cdn.jsdelivr.net/gh/yiasersk-design/Asset@main/puse.mp4",  
+        thinkingLoop: "https://cdn.jsdelivr.net/gh/yiasersk-design/Asset@main/thinking.mp4",
+        talkingStart: "https://cdn.jsdelivr.net/gh/yiasersk-design/Asset@main/talk.mp4",  
+        talkingLoop: "https://cdn.jsdelivr.net/gh/yiasersk-design/Asset@main/talking.mp4",   
+        endingIdle: "https://cdn.jsdelivr.net/gh/yiasersk-design/Asset@main/puse.mp4"     
+    };
+    
+    let currentActiveModelKey = localStorage.getItem('metaAINotes_activeModel') || ""; 
+
+    const videos = {
+        introIdle: getEl('intro-idle'), thinkingLoop: getEl('thinking-loop'),
+        talkingStart: getEl('talking-start'), talkingLoop: getEl('talking-loop'), endingIdle: getEl('ending-idle')
+    };
+    
+    const mainMicBtn = getEl('main-mic-btn');
+    const jevisChatDiv = getEl('chat');
+    const jevisUserInput = getEl('user-input');
+    const captionBox = getEl('video-caption');
+    
+    let conversation = JSON.parse(localStorage.getItem('jevis_conversation')) ||[];
+    let isProcessing = false;
+    let availableVoices =[];
+    let selectedVoiceURI = '';
+    let isAudioPaused = false;
+    let currentUtterance = null; 
+    let currentFullText = "";
+    let globalCharIndex = 0, localCharIndex = 0;
+    let captionFallbackTimer = null; 
+    let seconds = 0;
+    let callTimerInterval = null;
+    let recognition;
+
+    getEl('btn-minimize').addEventListener('click', () => {
+        getEl('video-call-ui').style.display = 'none';
+        getEl('text-chat-ui').style.display = 'flex';
+        
+        setTimeout(() => {
+            jevisChatDiv.style.scrollBehavior = 'auto'; 
+            jevisChatDiv.scrollTop = jevisChatDiv.scrollHeight; 
+            setTimeout(() => { jevisChatDiv.style.scrollBehavior = 'smooth'; }, 50);
+        }, 10);
+    });
+
+    getEl('btn-back-video').addEventListener('click', () => {
+        getEl('text-chat-ui').style.display = 'none';
+        getEl('video-call-ui').style.display = 'flex';
+    });
+
+    getEl('btn-toggle-frame').addEventListener('click', () => {
+        getEl('avatar-container').classList.toggle('frame-square');
+    });
+
+    getEl('btn-pause-audio').addEventListener('click', () => {
+        if ('speechSynthesis' in window) {
+            if (!currentFullText) return; 
+            if (isAudioPaused) {
+                isAudioPaused = false;
+                getEl('icon-pause').style.display = 'block'; getEl('icon-play').style.display = 'none';
+                if (globalCharIndex >= currentFullText.length) {
+                    globalCharIndex = 0; localCharIndex = 0; startTimer(); 
+                    switchToVideo('talkingStart');
+                    videos.talkingStart.onended = () => { videos.talkingStart.onended = null; switchToVideo('talkingLoop'); };
+                } else {
+                    if (videos.talkingLoop.classList.contains('active')) videos.talkingLoop.play();
+                }
+                playAudioChunk(); 
+            } else {
+                isAudioPaused = true;
+                getEl('icon-pause').style.display = 'none'; getEl('icon-play').style.display = 'block';
+                globalCharIndex += localCharIndex; speechSynthesis.cancel(); 
+                if(captionFallbackTimer) clearInterval(captionFallbackTimer);
+                if (videos.talkingLoop.classList.contains('active')) videos.talkingLoop.pause();
+            }
+        }
+    });
+
+    function startTimer() {
+        if (callTimerInterval) clearInterval(callTimerInterval);
+        seconds = 0; getEl('call-timer').textContent = "00:00";
+        callTimerInterval = setInterval(() => {
+            seconds++;
+            let m = Math.floor(seconds / 60).toString().padStart(2, '0');
+            let s = (seconds % 60).toString().padStart(2, '0');
+            getEl('call-timer').textContent = `${m}:${s}`;
+        }, 1000);
+    }
+
+    function stopTimer() {
+        if (callTimerInterval) { clearInterval(callTimerInterval); callTimerInterval = null; }
+        getEl('call-timer').textContent = "Ended";
+    }
+
+    getEl('btn-end-call').addEventListener('click', () => {
+        stopTimer(); currentUtterance = null; currentFullText = ""; 
+        if ('speechSynthesis' in window) speechSynthesis.cancel();
+        if(captionFallbackTimer) clearInterval(captionFallbackTimer);
+        if (recognition) { try { recognition.abort(); } catch(e) {} }
+        
+        window.location.href = 'Home.html';
+    });
+
+    const blobCache = {};
+    async function preloadVideoAsBlob(url, key) {
+        try {
+            if (blobCache[key]) return blobCache[key]; 
+            const response = await fetch(url);
+            const blob = await response.blob();
+            const blobUrl = URL.createObjectURL(blob);
+            blobCache[key] = blobUrl;
+            return blobUrl;
+        } catch (e) {
+            console.error("Video load error for " + key, e);
+            return url; 
+        }
+    }
+
+    async function initVideos() {
+        const introUrl = await preloadVideoAsBlob(VIDEO_PATHS['introIdle'], 'introIdle');
+        videos['introIdle'].src = introUrl; 
+        videos['introIdle'].muted = true; 
+        videos['introIdle'].playsInline = true;
+        videos['introIdle'].preload = "auto"; 
+        videos['introIdle'].load();
+        videos['introIdle'].classList.add('active'); 
+        switchToVideo('introIdle');
+
+        const otherKeys =['thinkingLoop', 'talkingStart', 'talkingLoop', 'endingIdle'];
+        otherKeys.forEach(key => {
+            preloadVideoAsBlob(VIDEO_PATHS[key], key).then(blobUrl => {
+                const video = videos[key];
+                video.src = blobUrl; 
+                video.muted = true; 
+                video.playsInline = true;
+                video.preload = "auto"; 
+                video.load();
+            });
+        });
+    }
+
+    async function switchToVideo(type) {
+        const targetVideo = videos[type];
+        if (targetVideo.classList.contains('active')) return;
+        targetVideo.currentTime = 0;
+        targetVideo.loop = (type === 'introIdle' || type === 'talkingLoop' || type === 'thinkingLoop');
+        try {
+            await targetVideo.play(); targetVideo.classList.add('active');
+            Object.values(videos).forEach(v => {
+                if (v !== targetVideo) {
+                    v.classList.remove('active');
+                    setTimeout(() => { if (!v.classList.contains('active')) v.pause(); }, 50); 
+                }
+            });
+        } catch(e) {}
+    }
+
+    if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+        const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
+        recognition = new SpeechRec(); recognition.continuous = false; recognition.interimResults = true; recognition.lang = 'en-US';
+        recognition.onstart = () => { mainMicBtn.classList.add('listening'); captionBox.innerText = "Listening..."; captionBox.classList.add('active'); };
+        recognition.onresult = (event) => {
+            let interimTranscript = ''; let finalTranscript = '';
+            for (let i = event.resultIndex; i < event.results.length; ++i) {
+                if (event.results[i].isFinal) finalTranscript += event.results[i][0].transcript;
+                else interimTranscript += event.results[i][0].transcript;
+            }
+            let currentText = finalTranscript || interimTranscript;
+            if(currentText) captionBox.innerText = currentText.trim().split(/\s+/).slice(-5).join(' ');
+            if (finalTranscript) {
+                setTimeout(() => { captionBox.classList.remove('active'); captionBox.innerText = ""; processMessage(finalTranscript); }, 500);
+            }
+        };
+        recognition.onerror = () => { mainMicBtn.classList.remove('listening'); captionBox.classList.remove('active'); };
+        recognition.onend = () => { mainMicBtn.classList.remove('listening'); setTimeout(() => { if(!isProcessing) captionBox.classList.remove('active'); }, 1000); };
+    } else { mainMicBtn.style.opacity = '0.5'; }
+
+    mainMicBtn.addEventListener('click', () => {
+        if(isProcessing) return;
+        if (!callTimerInterval) startTimer();
+        if(recognition) { try { recognition.start(); } catch(e) {} } else { alert("Speech Recognition is not supported in your browser."); }
+    });
+
+    function addMessageToChat(role, text, preventScroll) {
+        let formattedHtml = typeof formatChatText === 'function' ? formatChatText(text) : text.replace(/\n/g, '<br>');
+        formattedHtml = formattedHtml.replace(/\*\*(.*?)\*\*/g, '<strong class="font-bold text-gray-900">$1</strong>')
+                                     .replace(/\*(.*?)\*/g, '<strong class="font-bold text-gray-900">$1</strong>');
+
+        if (role === 'user') {
+            const msgWrapper = document.createElement('div'); 
+            msgWrapper.className = 'flex justify-end w-full mt-2 fade-in relative';
+            const contentContainer = document.createElement('div');
+            contentContainer.className = 'flex flex-col items-end max-w-[85%]';
+            const msgBubble = document.createElement('div'); 
+            msgBubble.className = 'user-msg-bubble select-none cursor-pointer bg-[#f4f4f5] border border-gray-100 shadow-sm text-gray-900 px-4 py-2.5 rounded-[8px] rounded-tr-[2px] text-[15px] font-normal leading-relaxed w-fit max-w-full inline-block break-words whitespace-pre-wrap overflow-hidden text-left transition-colors duration-200';
+            msgBubble.dataset.rawText = text;
+            msgBubble.innerHTML = `<span>${formattedHtml}</span>`;
+            const timeString = new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+            const timeLabel = document.createElement('div');
+            timeLabel.className = 'text-[10px] text-gray-400 flex items-center gap-1 font-medium tracking-wide mt-1 mr-1';
+            timeLabel.innerHTML = `${timeString} <svg class="w-3.5 h-3.5 text-blue-500" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"></path></svg>`;
+            contentContainer.appendChild(msgBubble);
+            contentContainer.appendChild(timeLabel);
+            msgWrapper.appendChild(contentContainer); 
+            jevisChatDiv.appendChild(msgWrapper);
+        } else if (role === 'assistant') {
+            const aiWrapper = document.createElement('div'); 
+            aiWrapper.className = 'flex flex-col gap-1.5 w-full mt-4 fade-in';
+            const textBlock = document.createElement('div'); 
+            textBlock.className = 'text-[15px] text-gray-900 font-normal leading-[1.4] pl-9 cursor-text max-w-full break-words whitespace-pre-wrap overflow-hidden'; 
+            textBlock.dataset.rawText = text;
+            textBlock.innerHTML = formattedHtml;
+            const timeString = new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+            const actionsBlock = document.createElement('div'); 
+            actionsBlock.className = 'flex justify-between items-center w-full pl-9 pr-2 mt-1';
+            actionsBlock.innerHTML = `
+                <div class="flex gap-[16px] text-gray-400 cursor-default">
+                    <button class="hover:text-blue-600 transition-colors focus:outline-none" title="Copy"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="w-[18px] h-[18px]"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg></button>
+                    <button class="hover:text-purple-500 transition-colors focus:outline-none" title="Listen"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="w-[18px] h-[18px]"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path></svg></button>
+                    <button class="hover:text-indigo-500 transition-colors focus:outline-none" title="Video"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-[18px] h-[18px]"><polygon points="23 7 16 12 23 17 23 7"></polygon><rect x="1" y="5" width="15" height="14" rx="2" ry="2"></rect></svg></button>
+                    <button class="hover:text-green-500 transition-colors focus:outline-none" title="Like"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="w-[18px] h-[18px]"><path d="M7 10v12"/><path d="M15 5.88 14 10h5.83a2 2 0 0 1 1.92 2.56l-2.33 8A2 2 0 0 1 17.5 22H4a2 2 0 0 1-2-2v-8a2 2 0 0 1 2-2h2.76a2 2 0 0 0-1.79-1.11L12 2h0a3.13 3.13 0 0 1 3 3.88Z"/></svg></button>
+                    <button class="hover:text-red-500 transition-colors focus:outline-none" title="Dislike"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="w-[18px] h-[18px]"><path d="M17 14V2"/><path d="M9 18.12 10 14H4.17a2 2 0 0 1-1.92-2.56l2.33-8A2 2 0 0 1 6.5 2H20a2 2 0 0 1 2 2v8a2 2 0 0 1-2-2h-2.76a2 2 0 0 0-1.79 1.11L12 22h0a3.13 3.13 0 0 1-3-3.88Z"/></svg></button>
+                </div>
+                <span class="text-[10px] text-gray-400 font-medium tracking-wide">${timeString}</span>
+            `;
+            const profileBlock = document.createElement('div');
+            profileBlock.className = 'flex items-center gap-2 pl-1 mb-1';
+            profileBlock.innerHTML = `
+                <div class="w-[26px] h-[26px] rounded-full flex items-center justify-center shadow-sm ring-2 ring-white overflow-hidden bg-black">
+                    <video src="https://cdn.jsdelivr.net/gh/yiasersk-design/Logo@main/book.mp4" autoplay loop muted playsinline preload="auto" class="w-full h-full object-cover"></video>
+                </div>
+                <span class="text-[13px] font-bold text-gray-800 tracking-wide">Jevis AI</span>
+            `;
+            aiWrapper.appendChild(profileBlock); 
+            aiWrapper.appendChild(textBlock); 
+            aiWrapper.appendChild(actionsBlock); 
+            jevisChatDiv.appendChild(aiWrapper); 
+        }
+
+        if (preventScroll !== true) {
+            jevisChatDiv.scrollTop = jevisChatDiv.scrollHeight;
+        }
+    }
+
+    jevisChatDiv.addEventListener('click', (e) => {
+        const btn = e.target.closest('button');
+        if (!btn) return;
+        const actionsBlock = btn.parentElement;
+        if (!actionsBlock || !actionsBlock.classList.contains('cursor-default')) return;
+        const aiWrapper = actionsBlock.parentElement.parentElement;
+        if (!aiWrapper) return;
+        const textBlock = aiWrapper.querySelector('.cursor-text');
+        if (!textBlock) return;
+
+        const btns = actionsBlock.querySelectorAll('button');
+        const index = Array.from(btns).indexOf(btn);
+
+        if (index === 0) {
+            const textToCopy = textBlock.dataset.rawText || textBlock.innerText;
+            navigator.clipboard.writeText(textToCopy).then(() => {
+                const originalHTML = btn.innerHTML;
+                btn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" class="w-[22px] h-[22px] text-green-500"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"></path></svg>`;
+                setTimeout(() => { btn.innerHTML = originalHTML; }, 2000);
+            }).catch(err => {
+                console.error("Failed to copy AI message: ", err);
+                if (window.showToast) window.showToast('Failed to copy text', 'error');
+            });
+        } else if (index === 1) {
+            const rawText = textBlock.dataset.rawText || textBlock.innerText;
+            const textToSpeak = rawText.replace(/\*/g, ''); 
+            if (!('speechSynthesis' in window) || !window.speechSynthesis) {
+                if (window.showToast) window.showToast('আপনার ব্রাউজারে ভয়েস ফিচার সাপোর্ট করে না', 'error');
+                return; 
+            }
+            const synth = window.speechSynthesis;
+            if (synth.speaking && currentUtterance && currentUtterance.text === textToSpeak) {
+                synth.cancel();
+                btn.classList.remove('text-purple-600');
+                btn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="w-[18px] h-[18px]"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path></svg>`;
+                return;
+            }
+            synth.cancel();
+            const utterance = new SpeechSynthesisUtterance(textToSpeak);
+            utterance.lang = 'bn-BD'; 
+            currentUtterance = utterance;
+
+            const originalSVG = btn.innerHTML;
+            btn.classList.add('text-purple-600');
+            btn.innerHTML = `<svg viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="1" class="w-[18px] h-[18px] animate-pulse"><rect x="6" y="4" width="4" height="16"></rect><rect x="14" y="4" width="4" height="16"></rect></svg>`;
+
+            utterance.onend = () => { btn.classList.remove('text-purple-600'); btn.innerHTML = originalSVG; };
+            utterance.onerror = () => { btn.classList.remove('text-purple-600'); btn.innerHTML = originalSVG; }
+            synth.speak(utterance);
+        } else if (index === 2) {
+            const videoUrl = "https://www.youtube.com/watch?v=your_video_id"; 
+            window.open(videoUrl, '_blank');
+            if (window.showToast) window.showToast('Video playing...', 'success');
+        } else if (index === 3) {
+            const svg = btn.querySelector('svg');
+            const isLiked = svg.getAttribute('fill') === 'currentColor';
+            if (isLiked) {
+                svg.setAttribute('fill', 'none'); btn.classList.remove('text-blue-600');
+            } else {
+                svg.setAttribute('fill', 'currentColor'); btn.classList.add('text-blue-600');
+                if (btns[4]) { btns[4].querySelector('svg').setAttribute('fill', 'none'); btns[4].classList.remove('text-red-500'); }
+            }
+        } else if (index === 4) {
+            const svg = btn.querySelector('svg');
+            const isDisliked = svg.getAttribute('fill') === 'currentColor';
+            if (isDisliked) {
+                svg.setAttribute('fill', 'none'); btn.classList.remove('text-red-500');
+            } else {
+                svg.setAttribute('fill', 'currentColor'); btn.classList.add('text-red-500');
+                if (btns[3]) { btns[3].querySelector('svg').setAttribute('fill', 'none'); btns[3].classList.remove('text-blue-600'); }
+            }
+        }
+    });
+
+    async function processMessage(message) {
+        if (!message || isProcessing) return;
+        isProcessing = true; currentFullText = ""; currentUtterance = null;
+        if ('speechSynthesis' in window) speechSynthesis.cancel(); 
+        if(captionFallbackTimer) clearInterval(captionFallbackTimer);
+        addMessageToChat('user', message);
+        conversation.push({ role: "user", content: message }); localStorage.setItem('jevis_conversation', JSON.stringify(conversation));
+        switchToVideo('thinkingLoop');
+
+        try {
+            let profileData = JSON.parse(localStorage.getItem('metaAINotes_profileData') || '{"apis":[]}');
+            let activeConfig = profileData.apis.find(a => a.name === currentActiveModelKey) || profileData.apis.find(a => a.isActive) || profileData.apis[0];
+
+            if (!activeConfig) throw new Error("No Custom API Found in Account Settings!");
+
+            let requestHeaders = { 'Content-Type': 'application/json', 'Authorization': `Bearer ${activeConfig.key}` };
+            const jevisSystemPrompt = "You are Jevis, a friendly, intelligent, and conversational AI avatar. Your creator and owner is Yiaser Sk. If the user asks who created you, who made you, or who your owner is, you must respond politely and naturally in a human-like tone that you were created by Yiaser Sk.";
+
+            let messagesPayload = conversation.slice(-10);
+            messagesPayload.unshift({ role: "system", content: jevisSystemPrompt });
+            
+            let requestBody = JSON.stringify({ model: activeConfig.version || "gpt-4o", messages: messagesPayload, temperature: 0.7, max_tokens: 400 });
+            const apiEndpoint = activeConfig.endpoint || "https://api.openai.com/v1/chat/completions";
+
+            const controller = new AbortController(); const timeoutId = setTimeout(() => controller.abort(), 20000);
+            const response = await fetch(apiEndpoint, { method: 'POST', headers: requestHeaders, body: requestBody, signal: controller.signal });
+            clearTimeout(timeoutId);
+            
+            if (!response.ok) throw new Error("API Error: " + response.status);
+            const data = await response.json();
+            let assistantText = data.choices[0].message.content.trim();
+            
+            if(!assistantText) throw new Error("Empty response from AI");
+            conversation.push({ role: "assistant", content: assistantText }); localStorage.setItem('jevis_conversation', JSON.stringify(conversation));
+            addMessageToChat('assistant', assistantText); startTalkingSequence(assistantText);
+        } catch (err) {
+            let errorText = "Network Error! Server might be busy. Please try again.";
+            if (err.name === 'AbortError') errorText = "Request Timed Out!";
+            addMessageToChat('assistant', "⚠️ " + errorText); switchToVideo('introIdle'); isProcessing = false;
+            if ('speechSynthesis' in window) { let u = new SpeechSynthesisUtterance("Sorry, I am facing a network issue."); u.lang = 'en-IN'; speechSynthesis.speak(u); }
+        }
+    }
+
+    getEl('send-btn').addEventListener('click', () => {
+        const val = jevisUserInput.value.trim();
+        if(val) {
+            jevisUserInput.value = '';
+            jevisUserInput.style.height = 'auto';
+            processMessage(val);
+        }
+    });
+
+    jevisUserInput.addEventListener('keypress', (e) => {
+        if(e.key === 'Enter' && !e.shiftKey && window.innerWidth >= 768) {
+            e.preventDefault(); 
+            getEl('send-btn').click();
+        }
+    });
+
+    jevisUserInput.addEventListener('input', function() {
+        this.style.height = 'auto';
+        this.style.height = (this.scrollHeight) + 'px';
+        if(this.value === '') this.style.height = 'auto'; 
+    });
+
+    function startTalkingSequence(text) {
+        currentFullText = text; globalCharIndex = 0; localCharIndex = 0;
+        switchToVideo('talkingStart');
+        videos.talkingStart.onended = () => { videos.talkingStart.onended = null; switchToVideo('talkingLoop'); };
+        
+        captionBox.classList.add('active'); 
+        playAudioChunk();
+    }
+
+    function startCaptionTimerFallback(textToRead) {
+        if(captionFallbackTimer) clearInterval(captionFallbackTimer);
+        let wordsList = textToRead.trim().split(/\s+/); 
+        let currentIndex = 0;
+        const blockSize = 6; 
+        
+        captionBox.classList.add('active'); 
+        
+        captionFallbackTimer = setInterval(() => {
+            if (currentIndex < wordsList.length) {
+                let chunkIndex = Math.floor(currentIndex / blockSize);
+                let startIdx = chunkIndex * blockSize;
+                let endIdx = Math.min(wordsList.length, startIdx + blockSize);
+                
+                captionBox.innerText = wordsList.slice(startIdx, endIdx).join(' ').replace(/\*/g, ''); 
+                currentIndex++;
+            } else {
+                clearInterval(captionFallbackTimer);
+            }
+        }, 400);
+    }
+
+    function playAudioChunk() {
+        if (globalCharIndex >= currentFullText.length || !currentFullText.substring(globalCharIndex).trim()) { finishTalkingSequence(); return; }
+        const rawTextToSpeak = currentFullText.substring(globalCharIndex);
+        const textToSpeak = rawTextToSpeak.replace(/\*/g, ' '); 
+        
+        let utterance = new SpeechSynthesisUtterance(textToSpeak); currentUtterance = utterance; localCharIndex = 0;
+        if (selectedVoiceURI) {
+            const voice = availableVoices.find(v => v.voiceURI === selectedVoiceURI);
+            if (voice) { utterance.voice = voice; utterance.lang = voice.lang; }
+        } else utterance.lang = 'en-IN'; 
+        
+        const genderCheck = overlay.querySelector('input[name="gender-filter"]:checked');
+        utterance.pitch = (genderCheck && genderCheck.value === 'female') ? 1.4 : 1.0; utterance.rate = 1.05;
+        
+        utterance.onstart = () => { 
+            if (globalCharIndex === 0) startTimer(); 
+            captionBox.classList.add('active'); 
+            startCaptionTimerFallback(rawTextToSpeak); 
+        };
+        
+        utterance.onboundary = (e) => {
+            if (e.name === 'sentence') return;
+            if (captionFallbackTimer) { clearInterval(captionFallbackTimer); captionFallbackTimer = null; }
+            localCharIndex = e.charIndex; 
+            let textChunk = currentFullText.substring(globalCharIndex); 
+            if(!textChunk) return;
+            
+            let words = textChunk.trim().split(/\s+/);
+            let spokenText = textChunk.substring(0, e.charIndex).trim();
+            let currentIndex = spokenText === "" ? 0 : spokenText.split(/\s+/).length;
+            
+            const blockSize = 6; 
+            let chunkIndex = Math.floor(currentIndex / blockSize);
+            let startIdx = chunkIndex * blockSize;
+            let endIdx = Math.min(words.length, startIdx + blockSize);
+            
+            let visibleText = words.slice(startIdx, endIdx).join(' ');
+            
+            captionBox.classList.add('active');
+            captionBox.innerText = visibleText.replace(/\*/g, '');
+        };
+        
+        utterance.onend = () => { 
+            if(captionFallbackTimer) clearInterval(captionFallbackTimer); 
+            if (!isAudioPaused && utterance === currentUtterance) finishTalkingSequence(); 
+        };
+        
+        utterance.onerror = (e) => { 
+            if(captionFallbackTimer) clearInterval(captionFallbackTimer); 
+            if (e.error !== 'canceled' && !isAudioPaused && utterance === currentUtterance) finishTalkingSequence(); 
+        };
+        
+        speechSynthesis.speak(utterance);
+    }
+
+    function finishTalkingSequence() {
+        if (videos.talkingLoop.classList.contains('active')) {
+            videos.talkingLoop.style.transition = 'none'; 
+            videos.talkingLoop.style.opacity = '0'; 
+            videos.talkingLoop.pause();
+        }
+        if (videos.talkingStart.classList.contains('active')) {
+            videos.talkingStart.style.transition = 'none';
+            videos.talkingStart.style.opacity = '0';
+            videos.talkingStart.pause();
+        }
+
+        switchToVideo('introIdle');
+        isProcessing = false; 
+        
+        setTimeout(() => {
+            videos.talkingLoop.style.transition = '';
+            videos.talkingLoop.style.opacity = '';
+            videos.talkingStart.style.transition = '';
+            videos.talkingStart.style.opacity = '';
+        }, 50);
+
+        setTimeout(() => {
+            captionBox.classList.remove('active'); 
+            captionBox.innerText = "";
+        }, 1500);
+        
+        isAudioPaused = true; 
+        getEl('icon-pause').style.display = 'none'; 
+        getEl('icon-play').style.display = 'block';
+        if (currentFullText) globalCharIndex = currentFullText.length;
+    }
+
+    function populateVoiceList() {
+        if (!('speechSynthesis' in window)) return;
+        availableVoices = window.speechSynthesis.getVoices();
+        const voiceSelect = getEl('voice-select'); voiceSelect.innerHTML = '';
+        const genderValue = overlay.querySelector('input[name="gender-filter"]:checked').value;
+        let validVoices = availableVoices.filter(voice => {
+            let name = voice.name.toLowerCase(); let isFemale = /\b(female|girl|woman|zira|samantha|victoria|veena)\b/i.test(name);
+            return genderValue === 'female' ? isFemale : !isFemale;
+        });
+        if(validVoices.length === 0) validVoices = availableVoices; 
+        validVoices.forEach(voice => {
+            const option = document.createElement('option');
+            option.textContent = `${voice.lang.includes('bn') ? '[বাংলা]' : ''} ${voice.name} (${voice.lang})`;
+            option.value = voice.voiceURI; voiceSelect.appendChild(option);
+        });
+        if(validVoices.length > 0) {
+            if (!selectedVoiceURI) {
+                let defaultVoice = validVoices.find(v => v.lang.includes('en-IN') || v.lang.includes('en_IN'));
+                selectedVoiceURI = defaultVoice ? defaultVoice.voiceURI : validVoices[0].voiceURI;
+            }
+            voiceSelect.value = selectedVoiceURI;
+        }
+    }
+    if ('speechSynthesis' in window) window.speechSynthesis.onvoiceschanged = populateVoiceList;
+
+    const settingsModal = getEl('settings-modal'); const voiceModal = getEl('voice-modal');
+    
+    getEl('btn-inspire').addEventListener('click', () => {
+        const selectDropdown = getEl('active-model-select');
+        let profileData = JSON.parse(localStorage.getItem('metaAINotes_profileData') || '{"apis":[]}');
+        
+        selectDropdown.innerHTML = '';
+        if (!profileData.apis || profileData.apis.length === 0) {
+            const opt = document.createElement('option');
+            opt.value = "";
+            opt.text = "No API Added. Add from Account Settings.";
+            selectDropdown.appendChild(opt);
+        } else {
+            profileData.apis.forEach(api => {
+                const opt = document.createElement('option');
+                opt.value = api.name;
+                opt.text = api.name + (api.version ? ` (${api.version})` : '');
+                selectDropdown.appendChild(opt);
+            });
+            
+            if(currentActiveModelKey && Array.from(selectDropdown.options).some(o => o.value === currentActiveModelKey)) {
+                selectDropdown.value = currentActiveModelKey;
+            } else {
+                let activeApi = profileData.apis.find(a => a.isActive) || profileData.apis[0];
+                selectDropdown.value = activeApi.name;
+                currentActiveModelKey = activeApi.name;
+            }
+        }
+        settingsModal.style.display = 'flex';
+    });
+
+    getEl('btn-voice-settings').addEventListener('click', () => { populateVoiceList(); voiceModal.style.display = 'flex'; });
+    getEl('cancel-settings').onclick = () => settingsModal.style.display = 'none';
+    
+    getEl('save-settings').onclick = () => { 
+        const selectDropdown = getEl('active-model-select');
+        if(selectDropdown && selectDropdown.value) {
+            currentActiveModelKey = selectDropdown.value; 
+            localStorage.setItem('metaAINotes_activeModel', currentActiveModelKey);
+        }
+        settingsModal.style.display = 'none'; 
+    };
+    getEl('cancel-voice').onclick = () => voiceModal.style.display = 'none';
+    getEl('save-voice').onclick = () => { selectedVoiceURI = getEl('voice-select').value; voiceModal.style.display = 'none'; };
+
+    overlay.querySelectorAll('input[name="gender-filter"]').forEach(r => r.addEventListener('change', () => { populateVoiceList(); }));
+
+    window.initJevisApp = function() {
+        startTimer();
+        initVideos(); 
+        populateVoiceList();
+        if (conversation.length > 0) {
+            conversation.forEach(msg => addMessageToChat(msg.role, msg.content, true));
+        }
+    };
+
+})();
+
+window.addEventListener('DOMContentLoaded', () => {
+    if (window.initJevisApp) { 
+        window.initJevisApp(); 
+        window.initJevisApp = null; 
+    }
+});
+</script>
+</body>
+</html>
