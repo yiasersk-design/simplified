@@ -3604,16 +3604,37 @@ window.closeFullScreenSearch = function(e) {
         }
 
         function finishTalkingSequence() {
-            if (videos.talkingLoop.classList.contains('active')) videos.talkingLoop.pause();
-            switchToVideo('endingIdle');
-            videos.endingIdle.onended = () => { switchToVideo('introIdle'); isProcessing = false; };
+            // ১. Talking Video ইনস্ট্যান্ট বন্ধ করা হচ্ছে এবং CSS delay (0.4s) বাইপাস করা হচ্ছে
+            if (videos.talkingLoop.classList.contains('active')) {
+                videos.talkingLoop.style.transition = 'none'; 
+                videos.talkingLoop.style.opacity = '0'; 
+                videos.talkingLoop.pause();
+            }
+            if (videos.talkingStart.classList.contains('active')) {
+                videos.talkingStart.style.transition = 'none';
+                videos.talkingStart.style.opacity = '0';
+                videos.talkingStart.pause();
+            }
+
+            // ২. Instant delay ছাড়াই idle/first video (introIdle)-তে switch করা হচ্ছে (endingIdle bypass করে)
+            switchToVideo('introIdle');
+            isProcessing = false; // Processing স্টেট সাথে সাথে false করা হলো যাতে ইউজার আবার কথা বলতে পারে
             
-            // শেষের শব্দগুলো যাতে মুছে না যায় তার জন্য ১.৫ সেকেন্ড ডিলে করে ক্যাপশন বক্স লুকানো হচ্ছে
+            // ৩. স্টাইল রিসেট করা (যাতে পরের বার অ্যানিমেশন স্বাভাবিকভাবে কাজ করে)
+            setTimeout(() => {
+                videos.talkingLoop.style.transition = '';
+                videos.talkingLoop.style.opacity = '';
+                videos.talkingStart.style.transition = '';
+                videos.talkingStart.style.opacity = '';
+            }, 50);
+
+            // ৪. শেষের শব্দগুলো যাতে মুছে না যায় তার জন্য ১.৫ সেকেন্ড ডিলে করে ক্যাপশন বক্স লুকানো হচ্ছে
             setTimeout(() => {
                 captionBox.classList.remove('active'); 
                 captionBox.innerText = "";
             }, 1500);
             
+            // ৫. Audio pause state আপডেট করা
             isAudioPaused = true; 
             getEl('icon-pause').style.display = 'none'; 
             getEl('icon-play').style.display = 'block';
