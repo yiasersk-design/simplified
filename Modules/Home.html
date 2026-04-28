@@ -629,7 +629,44 @@ window.addEventListener('DOMContentLoaded', () => {
     updateSidebarList();
 });
 
-// Scroll Lock Fix
+// --- Mobile Keyboard Bottom Nav Fix ---
+const bottomNavElement = document.getElementById('bottomNav');
+const inputElements = document.querySelectorAll('input, textarea');
+
+// ইনপুট বক্সে ক্লিক (Focus) করলে নেভিগেশন হাইড করবে
+inputElements.forEach(input => {
+    input.addEventListener('focus', () => {
+        if (window.innerWidth <= 768) { // শুধুমাত্র মোবাইল স্ক্রিনের জন্য
+            bottomNavElement.style.display = 'none';
+        }
+    });
+
+    // ইনপুট বক্স থেকে বের হয়ে গেলে (Blur) নেভিগেশন আবার শো করবে
+    input.addEventListener('blur', () => {
+        if (window.innerWidth <= 768) {
+            setTimeout(() => {
+                bottomNavElement.style.display = '';
+            }, 100);
+        }
+    });
+});
+
+// ইউজার যদি ইনপুট থেকে ফোকাস না সরিয়ে ম্যানুয়ালি কীবোর্ড নামিয়ে দেয়, সেটা ফিক্স করার জন্য
+if (window.visualViewport) {
+    let initialViewportHeight = window.visualViewport.height;
+    window.visualViewport.addEventListener('resize', () => {
+        if (!bottomNavElement) return;
+        
+        // যদি স্ক্রিনের উচ্চতা ১৫০ পিক্সেলের বেশি কমে যায়, তারমানে কীবোর্ড ওপেন হয়েছে
+        if (window.visualViewport.height < initialViewportHeight - 150) {
+            bottomNavElement.style.display = 'none';
+        } else {
+            bottomNavElement.style.display = '';
+            // স্ক্রিন রোটেট করলে বা কীবোর্ড অফ হলে নতুন হাইট আপডেট করবে
+            initialViewportHeight = window.visualViewport.height; 
+        }
+    });
+}      // Scroll Lock Fix
 document.addEventListener('touchmove', function(e) {
     if (!e.target.closest('#chatContainer, .overflow-y-auto, .overflow-x-auto, textarea, .hide-scrollbar')) {
         if (e.cancelable) e.preventDefault();
