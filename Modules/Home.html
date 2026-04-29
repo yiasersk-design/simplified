@@ -941,6 +941,16 @@ function appendMessage(role, content, animate = false) {
         msgDiv.appendChild(innerDiv);
         msgDiv.appendChild(actionDiv);
         chatContainer.appendChild(msgDiv);
+
+        const stopLoaderAnimation = () => {
+            const loaderElem = msgDiv.querySelector('.profile-loader');
+            if (loaderElem) {
+                loaderElem.style.animationPlayState = 'paused';
+                loaderElem.querySelectorAll('*').forEach(el => {
+                    el.style.animationPlayState = 'paused';
+                });
+            }
+        };
         
         if (animate) {
             let index = 0;
@@ -952,6 +962,7 @@ function appendMessage(role, content, animate = false) {
                     actionDiv.classList.remove('opacity-0');
                     saveCurrentChatState();
                     window.resetSendButton();
+                    stopLoaderAnimation();
                     return;
                 }
                 
@@ -964,6 +975,7 @@ function appendMessage(role, content, animate = false) {
                     actionDiv.classList.remove('opacity-0');
                     saveCurrentChatState(); 
                     window.resetSendButton(); 
+                    stopLoaderAnimation();
                 }
             }
             typeChar();
@@ -973,6 +985,7 @@ function appendMessage(role, content, animate = false) {
             chatContainer.scrollTop = chatContainer.scrollHeight;
             saveCurrentChatState();
             window.resetSendButton();
+            stopLoaderAnimation();
         }
     }
 }
