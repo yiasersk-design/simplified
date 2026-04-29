@@ -897,8 +897,8 @@ function appendMessage(role, content, animate = false) {
         msgDiv.className = 'flex flex-col gap-1.5 w-full mt-4 fade-in px-2';
         
         const profileBlock = document.createElement('div');
-        // w-full যোগ করা হয়েছে যাতে লোগো ও নামের অংশ পুরো জায়গা নেয়
-        profileBlock.className = 'flex items-center gap-2 pl-1 mb-1 w-full';
+        // pl-1 সরিয়ে -ml-1 ব্যবহার করা হলো যাতে লোগো ও নাম আরেকটু বাঁদিকে সরে আসে
+        profileBlock.className = 'flex items-center gap-2 -ml-1 mb-1 w-full';
         profileBlock.innerHTML = `
             <div class="w-[26px] h-[26px] rounded-full flex items-center justify-center shadow-sm ring-2 ring-white overflow-hidden bg-white shrink-0 relative">
                 <div class="profile-loader">
