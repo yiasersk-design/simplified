@@ -660,6 +660,19 @@ window.loadSession = function(id, forceLoad = false) {
     currentSessionId = session.id;
     localStorage.setItem('metaAINotes_currentId', currentSessionId.toString());
     chatContainer.innerHTML = session.chatHTML || '';
+    
+    // Toggle State Restore
+    const headerToggleBtn = document.getElementById('headerToggleBtn');
+    const bottomNavElement = document.getElementById('bottomNav');
+    if (headerToggleBtn && bottomNavElement) {
+        headerToggleBtn.checked = session.isNavHidden || false;
+        if (headerToggleBtn.checked) {
+            bottomNavElement.style.display = 'none';
+        } else {
+            bottomNavElement.style.display = '';
+        }
+    }
+    
     updateSidebarList();
     closeSidebar();
 };
@@ -667,9 +680,18 @@ window.loadSession = function(id, forceLoad = false) {
 window.createNewSession = function() {
     currentSessionId = Date.now();
     chatContainer.innerHTML = '';
-    chatSessions.push({ id: currentSessionId, title: "New Note", chatHTML: '' });
+    chatSessions.push({ id: currentSessionId, title: "New Note", chatHTML: '', isNavHidden: false });
     localStorage.setItem('metaAINotes_sessions', JSON.stringify(chatSessions));
     localStorage.setItem('metaAINotes_currentId', currentSessionId.toString());
+    
+    // Reset Toggle State for New Note
+    const headerToggleBtn = document.getElementById('headerToggleBtn');
+    const bottomNavElement = document.getElementById('bottomNav');
+    if (headerToggleBtn && bottomNavElement) {
+        headerToggleBtn.checked = false;
+        bottomNavElement.style.display = '';
+    }
+    
     updateSidebarList();
     closeSidebar();
 };
@@ -1149,6 +1171,15 @@ headerToggleBtn.addEventListener('change', function() {
         bottomNavElement.style.display = 'none';
     } else {
         bottomNavElement.style.display = '';
+    }
+    
+    // Save state directly to current chat session
+    if (currentSessionId) {
+        let sessionIndex = chatSessions.findIndex(s => s.id === currentSessionId);
+        if (sessionIndex !== -1) {
+            chatSessions[sessionIndex].isNavHidden = this.checked;
+            localStorage.setItem('metaAINotes_sessions', JSON.stringify(chatSessions));
+        }
     }
 });
 
