@@ -740,6 +740,19 @@ async function handleSendMessage() {
     try {
         const endpoint = apiConfig.endpoint || 'https://api.openai.com/v1/chat/completions';
         const modelVersion = apiConfig.version || 'gpt-3.5-turbo';
+
+        // আপনার দেওয়া System Rules
+        const systemPrompt = `You are an AI assistant. Your task is to generate clean, well-structured, and readable responses.
+Always follow these rules strictly:
+- No unnecessary extra spaces, blank lines, or gaps.
+- Sentences and paragraphs must be compact and clean.
+- If the question involves multiple points, steps, features, or is list-based, provide a point-wise (bullet/number format) answer.
+- If it is an explanation or descriptive, write concisely in a paragraph format.
+- Avoid unnecessarily long explanations or repetitions.
+- The answer must always be clear, structured, and easy to read. Use headings where necessary.
+- Formatting Rules: List type question -> Use points (• / 1,2,3). Normal explanation -> Use paragraph (no unnecessary line breaks).
+- Avoid: messy spacing, random line breaks, and cluttered text.
+Goal: Make every response Clean, Structured, Compact, and Easy to read.`;
         
         const response = await fetch(endpoint, {
             method: 'POST',
@@ -749,7 +762,10 @@ async function handleSendMessage() {
             },
             body: JSON.stringify({
                 model: modelVersion,
-                messages: [{ role: 'user', content: message }]
+                messages:[
+                    { role: 'system', content: systemPrompt },
+                    { role: 'user', content: message }
+                ]
             })
         });
 
