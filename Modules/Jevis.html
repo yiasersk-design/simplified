@@ -8,7 +8,13 @@
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     
-    <style>         /* Jevis AI Animated Profile Loader */
+    <style>         /* Jevis AI Profile Loader Stopped State */
+        .jevis-loader.stopped,
+        .jevis-loader.stopped::before,
+        .jevis-loader.stopped svg #clipping,
+        .jevis-loader.stopped svg #clipping polygon {
+            animation-play-state: paused !important;
+        }         /* Jevis AI Animated Profile Loader */
         .jevis-loader {
             --color-one: #00c6ff;
             --color-two: #0072ff;
@@ -937,6 +943,10 @@ Goal: Make every response Clean, Structured, Compact, and Easy to read.`;
 
         switchToVideo('introIdle');
         isProcessing = false; 
+
+        // AI এর রিপ্লাই বা কথা বলা শেষ হলে অ্যানিমেশন স্টপ করে দেবে
+        const allLoaders = document.querySelectorAll('.jevis-loader');
+        allLoaders.forEach(loader => loader.classList.add('stopped'));
         
         setTimeout(() => {
             videos.talkingLoop.style.transition = '';
@@ -955,6 +965,7 @@ Goal: Make every response Clean, Structured, Compact, and Easy to read.`;
         getEl('icon-play').style.display = 'block';
         if (currentFullText) globalCharIndex = currentFullText.length;
     }
+
 
     function populateVoiceList() {
         if (!('speechSynthesis' in window)) return;
