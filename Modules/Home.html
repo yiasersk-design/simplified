@@ -573,11 +573,12 @@ window.updateSidebarList = function() {
     });
 };
 
-window.loadSession = function(id) {
-    if(id === currentSessionId) { closeSidebar(); return; } 
+window.loadSession = function(id, forceLoad = false) {
+    if(id === currentSessionId && !forceLoad) { closeSidebar(); return; } 
     let session = chatSessions.find(s => s.id === id);
     if(!session) return;
     currentSessionId = session.id;
+    localStorage.setItem('metaAINotes_currentId', currentSessionId.toString());
     chatContainer.innerHTML = session.chatHTML || '';
     updateSidebarList();
     closeSidebar();
@@ -653,30 +654,30 @@ function appendMessage(role, content, animate = false) {
     
     const innerDiv = document.createElement('div');
     if (role === 'user') {
-        innerDiv.className = 'max-w-[85%] px-4 py-2.5 text-[15px] bg-blue-600 text-white rounded-2xl rounded-tr-sm shadow-sm whitespace-pre-wrap';
+        innerDiv.className = 'max-w-[85%] px-4 py-2.5 text-[15px] bg-blue-600 text-white rounded-lg rounded-tr-sm shadow-sm whitespace-pre-wrap';
         innerDiv.innerText = content;
         msgDiv.appendChild(innerDiv);
         chatContainer.appendChild(msgDiv);
         chatContainer.scrollTop = chatContainer.scrollHeight;
         saveCurrentChatState();
     } else {
-        innerDiv.className = 'max-w-[85%] px-4 py-2.5 text-[15px] bg-gray-100 border border-gray-200 text-gray-800 rounded-2xl rounded-tl-sm shadow-sm whitespace-pre-wrap';
+        innerDiv.className = 'max-w-[85%] px-4 py-2.5 text-[15px] bg-gray-100 border border-gray-200 text-gray-800 rounded-lg rounded-tl-sm shadow-sm whitespace-pre-wrap';
         msgDiv.appendChild(innerDiv);
         chatContainer.appendChild(msgDiv);
         
         if (animate) {
             let index = 0;
             innerDiv.innerText = '';
-            const typingSpeed = 15; // টাইপিং স্পিড (মিলিসেকেন্ড) - ইচ্ছে হলে পরিবর্তন করতে পারেন
+            const typingSpeed = 15; 
             
             function typeChar() {
                 if (index < content.length) {
                     innerDiv.innerText += content.charAt(index);
                     index++;
-                    chatContainer.scrollTop = chatContainer.scrollHeight; // টাইপ করার সাথে সাথে অটো স্ক্রল হবে
+                    chatContainer.scrollTop = chatContainer.scrollHeight; 
                     setTimeout(typeChar, typingSpeed);
                 } else {
-                    saveCurrentChatState(); // টাইপিং শেষ হলে চ্যাট হিস্ট্রি সেভ হবে
+                    saveCurrentChatState(); 
                 }
             }
             typeChar();
@@ -713,7 +714,7 @@ async function handleSendMessage() {
     const loadingDiv = document.createElement('div');
     loadingDiv.id = loadingId;
     loadingDiv.className = 'flex justify-start w-full mb-4 px-2';
-    loadingDiv.innerHTML = `<div class="max-w-[85%] px-4 py-3 rounded-2xl bg-gray-100 border border-gray-200 text-gray-500 rounded-tl-sm flex items-center gap-2 shadow-sm">
+    loadingDiv.innerHTML = `<div class="max-w-[85%] px-4 py-3 rounded-lg bg-gray-100 border border-gray-200 text-gray-500 rounded-tl-sm flex items-center gap-2 shadow-sm">
         <span class="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></span>
         <span class="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style="animation-delay: 0.2s"></span>
         <span class="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style="animation-delay: 0.4s"></span>
@@ -742,7 +743,6 @@ async function handleSendMessage() {
         
         if (response.ok && data.choices && data.choices.length > 0) {
             const reply = data.choices[0].message.content;
-            // এআই এর মেসেজে অ্যানিমেশন দেখানোর জন্য ৩য় প্যারামিটার true পাঠানো হলো
             appendMessage('assistant', reply, true); 
         } else {
             const errorMsg = data.error ? data.error.message : 'Unknown API Error';
@@ -787,9 +787,13 @@ document.getElementById('chatInput').addEventListener('input', function() {
 // Init
 window.addEventListener('DOMContentLoaded', () => {
     startReverseTimer();
-    if(chatSessions.length === 0) createNewSession();
-    else if(!currentSessionId) loadSession(chatSessions[0].id);
-    else loadSession(currentSessionId);
+    if(chatSessions.length === 0) {
+        createNewSession();
+    } else if(!currentSessionId) {
+        loadSession(chatSessions[0].id, true);
+    } else {
+        loadSession(currentSessionId, true);
+    }
     updateSidebarList();
 });
 
