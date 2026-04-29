@@ -1108,10 +1108,8 @@ Goal: Make every response Clean, Structured, Compact, and Easy to read.`;
 document.getElementById('sendBtn').addEventListener('click', handleSendMessage);
 
 document.getElementById('chatInput').addEventListener('keydown', function(e) {
-    if (e.key === 'Enter' && !e.shiftKey) {
-        e.preventDefault();
-        handleSendMessage();
-    }
+    // মেসেজ ম্যানুয়ালি সেন্ড করার জন্য Enter বাটনের অটো-সেন্ড লজিক রিমুভ করা হয়েছে।
+    // এখন কীবোর্ডের Enter বাটন চাপলে শুধু নতুন লাইন (New Line) তৈরি হবে।
 });
 
 document.getElementById('chatInput').addEventListener('input', function() {
