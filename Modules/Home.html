@@ -421,6 +421,32 @@
     </div>
 
 <script>
+// --- UI Versioning System ---
+(function handleUIVersioning() {
+    const CURRENT_UI_VERSION = "1.0.0"; // যখনই UI/UX বা ডিজাইন আপডেট করবেন, এই মান পরিবর্তন করবেন (যেমন: "1.0.1")
+    const storedUiVersion = localStorage.getItem('metaAINotes_uiVersion');
+    
+    if (storedUiVersion !== CURRENT_UI_VERSION) {
+        // শুধুমাত্র Design/UI সম্পর্কিত Key-গুলো এখানে রাখবেন। User Data (যেমন: session, apiKeys) ভুলেও রাখবেন না।
+        const uiRelatedKeys =[
+            'metaAINotes_userStyles',
+            'metaAINotes_pageMargins',
+            'metaAINotes_aspectRatio',
+            'metaAINotes_themePreferences',
+            'metaAINotes_fontSize'
+        ];
+        
+        // পুরনো UI ডেটা রিমুভ করা হচ্ছে
+        uiRelatedKeys.forEach(key => {
+            localStorage.removeItem(key);
+        });
+        
+        // নতুন ভার্সন লোকাল স্টোরেজে সেভ করা হলো
+        localStorage.setItem('metaAINotes_uiVersion', CURRENT_UI_VERSION);
+        console.log("✅ UI Data Cleared. App updated to UI Version: " + CURRENT_UI_VERSION);
+    }
+})();
+
 window.showToast = function(msg, type) {
     const tc = document.getElementById('toastContainer');
     if(!tc) return;
