@@ -385,7 +385,7 @@
                 <div id="sidebarDivider" class="my-2 border-t border-gray-100 mx-2 transition-all duration-300"></div>
                 <button id="sidebarSettingsBtn" onclick="window.location.href='./Setting.html'" class="w-full flex items-center gap-3 px-4 py-3.5 text-gray-700 hover:bg-blue-50 hover:text-blue-600 rounded-xl transition-colors text-left focus:outline-none transition-all duration-300">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
-                    <span class="font-medium text-[16px]">Settings</span>
+                    <span class="font-medium text-[16px]">Settings / AI Model</span>
                 </button>
             </div>
         </div>
@@ -691,6 +691,7 @@ function appendMessage(role, content, animate = false) {
     }
 
     if (role === 'user') {
+        // ইউজারের মেসেজ আগের মতোই max-w-[85%] রাখা হয়েছে
         innerDiv.className = 'max-w-[85%] px-4 py-2.5 text-[15px] bg-blue-600 text-white rounded-lg rounded-tr-sm shadow-sm whitespace-pre-wrap';
         innerDiv.innerHTML = formatText(content);
         msgDiv.appendChild(innerDiv);
@@ -698,7 +699,8 @@ function appendMessage(role, content, animate = false) {
         chatContainer.scrollTop = chatContainer.scrollHeight;
         saveCurrentChatState();
     } else {
-        innerDiv.className = 'max-w-[85%] px-4 py-2.5 text-[15px] bg-gray-100 border border-gray-200 text-gray-800 rounded-lg rounded-tl-sm shadow-sm whitespace-pre-wrap';
+        // AI এর মেসেজ max-w-[85%] এর বদলে w-full করে Full Width করা হয়েছে
+        innerDiv.className = 'w-full px-4 py-2.5 text-[15px] bg-gray-100 border border-gray-200 text-gray-800 rounded-lg rounded-tl-sm shadow-sm whitespace-pre-wrap';
         msgDiv.appendChild(innerDiv);
         chatContainer.appendChild(msgDiv);
         
@@ -786,7 +788,8 @@ async function handleSendMessage() {
     const loadingDiv = document.createElement('div');
     loadingDiv.id = loadingId;
     loadingDiv.className = 'flex justify-start w-full mb-4 px-2';
-    loadingDiv.innerHTML = `<div class="max-w-[85%] px-4 py-3 rounded-lg bg-gray-100 border border-gray-200 text-gray-500 rounded-tl-sm flex items-center gap-2 shadow-sm">
+    // লোডিং অ্যানিমেশন বক্সেও max-w-[85%] এর বদলে w-full ব্যবহার করা হয়েছে
+    loadingDiv.innerHTML = `<div class="w-full px-4 py-3 rounded-lg bg-gray-100 border border-gray-200 text-gray-500 rounded-tl-sm flex items-center gap-2 shadow-sm">
         <span class="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></span>
         <span class="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style="animation-delay: 0.2s"></span>
         <span class="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style="animation-delay: 0.4s"></span>
