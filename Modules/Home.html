@@ -647,6 +647,35 @@ function saveCurrentChatState() {
     }
 }
 
+// --- New Global State Variables ---
+window.isGenerating = false;
+window.currentAbortController = null;
+window.stopTypingFlag = false;
+
+// Button Reset Function
+window.resetSendButton = function() {
+    window.isGenerating = false;
+    const chatInput = document.getElementById('chatInput');
+    const sendBtn = document.getElementById('sendBtn');
+    const sendIcon = document.getElementById('sendIcon');
+    const audioIcon = document.getElementById('audioIcon');
+    
+    chatInput.disabled = false;
+    
+    // Restore the Send Icon SVG
+    sendIcon.innerHTML = `<line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>`;
+    
+    // Toggle audio/send icon based on input length
+    if (chatInput.value.trim().length > 0) {
+        audioIcon.classList.add('hidden');
+        sendIcon.classList.remove('hidden');
+    } else {
+        audioIcon.classList.remove('hidden');
+        sendIcon.classList.add('hidden');
+    }
+    chatInput.focus();
+};
+
 function appendMessage(role, content, animate = false) {
     const chatContainer = document.getElementById('chatContainer');
     const msgDiv = document.createElement('div');
@@ -654,16 +683,10 @@ function appendMessage(role, content, animate = false) {
     
     const innerDiv = document.createElement('div');
 
-    // Text formatting function for Bold (**text** and *text*)
     function formatText(text) {
-        // HTML ট্যাগগুলোকে Escape করা হলো যেন কোনো Security Issue না হয়
         let html = text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-        
-        // **text** কে bold করা হলো
         html = html.replace(/\*\*([\s\S]*?)\*\*/g, '<strong class="font-bold">$1</strong>');
-        // *text* কে bold করা হলো
         html = html.replace(/\*([\s\S]*?)\*/g, '<strong class="font-bold">$1</strong>');
-        
         return html;
     }
 
@@ -685,14 +708,21 @@ function appendMessage(role, content, animate = false) {
             const typingSpeed = 15; 
             
             function typeChar() {
+                // Check if user clicked pause to stop typing immediately
+                if (window.stopTypingFlag) {
+                    saveCurrentChatState();
+                    window.resetSendButton();
+                    return;
+                }
+                
                 if (index < content.length) {
                     index++;
-                    // character by character রেন্ডার হওয়ার সময়ও formatText ব্যবহার করা হয়েছে
                     innerDiv.innerHTML = formatText(content.substring(0, index));
                     chatContainer.scrollTop = chatContainer.scrollHeight; 
                     setTimeout(typeChar, typingSpeed);
                 } else {
                     saveCurrentChatState(); 
+                    window.resetSendButton(); // Auto reset when naturally completed
                 }
             }
             typeChar();
@@ -700,11 +730,29 @@ function appendMessage(role, content, animate = false) {
             innerDiv.innerHTML = formatText(content);
             chatContainer.scrollTop = chatContainer.scrollHeight;
             saveCurrentChatState();
+            window.resetSendButton();
         }
     }
 }
 
 async function handleSendMessage() {
+    // If AI is currently generating and user clicks the button (Pause action)
+    if (window.isGenerating) {
+        if (window.currentAbortController) {
+            window.currentAbortController.abort(); // Cancel the API request
+        }
+        window.stopTypingFlag = true; // Stop typing animation
+        
+        // Remove loading animation if it is still loading
+        const existingLoader = document.querySelector('[id^="loading-"]');
+        if (existingLoader) {
+            existingLoader.remove();
+        }
+        
+        window.resetSendButton();
+        return;
+    }
+
     const chatInput = document.getElementById('chatInput');
     const message = chatInput.value.trim();
     if (!message) return;
@@ -719,11 +767,20 @@ async function handleSendMessage() {
     chatInput.value = '';
     chatInput.style.height = 'auto';
     
+    // Set system to Generating State
+    window.isGenerating = true;
+    window.stopTypingFlag = false;
+    window.currentAbortController = new AbortController();
+    
     chatInput.disabled = true;
-    const sendBtn = document.getElementById('sendBtn');
-    sendBtn.classList.add('opacity-50', 'pointer-events-none');
-    document.getElementById('audioIcon').classList.remove('hidden');
-    document.getElementById('sendIcon').classList.add('hidden');
+    
+    const sendIcon = document.getElementById('sendIcon');
+    const audioIcon = document.getElementById('audioIcon');
+    
+    // Show Send Icon area and inject Pause SVG
+    audioIcon.classList.add('hidden');
+    sendIcon.classList.remove('hidden');
+    sendIcon.innerHTML = `<rect x="6" y="4" width="4" height="16"></rect><rect x="14" y="4" width="4" height="16"></rect>`;
     
     const loadingId = 'loading-' + Date.now();
     const loadingDiv = document.createElement('div');
@@ -741,7 +798,6 @@ async function handleSendMessage() {
         const endpoint = apiConfig.endpoint || 'https://api.openai.com/v1/chat/completions';
         const modelVersion = apiConfig.version || 'gpt-3.5-turbo';
 
-        // আপনার দেওয়া System Rules
         const systemPrompt = `You are an AI assistant. Your task is to generate clean, well-structured, and readable responses.
 Always follow these rules strictly:
 - No unnecessary extra spaces, blank lines, or gaps.
@@ -766,11 +822,15 @@ Goal: Make every response Clean, Structured, Compact, and Easy to read.`;
                     { role: 'system', content: systemPrompt },
                     { role: 'user', content: message }
                 ]
-            })
+            }),
+            signal: window.currentAbortController.signal // Added signal for AbortController
         });
 
+        if (window.stopTypingFlag) return; // Ignore if user already aborted
+
         const data = await response.json();
-        document.getElementById(loadingId).remove();
+        const loader = document.getElementById(loadingId);
+        if(loader) loader.remove();
         
         if (response.ok && data.choices && data.choices.length > 0) {
             const reply = data.choices[0].message.content;
@@ -779,15 +839,19 @@ Goal: Make every response Clean, Structured, Compact, and Easy to read.`;
             const errorMsg = data.error ? data.error.message : 'Unknown API Error';
             appendMessage('assistant', `⚠️ API Error: ${errorMsg}`, false);
             showToast('API রেসপন্স পেতে সমস্যা হয়েছে।', 'error');
+            window.resetSendButton();
         }
     } catch (error) {
-        if(document.getElementById(loadingId)) document.getElementById(loadingId).remove();
-        appendMessage('assistant', `⚠️ Network Error: ${error.message}`, false);
-        showToast('নেটওয়ার্ক বা API সমস্যা।', 'error');
-    } finally {
-        chatInput.disabled = false;
-        sendBtn.classList.remove('opacity-50', 'pointer-events-none');
-        chatInput.focus();
+        if (error.name === 'AbortError') {
+            // User manually paused/aborted the fetch request
+            console.log('AI Generation Stopped By User');
+        } else {
+            const loader = document.getElementById(loadingId);
+            if(loader) loader.remove();
+            appendMessage('assistant', `⚠️ Network Error: ${error.message}`, false);
+            showToast('নেটওয়ার্ক বা API সমস্যা।', 'error');
+            window.resetSendButton();
+        }
     }
 }
 
