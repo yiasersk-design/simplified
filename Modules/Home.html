@@ -653,9 +653,23 @@ function appendMessage(role, content, animate = false) {
     msgDiv.className = `flex ${role === 'user' ? 'justify-end' : 'justify-start'} w-full mb-4 px-2`;
     
     const innerDiv = document.createElement('div');
+
+    // Text formatting function for Bold (**text** and *text*)
+    function formatText(text) {
+        // HTML ট্যাগগুলোকে Escape করা হলো যেন কোনো Security Issue না হয়
+        let html = text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+        
+        // **text** কে bold করা হলো
+        html = html.replace(/\*\*([\s\S]*?)\*\*/g, '<strong class="font-bold">$1</strong>');
+        // *text* কে bold করা হলো
+        html = html.replace(/\*([\s\S]*?)\*/g, '<strong class="font-bold">$1</strong>');
+        
+        return html;
+    }
+
     if (role === 'user') {
         innerDiv.className = 'max-w-[85%] px-4 py-2.5 text-[15px] bg-blue-600 text-white rounded-lg rounded-tr-sm shadow-sm whitespace-pre-wrap';
-        innerDiv.innerText = content;
+        innerDiv.innerHTML = formatText(content);
         msgDiv.appendChild(innerDiv);
         chatContainer.appendChild(msgDiv);
         chatContainer.scrollTop = chatContainer.scrollHeight;
@@ -667,13 +681,14 @@ function appendMessage(role, content, animate = false) {
         
         if (animate) {
             let index = 0;
-            innerDiv.innerText = '';
+            innerDiv.innerHTML = '';
             const typingSpeed = 15; 
             
             function typeChar() {
                 if (index < content.length) {
-                    innerDiv.innerText += content.charAt(index);
                     index++;
+                    // character by character রেন্ডার হওয়ার সময়ও formatText ব্যবহার করা হয়েছে
+                    innerDiv.innerHTML = formatText(content.substring(0, index));
                     chatContainer.scrollTop = chatContainer.scrollHeight; 
                     setTimeout(typeChar, typingSpeed);
                 } else {
@@ -682,7 +697,7 @@ function appendMessage(role, content, animate = false) {
             }
             typeChar();
         } else {
-            innerDiv.innerText = content;
+            innerDiv.innerHTML = formatText(content);
             chatContainer.scrollTop = chatContainer.scrollHeight;
             saveCurrentChatState();
         }
