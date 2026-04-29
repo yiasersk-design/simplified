@@ -733,6 +733,10 @@ Goal: Make every response Clean, Structured, Compact, and Easy to read.`;
     }
 
     getEl('send-btn').addEventListener('click', () => {
+        if (isProcessing) {
+            if (window.showToast) window.showToast('Please wait for Jevis to finish...', 'error');
+            return;
+        }
         const val = jevisUserInput.value.trim();
         if(val) {
             jevisUserInput.value = '';
