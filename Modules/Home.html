@@ -110,14 +110,11 @@
                 <button id="burgerMenuBtn" class="w-10 h-10 rounded-full bg-gray-50 flex items-center justify-center text-gray-700 hover:bg-gray-100 transition-colors focus:outline-none focus:ring-2 focus:ring-gray-200">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5"><line x1="4" x2="20" y1="12" y2="12"/><line x1="4" x2="20" y1="6" y2="6"/><line x1="4" x2="20" y1="18" y2="18"/></svg>
                 </button>
-                <div class="flex items-center bg-gray-50 rounded-full p-1 border border-gray-100 ml-1">
-                    <button id="undoBtn" onclick="performUndo()" class="w-8 h-8 rounded-full flex items-center justify-center text-gray-300 cursor-not-allowed transition-colors focus:outline-none" disabled>
-                        <svg class="w-[18px] h-[18px]" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M3 7v6h6"></path><path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13"></path></svg>
-                    </button>
-                    <div class="w-[1px] h-4 bg-gray-200 mx-0.5"></div>
-                    <button id="redoBtn" onclick="performRedo()" class="w-8 h-8 rounded-full flex items-center justify-center text-gray-300 cursor-not-allowed transition-colors focus:outline-none" disabled>
-                        <svg class="w-[18px] h-[18px]" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M21 7v6h-6"></path><path d="M3 17a9 9 0 0 1 9-9 9 9 0 0 1 6 2.3l3 2.7"></path></svg>
-                    </button>
+                <div class="flex items-center ml-2">
+                    <label class="relative inline-flex items-center cursor-pointer">
+                        <input type="checkbox" id="headerToggleBtn" class="sr-only peer">
+                        <div class="w-11 h-6 bg-gray-200 hover:bg-gray-300 peer-focus:outline-none rounded-full peer transition-colors duration-300 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                    </label>
                 </div>
             </div>
             <div class="flex items-center gap-2">
@@ -1141,14 +1138,24 @@ window.addEventListener('DOMContentLoaded', () => {
     updateSidebarList();
 });
 
-// --- Mobile Keyboard Bottom Nav Fix ---
+// --- Header Toggle & Mobile Keyboard Bottom Nav Logic ---
 const bottomNavElement = document.getElementById('bottomNav');
 const inputElements = document.querySelectorAll('input, textarea');
+const headerToggleBtn = document.getElementById('headerToggleBtn');
+
+// Toggle Button Logic
+headerToggleBtn.addEventListener('change', function() {
+    if (this.checked) {
+        bottomNavElement.style.display = 'none';
+    } else {
+        bottomNavElement.style.display = '';
+    }
+});
 
 // ইনপুট বক্সে ক্লিক (Focus) করলে নেভিগেশন হাইড করবে
 inputElements.forEach(input => {
     input.addEventListener('focus', () => {
-        if (window.innerWidth <= 768) { // শুধুমাত্র মোবাইল স্ক্রিনের জন্য
+        if (window.innerWidth <= 768) {
             bottomNavElement.style.display = 'none';
         }
     });
@@ -1157,7 +1164,10 @@ inputElements.forEach(input => {
     input.addEventListener('blur', () => {
         if (window.innerWidth <= 768) {
             setTimeout(() => {
-                bottomNavElement.style.display = '';
+                // Toggle On থাকলে যেন পুনরায় Show না হয়
+                if (!headerToggleBtn.checked) {
+                    bottomNavElement.style.display = '';
+                }
             }, 100);
         }
     });
@@ -1169,16 +1179,19 @@ if (window.visualViewport) {
     window.visualViewport.addEventListener('resize', () => {
         if (!bottomNavElement) return;
         
-        // যদি স্ক্রিনের উচ্চতা ১৫০ পিক্সেলের বেশি কমে যায়, তারমানে কীবোর্ড ওপেন হয়েছে
         if (window.visualViewport.height < initialViewportHeight - 150) {
             bottomNavElement.style.display = 'none';
         } else {
-            bottomNavElement.style.display = '';
-            // স্ক্রিন রোটেট করলে বা কীবোর্ড অফ হলে নতুন হাইট আপডেট করবে
+            // Toggle On থাকলে যেন পুনরায় Show না হয়
+            if (!headerToggleBtn.checked) {
+                bottomNavElement.style.display = '';
+            }
             initialViewportHeight = window.visualViewport.height; 
         }
     });
-}      // Scroll Lock Fix
+}
+
+// Scroll Lock Fix
 document.addEventListener('touchmove', function(e) {
     if (!e.target.closest('#chatContainer, .overflow-y-auto, .overflow-x-auto, textarea, .hide-scrollbar')) {
         if (e.cancelable) e.preventDefault();
