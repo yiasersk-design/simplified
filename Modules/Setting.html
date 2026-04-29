@@ -318,16 +318,50 @@ window.closeApiPage = function() {
 };
 
 window.saveApiFromPage = function() {
-    const name = document.getElementById('apiInputName').value.trim(); const key = document.getElementById('apiInputKey').value.trim();
-    const version = document.getElementById('apiInputVersion').value.trim(); const endpoint = document.getElementById('apiInputEndpoint').value.trim();
-    if (!name) { showToast('API Name দিতে হবে।', 'error'); return; } if (!key) { showToast('API Key দিতে হবে।', 'error'); return; }
-    const data = getProfileData(); const editIndex = parseInt(document.getElementById('apiEditIndex').value);
+    const name = document.getElementById('apiInputName').value.trim(); 
+    const key = document.getElementById('apiInputKey').value.trim();
+    const version = document.getElementById('apiInputVersion').value.trim(); 
+    const endpoint = document.getElementById('apiInputEndpoint').value.trim();
+    
+    if (!name) { showToast('API Name দিতে হবে।', 'error'); return; } 
+    if (!key) { showToast('API Key দিতে হবে।', 'error'); return; }
+    
+    const data = getProfileData(); 
+    const editIndex = parseInt(document.getElementById('apiEditIndex').value);
     const apiObj = { name, key, version, endpoint, isActive: false };
-    if (editIndex > -1) { apiObj.isActive = data.apis[editIndex].isActive; data.apis[editIndex] = apiObj; showToast('API আপডেট হয়েছে!', 'success'); } 
-    else { if (data.apis.length === 0) apiObj.isActive = true; data.apis.push(apiObj); showToast('নতুন API যুক্ত হয়েছে!', 'success'); }
-    saveProfileData(data); closeApiPage(); renderProfilePage(); openApiConfigPage();
+    
+    if (editIndex > -1) { 
+        apiObj.isActive = data.apis[editIndex].isActive; 
+        data.apis[editIndex] = apiObj; 
+        showToast('API আপডেট হয়েছে!', 'success'); 
+    } else { 
+        if (data.apis.length === 0) apiObj.isActive = true; 
+        data.apis.push(apiObj); 
+        showToast('নতুন API যুক্ত হয়েছে!', 'success'); 
+    }
+    
+    if (apiObj.isActive) {
+        localStorage.setItem('metaAINotes_activeModel', apiObj.version || apiObj.name);
+    }
+    
+    saveProfileData(data); 
+    closeApiPage(); 
+    renderProfilePage(); 
+    openApiConfigPage();
 };
-window.setActiveApi = function(index) { const data = getProfileData(); data.apis.forEach((a, i) => a.isActive = (i === index)); saveProfileData(data); renderProfilePage(); openApiConfigPage(); showToast(`"${data.apis[index].name}" সক্রিয় করা হয়েছে!`, 'success'); };
+
+window.setActiveApi = function(index) { 
+    const data = getProfileData(); 
+    data.apis.forEach((a, i) => a.isActive = (i === index)); 
+    
+    const activeModel = data.apis[index].version || data.apis[index].name;
+    localStorage.setItem('metaAINotes_activeModel', activeModel);
+    
+    saveProfileData(data); 
+    renderProfilePage(); 
+    openApiConfigPage(); 
+    showToast(`"${data.apis[index].name}" সক্রিয় করা হয়েছে!`, 'success'); 
+};
 window.deleteApi = function(index) { if (!confirm('এই API টি মুছে দিতে চান?')) return; const data = getProfileData(); const wasActive = data.apis[index].isActive; data.apis.splice(index, 1); if (wasActive && data.apis.length > 0) data.apis[0].isActive = true; saveProfileData(data); renderProfilePage(); openApiConfigPage(); showToast('API মুছে ফেলা হয়েছে!', 'success'); };
 window.toggleApiKeyVisibility = function() {
     const input = document.getElementById('apiInputKey'); const icon = document.getElementById('eyeIcon');
