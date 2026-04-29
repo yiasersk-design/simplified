@@ -688,10 +688,8 @@ window.resetSendButton = function() {
     
     chatInput.disabled = false;
     
-    // Restore the Send Icon SVG
     sendIcon.innerHTML = `<line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>`;
     
-    // Toggle audio/send icon based on input length
     if (chatInput.value.trim().length > 0) {
         audioIcon.classList.add('hidden');
         sendIcon.classList.remove('hidden');
@@ -702,12 +700,54 @@ window.resetSendButton = function() {
     chatInput.focus();
 };
 
+// Global Handler for Message Actions (Copy, Like, Dislike, Listen)
+window.handleMsgAction = function(btn, action) {
+    const wrapper = btn.closest('.flex-col');
+    const textDiv = wrapper.querySelector('.whitespace-pre-wrap');
+    // Clean markdown asterisks for better TTS and copying
+    const rawText = textDiv.innerText.replace(/\*/g, ''); 
+    
+    if (action === 'copy') {
+        navigator.clipboard.writeText(rawText).then(() => {
+            window.showToast('Copied to clipboard!', 'success');
+        });
+    } else if (action === 'like') {
+        btn.classList.toggle('text-blue-600');
+        btn.classList.toggle('fill-current');
+        const dislikeBtn = wrapper.querySelector('.btn-dislike');
+        if (dislikeBtn) dislikeBtn.classList.remove('text-red-500', 'fill-current');
+    } else if (action === 'dislike') {
+        btn.classList.toggle('text-red-500');
+        btn.classList.toggle('fill-current');
+        const likeBtn = wrapper.querySelector('.btn-like');
+        if (likeBtn) likeBtn.classList.remove('text-blue-600', 'fill-current');
+    } else if (action === 'listen') {
+        if (window.speechSynthesis.speaking) {
+            window.speechSynthesis.cancel();
+            if (btn.dataset.speaking === 'true') {
+                btn.dataset.speaking = 'false';
+                btn.classList.remove('text-green-600');
+                return;
+            }
+            document.querySelectorAll('.btn-listen').forEach(b => {
+                b.dataset.speaking = 'false';
+                b.classList.remove('text-green-600');
+            });
+        }
+        const utterance = new SpeechSynthesisUtterance(rawText);
+        utterance.onend = () => {
+            btn.dataset.speaking = 'false';
+            btn.classList.remove('text-green-600');
+        };
+        btn.dataset.speaking = 'true';
+        btn.classList.add('text-green-600');
+        window.speechSynthesis.speak(utterance);
+    }
+};
+
 function appendMessage(role, content, animate = false) {
     const chatContainer = document.getElementById('chatContainer');
-    const msgDiv = document.createElement('div');
-    msgDiv.className = `flex ${role === 'user' ? 'justify-end' : 'justify-start'} w-full mb-4 px-2`;
-    
-    const innerDiv = document.createElement('div');
+    const timeString = new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
 
     function formatText(text) {
         let html = text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
@@ -717,17 +757,57 @@ function appendMessage(role, content, animate = false) {
     }
 
     if (role === 'user') {
-        // ইউজারের মেসেজ আগের মতোই max-w-[85%] রাখা হয়েছে
-        innerDiv.className = 'max-w-[85%] px-4 py-2.5 text-[15px] bg-blue-600 text-white rounded-lg rounded-tr-sm shadow-sm whitespace-pre-wrap';
+        const msgDiv = document.createElement('div');
+        msgDiv.className = 'flex justify-end w-full mt-2 fade-in relative px-2';
+        
+        const contentContainer = document.createElement('div');
+        contentContainer.className = 'flex flex-col items-end max-w-[85%]';
+
+        const innerDiv = document.createElement('div');
+        innerDiv.className = 'user-msg-bubble select-none cursor-text bg-[#f4f4f5] border border-gray-100 shadow-sm text-gray-900 px-4 py-2.5 rounded-[12px] rounded-tr-[4px] text-[15px] font-normal leading-relaxed w-fit max-w-full inline-block break-words whitespace-pre-wrap overflow-hidden text-left transition-colors duration-200';
         innerDiv.innerHTML = formatText(content);
-        msgDiv.appendChild(innerDiv);
+        
+        const timeLabel = document.createElement('div');
+        timeLabel.className = 'text-[10px] text-gray-400 flex items-center gap-1 font-medium tracking-wide mt-1 mr-1';
+        timeLabel.innerHTML = timeString;
+
+        contentContainer.appendChild(innerDiv);
+        contentContainer.appendChild(timeLabel);
+        msgDiv.appendChild(contentContainer);
         chatContainer.appendChild(msgDiv);
         chatContainer.scrollTop = chatContainer.scrollHeight;
         saveCurrentChatState();
     } else {
-        // AI এর মেসেজ max-w-[85%] এর বদলে w-full করে Full Width করা হয়েছে
-        innerDiv.className = 'w-full px-4 py-2.5 text-[15px] bg-gray-100 border border-gray-200 text-gray-800 rounded-lg rounded-tl-sm shadow-sm whitespace-pre-wrap';
+        const msgDiv = document.createElement('div');
+        msgDiv.className = 'flex flex-col gap-1.5 w-full mt-4 fade-in px-2';
+        
+        const profileBlock = document.createElement('div');
+        profileBlock.className = 'flex items-center gap-2 pl-1 mb-1';
+        profileBlock.innerHTML = `
+            <div class="w-[26px] h-[26px] rounded-full flex items-center justify-center shadow-sm ring-2 ring-white overflow-hidden bg-black">
+                <video src="https://raw.githubusercontent.com/yiasersk-design/Logo-/main/bob_luo.mp4" autoplay loop muted playsinline class="w-full h-full object-cover"></video>
+            </div>
+            <span class="text-[13px] font-bold text-gray-800 tracking-wide">Meta AI</span>
+        `;
+
+        const innerDiv = document.createElement('div');
+        innerDiv.className = 'text-[15px] text-gray-900 font-normal leading-[1.4] pl-9 cursor-text max-w-full break-words whitespace-pre-wrap overflow-hidden';
+        
+        const actionDiv = document.createElement('div');
+        actionDiv.className = 'flex justify-between items-center w-full pl-9 pr-2 mt-1 opacity-0 transition-opacity duration-300';
+        actionDiv.innerHTML = `
+            <div class="flex gap-[16px] text-gray-400 cursor-default">
+                <button onclick="handleMsgAction(this, 'copy')" class="hover:text-blue-600 transition-colors focus:outline-none" title="Copy"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="w-[18px] h-[18px]"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg></button>
+                <button onclick="handleMsgAction(this, 'listen')" class="btn-listen hover:text-purple-500 transition-colors focus:outline-none" title="Listen"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="w-[18px] h-[18px]"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path></svg></button>
+                <button onclick="handleMsgAction(this, 'like')" class="btn-like hover:text-green-500 transition-colors focus:outline-none" title="Like"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="w-[18px] h-[18px]"><path d="M7 10v12"/><path d="M15 5.88 14 10h5.83a2 2 0 0 1 1.92 2.56l-2.33 8A2 2 0 0 1 17.5 22H4a2 2 0 0 1-2-2v-8a2 2 0 0 1 2-2h2.76a2 2 0 0 0-1.79-1.11L12 2h0a3.13 3.13 0 0 1 3 3.88Z"/></svg></button>
+                <button onclick="handleMsgAction(this, 'dislike')" class="btn-dislike hover:text-red-500 transition-colors focus:outline-none" title="Dislike"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="w-[18px] h-[18px]"><path d="M17 14V2"/><path d="M9 18.12 10 14H4.17a2 2 0 0 1-1.92-2.56l2.33-8A2 2 0 0 1 6.5 2H20a2 2 0 0 1 2 2v8a2 2 0 0 1-2-2h-2.76a2 2 0 0 0-1.79 1.11L12 22h0a3.13 3.13 0 0 1-3-3.88Z"/></svg></button>
+            </div>
+            <span class="text-[10px] text-gray-400 font-medium tracking-wide">${timeString}</span>
+        `;
+        
+        msgDiv.appendChild(profileBlock);
         msgDiv.appendChild(innerDiv);
+        msgDiv.appendChild(actionDiv);
         chatContainer.appendChild(msgDiv);
         
         if (animate) {
@@ -736,8 +816,8 @@ function appendMessage(role, content, animate = false) {
             const typingSpeed = 15; 
             
             function typeChar() {
-                // Check if user clicked pause to stop typing immediately
                 if (window.stopTypingFlag) {
+                    actionDiv.classList.remove('opacity-0');
                     saveCurrentChatState();
                     window.resetSendButton();
                     return;
@@ -749,13 +829,15 @@ function appendMessage(role, content, animate = false) {
                     chatContainer.scrollTop = chatContainer.scrollHeight; 
                     setTimeout(typeChar, typingSpeed);
                 } else {
+                    actionDiv.classList.remove('opacity-0');
                     saveCurrentChatState(); 
-                    window.resetSendButton(); // Auto reset when naturally completed
+                    window.resetSendButton(); 
                 }
             }
             typeChar();
         } else {
             innerDiv.innerHTML = formatText(content);
+            actionDiv.classList.remove('opacity-0');
             chatContainer.scrollTop = chatContainer.scrollHeight;
             saveCurrentChatState();
             window.resetSendButton();
@@ -764,14 +846,12 @@ function appendMessage(role, content, animate = false) {
 }
 
 async function handleSendMessage() {
-    // If AI is currently generating and user clicks the button (Pause action)
     if (window.isGenerating) {
         if (window.currentAbortController) {
-            window.currentAbortController.abort(); // Cancel the API request
+            window.currentAbortController.abort();
         }
-        window.stopTypingFlag = true; // Stop typing animation
+        window.stopTypingFlag = true; 
         
-        // Remove loading animation if it is still loading
         const existingLoader = document.querySelector('[id^="loading-"]');
         if (existingLoader) {
             existingLoader.remove();
@@ -795,7 +875,6 @@ async function handleSendMessage() {
     chatInput.value = '';
     chatInput.style.height = 'auto';
     
-    // Set system to Generating State
     window.isGenerating = true;
     window.stopTypingFlag = false;
     window.currentAbortController = new AbortController();
@@ -805,7 +884,6 @@ async function handleSendMessage() {
     const sendIcon = document.getElementById('sendIcon');
     const audioIcon = document.getElementById('audioIcon');
     
-    // Show Send Icon area and inject Pause SVG
     audioIcon.classList.add('hidden');
     sendIcon.classList.remove('hidden');
     sendIcon.innerHTML = `<rect x="6" y="4" width="4" height="16"></rect><rect x="14" y="4" width="4" height="16"></rect>`;
@@ -813,13 +891,12 @@ async function handleSendMessage() {
     const loadingId = 'loading-' + Date.now();
     const loadingDiv = document.createElement('div');
     loadingDiv.id = loadingId;
-    loadingDiv.className = 'flex justify-start w-full mb-4 px-2';
-    // লোডিং অ্যানিমেশন বক্সেও max-w-[85%] এর বদলে w-full ব্যবহার করা হয়েছে
-    loadingDiv.innerHTML = `<div class="w-full px-4 py-3 rounded-lg bg-gray-100 border border-gray-200 text-gray-500 rounded-tl-sm flex items-center gap-2 shadow-sm">
-        <span class="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></span>
-        <span class="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style="animation-delay: 0.2s"></span>
-        <span class="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style="animation-delay: 0.4s"></span>
-    </div>`;
+    loadingDiv.className = 'flex items-center gap-1.5 bg-transparent px-4 py-3.5 rounded-[1.25rem] w-max fade-in mt-4 ml-1';
+    loadingDiv.innerHTML = `
+        <div class="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></div>
+        <div class="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style="animation-delay: 0.15s"></div>
+        <div class="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style="animation-delay: 0.3s"></div>
+    `;
     document.getElementById('chatContainer').appendChild(loadingDiv);
     document.getElementById('chatContainer').scrollTop = document.getElementById('chatContainer').scrollHeight;
 
@@ -852,10 +929,10 @@ Goal: Make every response Clean, Structured, Compact, and Easy to read.`;
                     { role: 'user', content: message }
                 ]
             }),
-            signal: window.currentAbortController.signal // Added signal for AbortController
+            signal: window.currentAbortController.signal 
         });
 
-        if (window.stopTypingFlag) return; // Ignore if user already aborted
+        if (window.stopTypingFlag) return; 
 
         const data = await response.json();
         const loader = document.getElementById(loadingId);
@@ -872,7 +949,6 @@ Goal: Make every response Clean, Structured, Compact, and Easy to read.`;
         }
     } catch (error) {
         if (error.name === 'AbortError') {
-            // User manually paused/aborted the fetch request
             console.log('AI Generation Stopped By User');
         } else {
             const loader = document.getElementById(loadingId);
