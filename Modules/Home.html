@@ -672,6 +672,144 @@ document.addEventListener('touchmove', function(e) {
         if (e.cancelable) e.preventDefault();
     }
 }, { passive: false });
-</script>
+    function getActiveApiConfig() {
+    const profileData = JSON.parse(localStorage.getItem('metaAINotes_profileData') || '{"apis":[]}');
+    const activeApi = profileData.apis.find(api => api.isActive);
+    if (!activeApi && profileData.apis.length > 0) return profileData.apis[0];
+    return activeApi;
+}
+
+function saveCurrentChatState() {
+    if (!currentSessionId) return;
+    const sessionIndex = chatSessions.findIndex(s => s.id === currentSessionId);
+    if (sessionIndex !== -1) {
+        const containerHtml = document.getElementById('chatContainer').innerHTML;
+        chatSessions[sessionIndex].chatHTML = containerHtml;
+        
+        if (chatSessions[sessionIndex].title === "New Note" && containerHtml.length > 50) {
+            const firstUserMessage = document.querySelector('#chatContainer > div > div.bg-blue-600');
+            if (firstUserMessage) {
+                chatSessions[sessionIndex].title = firstUserMessage.innerText.substring(0, 20) + '...';
+                updateSidebarList();
+            }
+        }
+        localStorage.setItem('metaAINotes_sessions', JSON.stringify(chatSessions));
+    }
+}
+
+function appendMessage(role, content) {
+    const chatContainer = document.getElementById('chatContainer');
+    const msgDiv = document.createElement('div');
+    msgDiv.className = `flex ${role === 'user' ? 'justify-end' : 'justify-start'} w-full mb-4 px-2`;
+    
+    const innerDiv = document.createElement('div');
+    if (role === 'user') {
+        innerDiv.className = 'max-w-[85%] px-4 py-2.5 text-[15px] bg-blue-600 text-white rounded-2xl rounded-tr-sm shadow-sm';
+    } else {
+        innerDiv.className = 'max-w-[85%] px-4 py-2.5 text-[15px] bg-gray-100 border border-gray-200 text-gray-800 rounded-2xl rounded-tl-sm shadow-sm whitespace-pre-wrap';
+    }
+    
+    innerDiv.innerText = content;
+    msgDiv.appendChild(innerDiv);
+    chatContainer.appendChild(msgDiv);
+    chatContainer.scrollTop = chatContainer.scrollHeight;
+    
+    saveCurrentChatState();
+}
+
+async function handleSendMessage() {
+    const chatInput = document.getElementById('chatInput');
+    const message = chatInput.value.trim();
+    if (!message) return;
+    
+    const apiConfig = getActiveApiConfig();
+    if (!apiConfig || !apiConfig.key) {
+        showToast('দয়া করে Settings থেকে একটি API Model যুক্ত ও সিলেক্ট করুন।', 'error');
+        return;
+    }
+
+    appendMessage('user', message);
+    chatInput.value = '';
+    chatInput.style.height = 'auto';
+    
+    chatInput.disabled = true;
+    const sendBtn = document.getElementById('sendBtn');
+    sendBtn.classList.add('opacity-50', 'pointer-events-none');
+    document.getElementById('audioIcon').classList.remove('hidden');
+    document.getElementById('sendIcon').classList.add('hidden');
+    
+    const loadingId = 'loading-' + Date.now();
+    const loadingDiv = document.createElement('div');
+    loadingDiv.id = loadingId;
+    loadingDiv.className = 'flex justify-start w-full mb-4 px-2';
+    loadingDiv.innerHTML = `<div class="max-w-[85%] px-4 py-3 rounded-2xl bg-gray-100 border border-gray-200 text-gray-500 rounded-tl-sm flex items-center gap-2 shadow-sm">
+        <span class="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></span>
+        <span class="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style="animation-delay: 0.2s"></span>
+        <span class="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style="animation-delay: 0.4s"></span>
+    </div>`;
+    document.getElementById('chatContainer').appendChild(loadingDiv);
+    document.getElementById('chatContainer').scrollTop = document.getElementById('chatContainer').scrollHeight;
+
+    try {
+        const endpoint = apiConfig.endpoint || 'https://api.openai.com/v1/chat/completions';
+        const modelVersion = apiConfig.version || 'gpt-3.5-turbo';
+        
+        const response = await fetch(endpoint, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${apiConfig.key}`
+            },
+            body: JSON.stringify({
+                model: modelVersion,
+                messages: [{ role: 'user', content: message }]
+            })
+        });
+
+        const data = await response.json();
+        document.getElementById(loadingId).remove();
+        
+        if (response.ok && data.choices && data.choices.length > 0) {
+            const reply = data.choices[0].message.content;
+            appendMessage('assistant', reply);
+        } else {
+            const errorMsg = data.error ? data.error.message : 'Unknown API Error';
+            appendMessage('assistant', `⚠️ API Error: ${errorMsg}`);
+            showToast('API রেসপন্স পেতে সমস্যা হয়েছে।', 'error');
+        }
+    } catch (error) {
+        document.getElementById(loadingId).remove();
+        appendMessage('assistant', `⚠️ Network Error: ${error.message}`);
+        showToast('নেটওয়ার্ক বা API সমস্যা।', 'error');
+    } finally {
+        chatInput.disabled = false;
+        sendBtn.classList.remove('opacity-50', 'pointer-events-none');
+        chatInput.focus();
+        saveCurrentChatState();
+    }
+}
+
+document.getElementById('sendBtn').addEventListener('click', handleSendMessage);
+
+document.getElementById('chatInput').addEventListener('keydown', function(e) {
+    if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        handleSendMessage();
+    }
+});
+
+document.getElementById('chatInput').addEventListener('input', function() {
+    const audioIcon = document.getElementById('audioIcon');
+    const sendIcon = document.getElementById('sendIcon');
+    if (this.value.trim().length > 0) {
+        audioIcon.classList.add('hidden');
+        sendIcon.classList.remove('hidden');
+    } else {
+        audioIcon.classList.remove('hidden');
+        sendIcon.classList.add('hidden');
+    }
+    this.style.height = 'auto';
+    this.style.height = (this.scrollHeight) + 'px';
+});      </script>
 </body>
 </html>
