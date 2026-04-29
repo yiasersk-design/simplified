@@ -259,11 +259,8 @@
         <div id="jevisAvatarOverlay" class="absolute inset-0 z-[100] bg-white overflow-hidden text-left slide-up">
             
             <div id="avatar-container" class="frame-square">
-                <video id="intro-idle" muted playsinline preload="auto"></video>
-                <video id="thinking-loop" muted playsinline preload="auto"></video>
-                <video id="talking-start" muted playsinline preload="auto"></video>
-                <video id="talking-loop" muted playsinline preload="auto"></video>
-                <video id="ending-idle" muted playsinline preload="auto"></video>
+                <!-- Single Video Element -->
+                <video id="main-avatar-video" muted playsinline preload="auto"></video>
             </div>
 
             <div id="video-call-ui">
@@ -416,21 +413,50 @@ document.addEventListener('touchmove', function(e) {
     const overlay = document.getElementById('jevisAvatarOverlay');
     const getEl = (id) => overlay.querySelector('#' + id);
 
-    const VIDEO_PATHS = {
-        introIdle: "https://cdn.jsdelivr.net/gh/yiasersk-design/Asset@main/puse.mp4",  
-        thinkingLoop: "https://cdn.jsdelivr.net/gh/yiasersk-design/Asset@main/thinking.mp4",
-        talkingStart: "https://cdn.jsdelivr.net/gh/yiasersk-design/Asset@main/talk.mp4",  
-        talkingLoop: "https://cdn.jsdelivr.net/gh/yiasersk-design/Asset@main/talking.mp4",   
-        endingIdle: "https://cdn.jsdelivr.net/gh/yiasersk-design/Asset@main/puse.mp4"     
-    };
-    
     let currentActiveModelKey = localStorage.getItem('metaAINotes_activeModel') || ""; 
 
-    const videos = {
-        introIdle: getEl('intro-idle'), thinkingLoop: getEl('thinking-loop'),
-        talkingStart: getEl('talking-start'), talkingLoop: getEl('talking-loop'), endingIdle: getEl('ending-idle')
-    };
+    // Single video architecture
+    const mainAvatarVideo = getEl('main-avatar-video');
+    let currentVideoState = 'introIdle';
     
+    // Define the segments exactly matching 5.2 seconds interval
+    const segments = {
+        introIdle: { start: 0.0, end: 5.2 },
+        thinkingLoop: { start: 5.2, end: 10.4 },
+        talkingStart: { start: 10.4, end: 15.6, next: 'talkingLoop' },
+        talkingLoop: { start: 15.6, end: 20.8 },
+        endingIdle: { start: 0.0, end: 5.2 }
+    };
+
+    let isAnimating = false;
+    function loopVideoSegment() {
+        if (!isAnimating) return;
+        const seg = segments[currentVideoState];
+        if (seg && mainAvatarVideo.currentTime >= seg.end - 0.05) { 
+            if (seg.next) {
+                currentVideoState = seg.next;
+                mainAvatarVideo.currentTime = segments[seg.next].start;
+            } else {
+                mainAvatarVideo.currentTime = seg.start;
+            }
+            mainAvatarVideo.play().catch(e => console.log(e));
+        } else if (seg && mainAvatarVideo.currentTime < seg.start) {
+            mainAvatarVideo.currentTime = seg.start;
+        }
+        requestAnimationFrame(loopVideoSegment);
+    }
+
+    mainAvatarVideo.addEventListener('play', () => {
+        if (!isAnimating) {
+            isAnimating = true;
+            requestAnimationFrame(loopVideoSegment);
+        }
+    });
+    
+    mainAvatarVideo.addEventListener('pause', () => {
+        isAnimating = false;
+    });
+
     const mainMicBtn = getEl('main-mic-btn');
     const jevisChatDiv = getEl('chat');
     const jevisUserInput = getEl('user-input');
@@ -466,7 +492,7 @@ document.addEventListener('touchmove', function(e) {
     });
 
     getEl('btn-clear-chat').addEventListener('click', () => {
-        conversation = [];
+        conversation =[];
         localStorage.removeItem('jevis_conversation');
         jevisChatDiv.innerHTML = '';
         if (window.showToast) window.showToast('Chat history cleared!', 'success');
@@ -486,9 +512,8 @@ document.addEventListener('touchmove', function(e) {
                 if (globalCharIndex >= currentFullText.length) {
                     globalCharIndex = 0; localCharIndex = 0; startTimer(); 
                     switchToVideo('talkingStart');
-                    videos.talkingStart.onended = () => { videos.talkingStart.onended = null; switchToVideo('talkingLoop'); };
                 } else {
-                    if (videos.talkingLoop.classList.contains('active')) videos.talkingLoop.play();
+                    if (currentVideoState === 'talkingLoop' || currentVideoState === 'talkingStart') mainAvatarVideo.play();
                 }
                 playAudioChunk(); 
             } else {
@@ -496,7 +521,7 @@ document.addEventListener('touchmove', function(e) {
                 getEl('icon-pause').style.display = 'none'; getEl('icon-play').style.display = 'block';
                 globalCharIndex += localCharIndex; speechSynthesis.cancel(); 
                 if(captionFallbackTimer) clearInterval(captionFallbackTimer);
-                if (videos.talkingLoop.classList.contains('active')) videos.talkingLoop.pause();
+                if (currentVideoState === 'talkingLoop' || currentVideoState === 'talkingStart') mainAvatarVideo.pause();
             }
         }
     });
@@ -542,41 +567,30 @@ document.addEventListener('touchmove', function(e) {
     }
 
     async function initVideos() {
-        const introUrl = await preloadVideoAsBlob(VIDEO_PATHS['introIdle'], 'introIdle');
-        videos['introIdle'].src = introUrl; 
-        videos['introIdle'].muted = true; 
-        videos['introIdle'].playsInline = true;
-        videos['introIdle'].preload = "auto"; 
-        videos['introIdle'].load();
-        videos['introIdle'].classList.add('active'); 
+        const videoUrl = "https://raw.githubusercontent.com/yiasersk-design/Avatar/main/yvatar.mp4";
+        const blobUrl = await preloadVideoAsBlob(videoUrl, 'yvatar');
+        
+        mainAvatarVideo.src = blobUrl; 
+        mainAvatarVideo.muted = true; 
+        mainAvatarVideo.playsInline = true;
+        mainAvatarVideo.preload = "auto"; 
+        mainAvatarVideo.load();
+        mainAvatarVideo.classList.add('active'); 
         switchToVideo('introIdle');
-
-        const otherKeys =['thinkingLoop', 'talkingStart', 'talkingLoop', 'endingIdle'];
-        otherKeys.forEach(key => {
-            preloadVideoAsBlob(VIDEO_PATHS[key], key).then(blobUrl => {
-                const video = videos[key];
-                video.src = blobUrl; 
-                video.muted = true; 
-                video.playsInline = true;
-                video.preload = "auto"; 
-                video.load();
-            });
-        });
     }
 
     async function switchToVideo(type) {
-        const targetVideo = videos[type];
-        if (targetVideo.classList.contains('active')) return;
-        targetVideo.currentTime = 0;
-        targetVideo.loop = (type === 'introIdle' || type === 'talkingLoop' || type === 'thinkingLoop');
+        if (currentVideoState === type && !mainAvatarVideo.paused) return;
+        currentVideoState = type;
+        const seg = segments[type];
+        
+        if (mainAvatarVideo.currentTime < seg.start || mainAvatarVideo.currentTime >= seg.end) {
+            mainAvatarVideo.currentTime = seg.start;
+        }
+        
         try {
-            await targetVideo.play(); targetVideo.classList.add('active');
-            Object.values(videos).forEach(v => {
-                if (v !== targetVideo) {
-                    v.classList.remove('active');
-                    setTimeout(() => { if (!v.classList.contains('active')) v.pause(); }, 50); 
-                }
-            });
+            await mainAvatarVideo.play(); 
+            mainAvatarVideo.classList.add('active');
         } catch(e) {}
     }
 
@@ -909,7 +923,6 @@ Goal: Make every response Clean, Structured, Compact, and Easy to read.`;
     function startTalkingSequence(text) {
         currentFullText = text; globalCharIndex = 0; localCharIndex = 0;
         switchToVideo('talkingStart');
-        videos.talkingStart.onended = () => { videos.talkingStart.onended = null; switchToVideo('talkingLoop'); };
         
         captionBox.classList.add('active'); 
         playAudioChunk();
@@ -993,16 +1006,9 @@ Goal: Make every response Clean, Structured, Compact, and Easy to read.`;
     }
 
     function finishTalkingSequence() {
-        if (videos.talkingLoop.classList.contains('active')) {
-            videos.talkingLoop.style.transition = 'none'; 
-            videos.talkingLoop.style.opacity = '0'; 
-            videos.talkingLoop.pause();
-        }
-        if (videos.talkingStart.classList.contains('active')) {
-            videos.talkingStart.style.transition = 'none';
-            videos.talkingStart.style.opacity = '0';
-            videos.talkingStart.pause();
-        }
+        mainAvatarVideo.style.transition = 'none';
+        mainAvatarVideo.style.opacity = '0';
+        mainAvatarVideo.pause();
 
         switchToVideo('introIdle');
         isProcessing = false; 
@@ -1015,10 +1021,8 @@ Goal: Make every response Clean, Structured, Compact, and Easy to read.`;
         getEl('send-btn').innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="w-5 h-5"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>`;
         
         setTimeout(() => {
-            videos.talkingLoop.style.transition = '';
-            videos.talkingLoop.style.opacity = '';
-            videos.talkingStart.style.transition = '';
-            videos.talkingStart.style.opacity = '';
+            mainAvatarVideo.style.transition = '';
+            mainAvatarVideo.style.opacity = '1';
         }, 50);
 
         setTimeout(() => {
