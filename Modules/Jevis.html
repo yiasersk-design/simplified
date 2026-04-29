@@ -631,7 +631,7 @@ document.addEventListener('touchmove', function(e) {
             contentContainer.appendChild(timeLabel);
             msgWrapper.appendChild(contentContainer); 
             jevisChatDiv.appendChild(msgWrapper);
-        } else if (role === 'assistant') {
+                } else if (role === 'assistant') {
             const aiWrapper = document.createElement('div'); 
             aiWrapper.className = 'flex flex-col gap-1.5 w-full mt-4 fade-in px-1';
             
@@ -659,11 +659,9 @@ document.addEventListener('touchmove', function(e) {
                 <span class="text-[13px] font-bold text-gray-800 tracking-wide w-full">Jevis AI</span>
             `;
 
-
             const textBlock = document.createElement('div'); 
             textBlock.className = 'w-full text-[15px] text-gray-900 font-normal leading-[1.4] cursor-text break-words whitespace-pre-wrap overflow-hidden'; 
             textBlock.dataset.rawText = text;
-            textBlock.innerHTML = formattedHtml;
             
             const timeString = new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
             const actionsBlock = document.createElement('div'); 
@@ -682,7 +680,48 @@ document.addEventListener('touchmove', function(e) {
             aiWrapper.appendChild(textBlock); 
             aiWrapper.appendChild(actionsBlock); 
             jevisChatDiv.appendChild(aiWrapper); 
+
+            // Typing Animation Logic
+            if (preventScroll === true) {
+                // If loading from history, show text instantly without animation
+                textBlock.innerHTML = formattedHtml;
+            } else {
+                let charIndex = 0;
+                let isTag = false;
+                let currentHTML = "";
+                
+                function typeWriter() {
+                    // If user manually stops generation, finish typing instantly
+                    if (!isProcessing) {
+                        textBlock.innerHTML = formattedHtml;
+                        jevisChatDiv.scrollTop = jevisChatDiv.scrollHeight;
+                        return;
+                    }
+
+                    if (charIndex < formattedHtml.length) {
+                        if (formattedHtml.charAt(charIndex) === '<') isTag = true;
+                        
+                        currentHTML += formattedHtml.charAt(charIndex);
+                        charIndex++;
+                        
+                        if (isTag) {
+                            if (formattedHtml.charAt(charIndex - 1) === '>') isTag = false;
+                            typeWriter(); // Skip delays for HTML tags
+                        } else {
+                            // Render current text + a blinking cursor
+                            textBlock.innerHTML = currentHTML + '<span class="inline-block w-[2px] h-[15px] bg-blue-500 ml-[2px] align-middle animate-pulse"></span>';
+                            jevisChatDiv.scrollTop = jevisChatDiv.scrollHeight;
+                            setTimeout(typeWriter, 15); // Adjust typing speed here (15ms)
+                        }
+                    } else {
+                        // Typing complete, remove cursor
+                        textBlock.innerHTML = formattedHtml;
+                    }
+                }
+                typeWriter();
+            }
         }
+
 
         if (preventScroll !== true) {
             jevisChatDiv.scrollTop = jevisChatDiv.scrollHeight;
@@ -798,8 +837,9 @@ Goal: Make every response Clean, Structured, Compact, and Easy to read.`;
             let requestBody = JSON.stringify({ model: activeConfig.version || "gpt-4o", messages: messagesPayload, temperature: 0.7, max_tokens: 400 });
             const apiEndpoint = activeConfig.endpoint || "https://api.openai.com/v1/chat/completions";
 
-            const controller = new AbortController(); const timeoutId = setTimeout(() => controller.abort(), 20000);
-            const response = await fetch(apiEndpoint, { method: 'POST', headers: requestHeaders, body: requestBody, signal: controller.signal });
+            window.jevisFetchController = new AbortController(); 
+            const timeoutId = setTimeout(() => window.jevisFetchController.abort(), 20000);
+            const response = await fetch(apiEndpoint, { method: 'POST', headers: requestHeaders, body: requestBody, signal: window.jevisFetchController.signal });
             clearTimeout(timeoutId);
             
             if (!response.ok) throw new Error("API Error: " + response.status);
@@ -811,19 +851,44 @@ Goal: Make every response Clean, Structured, Compact, and Easy to read.`;
             addMessageToChat('assistant', assistantText); startTalkingSequence(assistantText);
         } catch (err) {
             let errorText = "Network Error! Server might be busy. Please try again.";
-            if (err.name === 'AbortError') errorText = "Request Timed Out!";
+            if (err.name === 'AbortError') errorText = "Generation Stopped!";
             addMessageToChat('assistant', "⚠️ " + errorText); switchToVideo('introIdle'); isProcessing = false;
-            if ('speechSynthesis' in window) { let u = new SpeechSynthesisUtterance("Sorry, I am facing a network issue."); u.lang = 'en-IN'; speechSynthesis.speak(u); }
+            
+            getEl('send-btn').innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="w-5 h-5"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>`;
+            const allLoaders = document.querySelectorAll('.jevis-loader');
+            allLoaders.forEach(loader => loader.classList.add('stopped'));
+
+            if ('speechSynthesis' in window && err.name !== 'AbortError') { let u = new SpeechSynthesisUtterance("Sorry, I am facing a network issue."); u.lang = 'en-IN'; speechSynthesis.speak(u); }
         }
     }
 
+
     getEl('send-btn').addEventListener('click', () => {
         if (isProcessing) {
-            if (window.showToast) window.showToast('Please wait for Jevis to finish...', 'error');
+            // যদি এআই প্রসেসিং অবস্থায় থাকে তবে اسے স্টপ করবে
+            if (window.jevisFetchController) window.jevisFetchController.abort();
+            if ('speechSynthesis' in window) speechSynthesis.cancel();
+            if (captionFallbackTimer) clearInterval(captionFallbackTimer);
+            
+            isProcessing = false;
+            switchToVideo('introIdle');
+            
+            // আইকন আবার সেন্ড এন্ট্রি তে নিয়ে আসবে
+            getEl('send-btn').innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="w-5 h-5"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>`;
+            
+            // প্রোফাইলের অ্যানিমেশন স্টপ করবে
+            const allLoaders = document.querySelectorAll('.jevis-loader');
+            allLoaders.forEach(loader => loader.classList.add('stopped'));
+            
+            if (window.showToast) window.showToast('Jevis stopped!', 'success');
             return;
         }
+
         const val = jevisUserInput.value.trim();
         if(val) {
+            // মেসেজ সেন্ড করার সাথে সাথে আইকন পজ-এ রূপান্তর হবে
+            getEl('send-btn').innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5"><rect x="6" y="4" width="4" height="16"></rect><rect x="14" y="4" width="4" height="16"></rect></svg>`;
+            
             jevisUserInput.value = '';
             jevisUserInput.style.height = 'auto';
             processMessage(val);
@@ -836,6 +901,7 @@ Goal: Make every response Clean, Structured, Compact, and Easy to read.`;
             getEl('send-btn').click();
         }
     });
+
 
     jevisUserInput.addEventListener('input', function() {
         this.style.height = 'auto';
@@ -948,6 +1014,9 @@ Goal: Make every response Clean, Structured, Compact, and Easy to read.`;
         const allLoaders = document.querySelectorAll('.jevis-loader');
         allLoaders.forEach(loader => loader.classList.add('stopped'));
         
+        // কথা বলা শেষ হলে সেন্ড আইকন আবার রিস্টোর করবে
+        getEl('send-btn').innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="w-5 h-5"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>`;
+        
         setTimeout(() => {
             videos.talkingLoop.style.transition = '';
             videos.talkingLoop.style.opacity = '';
@@ -965,6 +1034,7 @@ Goal: Make every response Clean, Structured, Compact, and Easy to read.`;
         getEl('icon-play').style.display = 'block';
         if (currentFullText) globalCharIndex = currentFullText.length;
     }
+
 
 
     function populateVoiceList() {
