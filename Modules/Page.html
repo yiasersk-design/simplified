@@ -1,0 +1,1747 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Music Player UI with A4 Templates</title>
+    
+    <!-- Google Fonts & Material Symbols -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&family=Hind+Siliguri:wght@300;400;500;600;700&family=Noto+Serif+Bengali:wght@400;500;600;700&family=Baloo+Da+2:wght@400;500;600;700;800&family=Kalpurush&family=Anek+Bangla:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Tiro Bangla Font for Templates -->
+    <link href="https://fonts.googleapis.com/css2?family=Tiro+Bangla:ital@0;1&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0" />
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            background-color: #f3f4f6;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            height: 100dvh;
+            width: 100vw;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            overflow: hidden; 
+        }
+
+        .player-container {
+            background-color: #ffffff; 
+            width: 100%;
+            max-width: 460px; 
+            padding: 15px 10px 20px 10px; 
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            color: #1f2937;
+            position: relative;
+            overflow: hidden;
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        /* --- নেভিগেশন বার --- */
+        .nav-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-top: -8px;
+            margin-bottom: 10px;
+            flex-shrink: 0;
+            height: 45px; 
+        }
+
+        .nav-btn {
+            background: none;
+            border: none;
+            color: #1f2937;
+            cursor: pointer;
+            padding: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            transition: background 0.2s;
+        }
+
+        .back-nav-btn {
+            position: relative;
+            top: 0px;    
+            left: 0px; 
+            z-index: 10;
+        }
+
+        .back-nav-btn svg {
+            width: 32px; 
+            height: 32px;
+        }
+
+        .more-menu-btn {
+            position: relative; 
+            top: 0px;    
+            z-index: 10;
+        }
+
+        .more-menu-btn svg {
+            width: 24px;
+            height: 24px;
+        }
+
+        .nav-btn:active {
+            background: rgba(0, 0, 0, 0.08);
+        }
+
+        /* অ্যালবাম আর্ট বক্স */
+        .album-art-container {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            min-height: 0;
+            margin-bottom: 15px;
+            overflow-x: auto;
+            scroll-snap-type: x mandatory;
+            scrollbar-width: none;
+            gap: 15px;
+            transform-style: preserve-3d;
+            perspective: 1000px;
+        }
+
+        .album-art-container::-webkit-scrollbar {
+            display: none;
+        }
+
+        .album-art {
+            position: relative;
+            flex: 0 0 100%; 
+            width: 100%;
+            max-width: 100%;
+            aspect-ratio: 21 / 29; 
+            max-height: 100%;
+            border-radius: 6px; 
+            transition: transform 500ms cubic-bezier(0.175, 0.885, 0.32, 1.1), z-index 500ms;
+            scroll-snap-align: center;
+            transform: scale(0.88);
+            z-index: 1;
+            cursor: pointer;
+            overflow: hidden; /* For Magic Border */
+        }
+
+        /* --- Hover/Swipe Active লজিক --- */
+        .album-art.active {
+            transform: scale(1.0); 
+            z-index: 99999;
+        }
+
+        .album-art.active + .album-art {
+            transform: scale(0.92);
+            z-index: 9999;
+        }
+
+        .album-art.active + .album-art + .album-art {
+            transform: scale(0.84);
+            z-index: 999;
+        }
+
+        .album-art:has(+ .album-art.active) {
+            transform: scale(0.92);
+            z-index: 9999;
+        }
+
+        .album-art:has(+ .album-art + .album-art.active) {
+            transform: scale(0.84);
+            z-index: 999;
+        }
+
+        /* =========================================
+           Magic Border (Google Color Palette) Feature
+           ========================================= */
+        @keyframes spin-magic {
+            0% { transform: translate(-50%, -50%) rotate(0deg); }
+            100% { transform: translate(-50%, -50%) rotate(360deg); }
+        }
+
+        .album-art.magic-border-active::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 200%;
+            height: 200%;
+            /* Google Colors: Blue, Red, Yellow, Green */
+            background: conic-gradient(
+                from 0deg,
+                transparent 0deg,
+                transparent 280deg,
+                #4285F4 300deg,
+                #EA4335 320deg,
+                #FBBC05 340deg,
+                #34A853 360deg
+            );
+            animation: spin-magic 2.5s linear infinite;
+            z-index: 0;
+            pointer-events: none;
+        }
+
+        /* =========================================
+           A4 Template Integration Styles
+           ========================================= */
+        .canvas-container {
+            width: calc(100% - 6px);
+            height: calc(100% - 6px);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            position: absolute;
+            top: 3px;
+            left: 3px;
+            border-radius: 6px;
+            border: 1px solid #e5e7eb;
+            overflow: hidden;
+            background-color: #ffffff; /* Default background */
+            transition: all 0.3s ease;
+            z-index: 1;
+        }
+
+        .canvas-container canvas {
+            width: 100%;
+            height: 100%;
+            background-color: white; 
+            touch-action: pan-x pan-y;
+            cursor: crosshair;
+            border-radius: 6px;
+        }
+
+        /* ----- PAGE 1, 2, 3 STYLES ----- */
+        #text-layer-1, #text-layer-2, #text-layer-3 {
+            font-family: 'Tiro Bangla', serif;
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            padding: 2.5rem 0.8rem 0.8rem 0.8rem; 
+            pointer-events: none; 
+            box-sizing: border-box;
+            overflow: hidden;
+        }
+
+        /* ----- PAGE 4 STYLES ----- */
+        #text-layer-4 {
+            font-family: 'Tiro Bangla', serif;
+            position: absolute;
+            top: 50%; left: 50%; transform: translate(-50%, -50%); 
+            width: calc(100% - 1.6rem);
+            pointer-events: none; 
+            box-sizing: border-box;
+        }
+
+        /* ----- PAGE 5 STYLES ----- */
+        #text-layer-5 {
+            font-family: 'Tiro Bangla', serif;
+            position: absolute;
+            top: 50%; left: 50%; transform: translate(-50%, -50%); 
+            width: calc(100% - 1.6rem); 
+            height: 88%; 
+            pointer-events: none; 
+            box-sizing: border-box;
+            overflow: hidden;
+        }
+        #slide-5 .two-columns { column-count: 2; column-gap: 0.8rem; column-fill: auto; }
+        #text-layer-5::before {
+            content: ''; position: absolute; top: 0; bottom: 0; left: 50%; transform: translateX(-50%); width: 2px; 
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='2' height='4' viewBox='0 0 2 4'%3E%3Cpath d='M1,0 Q2,1 1,2 T1,4' fill='none' stroke='%23000000' stroke-width='0.5'/%3E%3C/svg%3E");
+            background-repeat: repeat-y; pointer-events: none;
+        }
+        #slide-5 .qa-box { break-inside: avoid; margin-bottom: 0.15rem; }
+
+        /* ----- PAGE 6 STYLES ----- */
+        #text-layer-6 {
+            font-family: 'Tiro Bangla', serif;
+            position: absolute;
+            top: 50%; left: 50%; transform: translate(-50%, -50%); 
+            width: calc(100% - 1.6rem); 
+            height: 90%; 
+            pointer-events: none; 
+            box-sizing: border-box;
+            overflow: hidden;
+        }
+        #text-layer-6::before {
+            content: ''; position: absolute; top: 0; bottom: 0; left: 50%; transform: translateX(-50%); width: 2px; 
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='2' height='4' viewBox='0 0 2 4'%3E%3Cpath d='M1,0 Q2,1 1,2 T1,4' fill='none' stroke='%23000000' stroke-width='0.5'/%3E%3C/svg%3E");
+            background-repeat: repeat-y; pointer-events: none; z-index: 10;
+        }
+        #scale-wrapper-6 { width: 142.85%; height: 142.85%; transform: scale(0.70); transform-origin: top left; box-sizing: border-box; }
+        #slide-6 .two-columns { column-count: 2; column-gap: 0.95rem; column-fill: auto; height: 100%; }
+        #slide-6 .qa-box { break-inside: avoid; margin-bottom: 0.35rem; }
+
+        /* ----- PAGE 7 STYLES ----- */
+        #text-layer-7 {
+            font-family: 'Tiro Bangla', serif;
+            position: absolute;
+            top: 50%; left: 50%; transform: translate(-50%, -50%); 
+            width: calc(100% - 1.6rem); 
+            height: 90%; 
+            pointer-events: none; 
+            box-sizing: border-box;
+            overflow: hidden;
+        }
+        #scale-wrapper-7 { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%) scale(0.70); width: 142.85%; height: 142.85%; box-sizing: border-box; }
+        #slide-7 .two-columns { position: relative; column-count: 2; column-gap: 0.95rem; column-fill: auto; height: 100%; }
+        #slide-7 .two-columns::before {
+            content: ''; position: absolute; top: 0; bottom: 0; left: 50%; transform: translateX(-50%); width: 6px; 
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='3' height='6' viewBox='0 0 3 6'%3E%3Cpath d='M1.5,0 Q3,1.5 1.5,3 T1.5,6' fill='none' stroke='%23000000' stroke-width='0.8'/%3E%3C/svg%3E");
+            background-size: 3px 6px; background-repeat: repeat-y; pointer-events: none;
+        }
+        #slide-7 .qa-box { break-inside: avoid; margin-bottom: 0.15rem; }
+
+        /* অ্যাকশন বাটন সেকশন */
+        .action-buttons {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            margin-top: 10px;
+            margin-bottom: 0;
+            padding-bottom: 2px;
+            overflow-x: auto;
+            scrollbar-width: none;
+            flex-shrink: 0;
+            max-height: 50px;
+            opacity: 1;
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .action-buttons::-webkit-scrollbar {
+            display: none;
+        }
+
+        .btn {
+            background-color: rgba(0, 0, 0, 0.05);
+            border: none;
+            color: #1f2937;
+            padding: 10px 18px;
+            border-radius: 8px; 
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            white-space: nowrap;
+            flex-shrink: 0;
+            transition: all 0.2s;
+        }
+
+        .btn svg {
+            width: 20px;
+            height: 20px;
+            fill: none;
+            stroke: currentColor;
+            stroke-width: 1.5;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+            transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275), fill 0.3s ease, stroke 0.3s ease;
+        }
+
+        .thumb-active svg {
+            fill: #1f2937;
+            stroke: #1f2937;
+            transform: scale(1.2);
+        }
+
+        @keyframes pop-bounce {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.4); }
+            100% { transform: scale(1.2); }
+        }
+
+        .animate-pop svg {
+            animation: pop-bounce 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+        }
+
+        .thumb-action {
+            display: flex;
+            align-items: center;
+            cursor: pointer;
+            transition: background-color 0.2s ease;
+        }
+        
+        .thumb-action:active {
+            background-color: rgba(0, 0, 0, 0.08);
+        }
+
+        .divider {
+            width: 1px;
+            height: 18px;
+            background-color: rgba(0, 0, 0, 0.15);
+            margin: 0;
+        }
+
+        /* --- Toggle Button Styles --- */
+        .toggle-track {
+            width: 36px;
+            height: 20px;
+            background-color: rgba(0, 0, 0, 0.2);
+            border-radius: 12px;
+            position: relative;
+            transition: background-color 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            flex-shrink: 0;
+        }
+
+        .toggle-track.active {
+            background-color: #1f2937;
+        }
+
+        .toggle-thumb {
+            width: 16px;
+            height: 16px;
+            background-color: #ffffff;
+            border-radius: 50%;
+            position: absolute;
+            top: 2px;
+            left: 2px;
+            transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), background-color 0.3s;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+
+        .toggle-track.active .toggle-thumb {
+            transform: translateX(16px);
+            background-color: #ffffff;
+        }
+
+        /* =========================================
+           T-Popup (Bottom Sheet) Styles 
+           ========================================= */
+        .t-popup-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(to bottom right, rgba(26, 47, 21, 0.8), rgba(16, 22, 11, 0.8), rgba(0, 0, 0, 0.8));
+            z-index: 100;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s ease;
+        }
+
+        .t-popup-overlay.active {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .t-popup-sheet {
+            position: absolute;
+            bottom: -100%;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 100%;
+            max-width: 480px;
+            background-color: #ffffff;
+            border-top-left-radius: 16px;
+            border-top-right-radius: 16px;
+            z-index: 101;
+            display: flex;
+            flex-direction: column;
+            max-height: 95%;
+            transition: bottom 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            color: #1f2937;
+            font-family: 'Roboto', sans-serif;
+            user-select: none;
+            -webkit-user-select: none;
+            box-shadow: 0 -4px 15px rgba(0, 0, 0, 0.1);
+        }
+
+        .t-popup-sheet.active {
+            bottom: 0;
+        }
+
+        .t-popup-header {
+            display: flex;
+            justify-content: flex-end;
+            align-items: center;
+            padding: 20px 16px 8px 16px;
+            border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+        }
+
+        .t-popup-icon-btn {
+            background: none;
+            border: none;
+            color: #1f2937;
+            cursor: pointer;
+            padding: 4px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-left: 20px;
+            transition: background-color 0.2s;
+        }
+
+        .t-popup-icon-btn:hover {
+            background-color: rgba(0, 0, 0, 0.08);
+        }
+
+        .t-popup-icon-filled {
+            font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+
+        .t-action-row {
+            display: flex;
+            justify-content: space-evenly;
+            padding: 16px 8px;
+        }
+
+        .t-action-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 8px;
+            cursor: pointer;
+            width: 100px;
+        }
+
+        .t-action-icon-box {
+            width: 100%;
+            height: 60px;
+            background-color: #f3f4f6;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background-color 0.2s;
+        }
+
+        .t-action-item:hover .t-action-icon-box {
+            background-color: #e5e7eb;
+        }
+
+        .t-action-icon-box.lang-active {
+            background-color: #1f2937;
+            color: #ffffff;
+        }
+
+        .t-action-icon-box.lang-active svg {
+            stroke: #ffffff;
+        }
+
+        .t-action-item span {
+            font-size: 13px;
+            font-weight: 400;
+            font-family: 'Hind Siliguri', sans-serif;
+        }
+
+         
+
+        /* =========================================
+           Font Menu Popup Styles
+           ========================================= */
+        .font-menu-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.3);
+            z-index: 200;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s ease;
+        }
+
+        .font-menu-overlay.active {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .font-menu-popup {
+            position: absolute;
+            top: 55px;
+            right: 15px;
+            width: 220px;
+            background-color: #ffffff;
+            border-radius: 12px;
+            z-index: 201;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+            opacity: 0;
+            pointer-events: none;
+            transform: translateY(-10px);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            overflow: hidden;
+        }
+
+        .font-menu-popup.active {
+            opacity: 1;
+            pointer-events: auto;
+            transform: translateY(0);
+        }
+
+        .font-menu-item {
+            padding: 8px 15px;
+            font-size: 15px;
+            color: #1f2937;
+            cursor: pointer;
+            background-color: transparent;
+            transition: background-color 0.2s;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+            text-align: left;
+            border: none;
+            width: 100%;
+        }
+
+        .font-menu-item:hover, .font-menu-item:active {
+            background-color: #f3f4f6;
+        }
+
+        .font-menu-divider {
+            height: 1px;
+            background-color: #e5e7eb;
+            margin: 0 10px;
+        }
+    </style>
+</head>
+<body>
+
+<div class="player-container" id="playerContainer">
+    
+    <nav class="nav-header">
+        <!-- Menu Icon (Left Side) -->
+        <button class="nav-btn back-nav-btn" title="Menu">
+            <svg xmlns="http://www.w3.org/2000/svg" width="200" height="200" viewBox="0 0 24 24">
+                <path fill="none" stroke="#000000" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5"/>
+            </svg>
+        </button>
+        
+        <!-- Action Icons (Right Side) -->
+        <div style="display: flex; align-items: center; gap: 5px; position: relative; left: 0px;">
+            <button class="nav-btn" id="fontMenuBtn" title="Font Combinations">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="#000000">
+                    <path fill="none" stroke="#000000" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 3c2.755 0 5.455.232 8.083.678c.533.09.917.556.917 1.096v1.044a2.25 2.25 0 0 1-.659 1.591l-5.432 5.432a2.25 2.25 0 0 0-.659 1.591v2.927a2.25 2.25 0 0 1-1.244 2.013L9.75 21v-6.568a2.25 2.25 0 0 0-.659-1.591L3.659 7.409A2.25 2.25 0 0 1 3 5.818V4.774c0-.54.384-1.006.917-1.096A48.32 48.32 0 0 1 12 3Z"/>
+                </svg>
+            </button>
+
+            <button class="nav-btn" title="Search">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#000000" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="11" cy="11" r="8"></circle>
+                    <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                </svg>
+            </button>
+
+            <button class="nav-btn more-menu-btn" id="moreMenuBtn" title="More Options" style="left: 0;">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="#000000">
+                    <path d="M9.5 13a1.5 1.5 0 1 1-3 0a1.5 1.5 0 0 1 3 0zm0-5a1.5 1.5 0 1 1-3 0a1.5 1.5 0 0 1 3 0zm0-5a1.5 1.5 0 1 1-3 0a1.5 1.5 0 0 1 3 0z"/>
+                </svg>
+            </button>
+        </div>
+    </nav>
+
+    <!-- অ্যালবাম আর্ট বক্স - A4 Templates Integrated -->
+    <div class="album-art-container" id="albumArtContainer">
+        
+        <!-- Box 1 -->
+        <div class="album-art" id="slide-1" style="background: #ffffff;">
+            <div class="canvas-container" id="canvas-container-1">
+                <canvas id="myCanvas-1"></canvas>
+                <div id="text-layer-1" class="text-gray-800 text-[7.5px] sm:text-[8.5px] md:text-[9.5px] text-justify flex flex-col gap-1 md:gap-[5px] leading-tight">
+                    <div>
+                        <p class="font-bold">১. "ইহাদের এই তামাশা দেখিতেই আমার সময় অতিবাহিত হয়"-'ইহাদের' বলতে কাদের কথা বলা হয়েছে? 'তামাশা' বলতে বক্তা কী বলেছেন? ১+৪</p>
+                        <p class="mt-0.5"><span class="font-bold">উত্তর:</span> উদ্ধৃতাংশে 'ইহাদের' বলতে বায়ু এবং মেঘের কথা বলা হয়েছে।</p>
+                        <p class="mt-0.5">বক্তা অর্থাৎ লেখিকা বেগম রোকেয়া হিমালয় দর্শনে কার্শিয়াং-এর মনোরম পরিবেশে বায়ু ও মেঘের বিচিত্র খেলা দেখতে পেয়েছিলেন। কখনো দেখেছেন-মেঘ একদিকে রয়েছে, অপরদিকে হালকা বায়ু এসে সেই মেঘখণ্ডকে উড়িয়ে নিয়ে যাচ্ছে। কখনো অস্তমিত সূর্যের আলো মেঘ কেজি বায়ুর উপর পড়ে পশ্চিম আকাশকে সোনালি রঙে রাঙিয়ে তুলছে। পাহাড়ের গায়ে যেন তরল সোনা ঢেলে দেওয়া হয়েছে, আর চারদিকে সুকোমল মেঘগুলো বাতাসে ভেসে ছুটোছুটি করছে। এই বায়ু-মেঘ-সূর্যের মনোহর দৃশ্যের লুকোচুরি খেলাকেই লেখিকা 'তামাশা' বলেছেন। এই সৌন্দর্যে লেখিকা এতটাই মুগ্ধ ছিলেন যে কোনো কাজেই তাঁর মন বসত না-শুধু এই প্রকৃতির খেলা দেখেই সময় কাটত।</p>
+                    </div>
+                    <div>
+                        <p class="font-bold">২. 'হিমালয় দর্শন' গদ্যাংশে লেখিকা বেগম রোকেয়া যে প্রাকৃতিক সৌন্দর্যের বর্ণনা দিয়েছেন তা লেখো। </p>
+                        <p class="mt-0.5"><span class="font-bold">উত্তর:</span> বেগম রোকেয়া ভ্রমণপিপাসু ছিলেন। হিমালয় দেখার ইচ্ছায় তিনি শিলিগুড়ি থেকে হিমালয়ান রেলে যাত্রা শুরু করেন। পথে তিনি অসাধারণ প্রাকৃতিক সৌন্দর্য দেখতে পান।</p>
+                        <p class="mt-0.5"><span class="font-bold">প্রাকৃতিক শোভা:</span> ট্রেনটি আঁকাবাঁকা পথ দিয়ে ক্রমশ উপরের দিকে উঠছিল। দু'পাশে কখনও দেখা যাচ্ছিল উঁচু পাহাড়ের চূড়া, আবার কখনও ঘন অরণ্য। প্রায় তিন হাজার ফুট উচ্চতায় পৌঁছেও শীত খুব বেশি লাগছিল উল্লেখযোগ্য, তবে ট্রেন চলছিল মেঘের মাঝ দিয়ে। নিচের দিকে তাকালে সাদা কুয়াশাকে কখনো নদী বলে মনে হচ্ছিল। ওপর থেকে গাছপালা, লতা-পাতা, ঘাস সবই খুব সুন্দর দেখাচ্ছিল। সবচেয়ে বেশি নজর কাড়ছিল সবুজ চা-বাগান। সারি-সারি চারাগাছ পুরো পরিবেশকে আরও মনোরম করে তুলেছিল। পাহাড়ের সরু পথগুলো দূর থেকে মনে হচ্ছিল ধরণির সিঁথি, আর শ্যামল বন যেন পৃথিবীর কেশপাশ। যাত্রাপথে তিনি অনেক জলপ্রপাত দেখেন-যার সৌন্দর্য তিনি ভাষায় প্রকাশ করতে পারেননি। বায়ু আর মেঘের লুকোচুরি খেলা, অস্তগামী সূর্যের আলো, সব মিলিয়ে প্রকৃতির সৌন্দর্যে তিনি মুগ্ধ হয়ে যান। ঝরনার কল্লোলধ্বনি শুনে ঈশ্বরের প্রতি কৃতজ্ঞতাও প্রকাশ করেন।</p>
+                    </div>
+                    <div>
+                        <p class="font-bold">৩. "ইহারা ক্রমশ সদ্গুণরাজি হারাইতেছে।"-'ইহারা' বলতে কাদের কথা বলা হয়েছে? তাদের সদ্গুণগুলি কী? সেগুলি কীভাবে তারা হারাচ্ছে বলে লেখিকা মনে করেছেন? ১+২+২</p>
+                        <p class="mt-0.5"><span class="font-bold">উত্তর:</span> 'হিমালয় দর্শন' গদ্যাংশের উদ্ধৃতিটির "ইহারা" বলতে ভূটিয়ানিদের বোঝানো হয়েছে।</p>
+                        <p class="mt-0.5"><span class="font-bold">ভুটিয়ানিদের সদ্গুণ:</span> তারা শ্রমশীলা, কার্যপ্রিয়, সাহসী এবং সত্যবাদী।</p>
+                        <p class="mt-0.5"><span class="font-bold">কীভাবে তারা সদগুণ হারাচ্ছে:</span> ভুটিয়ানিরা নিজেদের পরিচয় দেয় 'পাহাড়নি' বলে এবং সমতলের মানুষকে বলে 'নীচেকা আদমি'। তাঁদের সঙ্গে 'নীচেকা আদমি' বা সমতলের লোকেদের মেলামেশা ক্রমেই বেড়ে গেছে। এমনকি বিবাহবন্ধনও স্থাপিত হচ্ছে। ফলে এই সংস্রবের মাধ্যমে সমতলের মানুষের কিছু দোষ- যেমন পয়সা অল্প-স্বল্প চুরি করা, দুধে জল মেশানো ইত্যাদি অভ্যাস ভুটিয়ানিদের মধ্যেও দেখা যাচ্ছে। লেখিকার মতে, এইভাবেই তারা তারা তাদের পূর্বেকার সদগুণগুলি হারাতে বসেছে।</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Box 2 -->
+        <div class="album-art" id="slide-2" style="background: #ffffff;">
+            <div class="canvas-container" id="canvas-container-2">
+                <canvas id="myCanvas-2"></canvas>
+                <div id="text-layer-2" class="text-gray-800 text-[7.5px] sm:text-[8.5px] md:text-[9.5px] text-justify flex flex-col gap-1 md:gap-[5px] leading-tight">
+                    <p class="text-gray-700 italic">
+                        <span class="font-bold">[গল্পসংকেত:</span> চাকরি থেকে অবসরগ্রহণের পর এক ভদ্রলোকের ছোটোবেলার বন্ধুদের সঙ্গে দেখা করার ইচ্ছা হয়-নির্দিষ্ট দিনে তাঁর বাড়িতে সমস্ত আয়োজন করেন-সময় পেরিয়ে যায় কেউ আসে ক্ষমা-তিনি দুঃখে মনোকষ্টে এদিক-ওদিক খুঁজতে গিয়ে দেখেন আমন্ত্রণ জানিয়ে লেখা চিঠিগুলি গল্পের বইয়ের মধ্যে গোঁজা-ডাকযোগে পাঠাতেই ভুলে গেছেন।]
+                    </p>
+                    <p class="font-bold text-center text-[8.5px] sm:text-[9.5px] md:text-[10.5px] mt-2 underline decoration-wavy decoration-1 underline-offset-2">
+                        গল্প: পুরনো দিনের বন্ধুরা
+                    </p>
+                    <p class="mt-1">
+                        চাকরি থেকে অবসর নেওয়ার পর ভদ্রলোক মধুসূদনবাবুর মনে হল, জীবনের কত বড় একটা অধ্যায় শেষ হয়ে গেল। হঠাৎ তাঁর মনে পড়ল ছোটোবেলার বন্ধুরা-রবি, অজিত, নির্মল, বিনোদ-যাদের সঙ্গে স্কুলজীবনে কত হাসি-আনন্দ ভাগ করেছিলেন! কত বছর দেখা নেই চৈতন্য তাদের সঙ্গে। তিনি ঠিক করলেন, একদিন সবাইকে ডাকবেন। পুরনো দিনের মতো আড্ডা হবে, গল্প হবে, স্মৃতিচারণ হবে। ঠিক করলেন, শনিবার বিকেলে বাড়িতে একসঙ্গে বসবেন সবাই। নিজে হাতে নিমন্ত্রণপত্র লিখে ডাকযোগে পাঠালেন প্রত্যেককে। দিনটি ঘনিয়ে এলো। মধুসূদনবাবু সকাল থেকেই ব্যস্ত হয়ে পড়লেন-নতুন টেবিলক্লথ, নাস্তা, চা, মিষ্টি, ফল-সব তৈরি করলেন স্ত্রীকে নিয়ে। ঘড়ির কাঁটা তিনটায় পৌঁছাল। তিনি সাজানো বসার ঘরে অপেক্ষা করতে লাগলেন। চারটা বাজল, পাঁচটা বাজল-কেউ এলো না। ছয়টা বেজে গেলেও ঘরে কেবল নিস্তব্ধতা। জানলার পাশে বসে তিনি বাইরে তাকিয়ে রইলেন-একটা একটা করে আলো জ্বলছে রাস্তায়। মনটা ভারী হয়ে উঠল। চোখের সামনে ভেসে উঠল পুরনো স্কুলের মাঠ, খেলার সঙ্গী, হাসির মুখ। ভাবলেন, "সময় কত কিছু বদলে দেয়! হয়তো তারা সবাই ব্যস্ত, কেউ শহর ছেড়েছে, কেউ হয়তো নেইও আর..." মনখারাপে তিনি উঠোনে গিয়ে একা হেঁটে বেড়াতে লাগলেন। আকাশে তখন অন্ধকার নেমেছে। কিন্তু তাঁর মনে সেই ছোটোবেলার উজ্জ্বল দিনগুলোর আলো জ্বলতে লাগল-যা আজও নিভে যায়নি, কেবল ছায়া পড়েছে বয়সের প্রলেপে।
+                    </p>
+                    <p class="mt-2 font-bold text-center">
+                        শিক্ষণীয় বার্তা: সময় বদলায়, মানুষ বদলায়, কিন্তু শৈশবের বন্ধুত্বের স্মৃতি কখনও হারিয়ে যায় না।
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Box 3 -->
+        <div class="album-art" id="slide-3" style="background: #ffffff;">
+            <div class="canvas-container" id="canvas-container-3">
+                <canvas id="myCanvas-3"></canvas>
+                <div id="text-layer-3" class="text-gray-800 text-[7.5px] sm:text-[8.5px] md:text-[9.5px] text-justify flex flex-col gap-1 md:gap-[5px] leading-tight">
+                    <p class="text-gray-700 italic">
+                        <span class="font-bold">[গল্পসংকেত:</span> চাকরি থেকে অবসরগ্রহণের পর এক ভদ্রলোকের ছোটোবেলার বন্ধুদের সঙ্গে দেখা করার ইচ্ছা হয়-নির্দিষ্ট দিনে তাঁর বাড়িতে সমস্ত আয়োজন করেন-সময় পেরিয়ে যায় কেউ আসে না-তিনি দুঃখে মনোকষ্টে এদিক-ওদিক খুঁজতে গিয়ে দেখেন আমন্ত্রণ জানিয়ে লেখা চিঠিগুলি গল্পের বইয়ের মধ্যে গোঁজা-ডাকযোগে পাঠাতেই ভুলে গেছেন।]
+                    </p>
+                    <p class="font-bold text-center text-[8.5px] sm:text-[9.5px] md:text-[10.5px] mt-2 underline">
+                        গল্প: পুরনো দিনের বন্ধুরা
+                    </p>
+                    <p class="mt-1">
+                        চাকরি থেকে অবসর নেওয়ার পর ভদ্রলোক মধুসূদনবাবুর মনে হল, জীবনের কত বড় একটা অধ্যায় শেষ হয়ে গেল। হঠাৎ তাঁর মনে পড়ল ছোটোবেলার বন্ধুরা-রবি, অজিত, নির্মল, বিনোদ-যাদের সঙ্গে স্কুলজীবনে কত হাসি-আনন্দ ভাগ করেছিলেন! কত বছর দেখা নেই তাদের সঙ্গে। তিনি ঠিক করলেন, একদিন সবাইকে ডাকবেন। পুরনো দিনের মতো আড্ডা হবে, গল্প হবে, স্মৃতিচারণ হবে। ঠিক করলেন, শনিবার বিকেলে বাড়িতে একসঙ্গে বসবেন সবাই। নিজে হাতে নিমন্ত্রণপত্র লিখে ডাকযোগে পাঠালেন প্রত্যেককে। দিনটি ঘনিয়ে এলো। মধুসূদনবাবু সকাল থেকেই ব্যস্ত হয়ে পড়লেন-নতুন টেবিলক্লথ, নাস্তা, চা, মিষ্টি, ফল-সব তৈরি করলেন স্ত্রীকে নিয়ে। ঘড়ির কাঁটা তিনটায় পৌঁছাল। তিনি সাজানো বসার ঘরে অপেক্ষা করতে লাগলেন। চারটা বাজল, পাঁচটা বাজল-কেউ এলো না। ছয়টা বেজে গেলেও ঘরে কেবল নিস্তব্ধতা। জানলার পাশে বসে তিনি বাইরে তাকিয়ে রইলেন-একটা একটা করে আলো জ্বলছে রাস্তায়। মনটা ভারী হয়ে উঠল। চোখের সামনে ভেসে উঠল পুরনো স্কুলের মাঠ, খেলার সঙ্গী, হাসির মুখ। ভাবলেন, "সময় কত কিছু বদলে দেয়! হয়তো তারা সবাই ব্যস্ত, কেউ শহর ছেড়েছে, কেউ হয়তো নেইও আর..." মনখারাপে তিনি উঠোনে গিয়ে একা হেঁটে বেড়াতে লাগলেন। আকাশে তখন অন্ধকার নেমেছে। কিন্তু তাঁর মনে সেই ছোটোবেলার উজ্জ্বল দিনগুলোর আলো জ্বলতে লাগল-যা আজও নিভে যায়নি, কেবল ছায়া পড়েছে বয়সের প্রলেপে।
+                    </p>
+                    <p class="mt-2 font-bold text-center">
+                        শিক্ষণীয় বার্তা: সময় বদলায়, মানুষ বদলায়, কিন্তু শৈশবের বন্ধুত্বের স্মৃতি কখনও হারিয়ে যায় না।
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Box 4 -->
+        <div class="album-art" id="slide-4" style="background: #ffffff;">
+            <div class="canvas-container" id="canvas-container-4">
+                <canvas id="myCanvas-4"></canvas>
+                <div id="text-layer-4" class="text-gray-800 text-[7.5px] sm:text-[8.5px] md:text-[9.5px] text-justify flex flex-col gap-[4px] md:gap-1 leading-tight">
+                    <div>
+                        <p class="font-bold">১. "যত সব বন্দি-শালায় / আগুন জ্বালা"- কবি কাদের উদ্দেশে বলেছেন?</p>
+                        <p class="mt-0.5"><span class="font-bold">উত্তর:</span> কাজী নজরুল ইসলামের বিদ্রোহী কবিতা 'ভাঙার গান' স্বাধীনতা-সংগ্রামের প্রেক্ষিতে রচিত। "যত সব বন্দি-শালায় / আগুন জ্বালা"- এই আহ্বানটি তিনি বলেন শোষিত ভারতীয় জনগণ, বিশেষ করে বিপ্লবী যুবক ও স্বাধীনতা-সংগ্রামীদের উদ্দেশ্যে। কবি বন্দি-শালায় আগুন জ্বালাতে বলেছেন কারণ- বন্দি-শালা ব্রিটিশ শাসনের অত্যাচার, দমন ও দাসত্বের প্রতীক। এসব জেলে স্বাধীনতা-সংগ্রামীদের বন্দী রাখা হতো। তাই কবি প্রতীকীভাবে বলেছেন- এই অত্যাচারের প্রতিটি লৌহ-দুয়ার ভেঙে, তালা চূর্ণ করে, আগুন জ্বেলে শোষণের শৃঙ্খল ধ্বংস করে মুক্তির পথ তৈরি করতে। এটি মূলত স্বাধীনতা অর্জনের জন্য ভয়হীন বিদ্রোহ ও জাগরণের আহ্বান।</p>
+                    </div>
+                    <div>
+                        <p class="font-bold">২. "ভগবান পরবে ফাঁসি/ সর্বনাশী শিখায় এ হীন তথ্য কে রে"- তাৎপর্য ব্যাখ্যা কর।</p>
+                        <p class="mt-0.5"><span class="font-bold">উত্তর:</span> এখানে 'ভগবান' বলতে সাধারণ দেবতাকে বোঝানো হয়নি; কবি বোঝাতে চেয়েছেন দেশের স্বাধীনতার জন্য জীবন উৎসর্গ করতে প্রস্তুত তরুণ বিপ্লবীদের। তাঁরা মৃত্যুকে তুচ্ছ করেন, আদর্শে অমর-তাই তাঁদের দেহ ফাঁসি দিয়ে শেষ করা গেলেও তাঁদের সংগ্রামের আগুন বা আদর্শকে নিভিয়ে ফেলা যায়্বা যায় না। ব্রিটিশ শাসকরা ভাবত, বিপ্লবীদের ফাঁসি দিলেই স্বাধীনতা আন্দোলন থেমে যাবে। কবি এই ভুল ধারণাকে 'হীন তথ্য' বলে উপহাস করেছেন, কারণ এটি সম্পূর্ণ মূর্খতা। 'সর্বনাশী শিখা' বলতে বোঝানো হয়েছে সেই ভ্রান্ত বিশ্বাস, যা জাতিকে পরাধীনতার অন্ধকারে ডুবিয়ে রাখে এবং সত্য ও ন্যায়ের সংগ্রামকে অস্বীকার করে। কবির প্রশ্ন-কে তোমাদের এমন বিপর্যয়কর মিথ্যা শিক্ষা দিয়েছে -এ যেন শাসকদের প্রতি এক তীক্ষ্ণ প্রতিবাদ।</p>
+                    </div>
+                    <div>
+                        <p class="font-bold">৩. "কে মালিক? কে সে রাজা?"- তাৎপর্য ব্যাখ্যা কর।</p>
+                        <p class="mt-0.5"><span class="font-bold">উত্তর:</span> এখানে "মালিক" ও "রাজা" বলতে কবি ব্রিটিশ সাম্রাজ্যবাদী শাসকদের বোঝান, যারা পরাধীন ভারতের উপর একচ্ছত্র আধিপত্য বিস্তার করে শোষণ করছিল। কবি প্রশ্ন তোলেন-এরা কি সত্যিই দেশের আসল মালিক বা রাজা? তারা কোন অধিকারে মুক্ত-স্বাধীন সত্য (অর্থাৎ স্বাধীনতা সংগ্রামীদের আদর্শ, বিপ্লবীদের চেতনা) কে সাজা দেয়? এটি একটি তীব্র স্যাটায়ার, যা শাসকদের অত্যাচারী ভূমিকাকে প্রশ্নবিদ্ধ করে। পরবর্তী লাইনে "ভগবান পরবে ফাঁসি?" বলে কবি হাস্য-ব্যঙ্গের মাধ্যমে দেখান যে, এমন অত্যাচারী শাসকদের হাতে ঈশ্বরকেও ফাঁসি দেওয়া হতে পারে-এটি তাদের অধিকারের অসারতা ও নিষ্ঠুরতার প্রতীক।</p>
+                    </div>
+                    <div>
+                        <p class="font-bold">৪. "ওরে ও তরুণ ঈশান।"- 'তরুণ ঈশান' কে? তাকে কবি কী করার কথা বলেছেন?</p>
+                        <p class="mt-0.5"><span class="font-bold">উত্তর:</span> 'ভাঙার গান' কবিতার উদ্ধৃতাংশে 'তরুণ ঈশান' বলতে 'তরুণ' অর্থে নবীন এবং 'ঈশান' অর্থে শিবকে বোঝালেও এখানে কবি ইংরেজ কারাগারে বন্দি তরুণ বিপ্লবীদের কথা বলেছেন। কবি কাজী নজরুল ইসলাম স্বাধীনতাকামী তরুণ বিপ্লবীদের মহাদেবের মতো প্রলয় বিষাণ বাজিয়ে কারাপ্রাচীর ভেদ করে ধ্বংসের নিশান উড়াতে বলেছেন। কবি তরুণ বিপ্লবীদের এখানে মহাদেবের সঙ্গে তুলনা করেছেন।</p>
+                    </div>
+                    <div>
+                        <p class="font-bold">৫. "গাজনের বাজনা বাজা।"- 'গাজন' কী? তার বাজনা বাজানো প্রয়োজন কেন?</p>
+                        <p class="mt-0.5"><span class="font-bold">উত্তর:</span> বিদ্রোহী কবি কাজী নজরুল ইসলাম রচিত 'ভাঙার গান' কবিতা থেকে উদ্ধৃত অংশটি গৃহীত হয়েছে। চৈত্রসংক্রান্তিতে প্রলয়ের দেবতা শিবের পুজো হয়, যা গ্রামবাংলায় গাজন নামে পরিচিত। এই গাজনের বাজনা বাজিয়েই কবি চেয়েছেন বিপ্লবী যুবশক্তি ইংরেজের কারাগারের প্রাচীরকে ভেঙে দিক, প্রতিষ্ঠা করুক মুক্ত স্বাধীন সত্য এর। গাজনের বাজনার মধ্যে প্রলয়ের যে ইঙ্গিত আছে তাকেই স্বাধীনতার স্বপ্ন পূরণের জন্য কবি ব্যবহার করেছেন।</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Box 5 -->
+        <div class="album-art" id="slide-5" style="background: #ffffff;">
+            <div class="canvas-container" id="canvas-container-5">
+                <canvas id="myCanvas-5"></canvas>
+                <div id="text-layer-5" class="text-gray-800 text-[7px] sm:text-[8px] md:text-[9px] text-justify leading-tight two-columns">
+                    <div class="qa-box">
+                        <p class="font-bold">১. 'খেয়া' কবিতাটি কার রচনা এবং কোন কাব্যগ্রন্থের অন্তর্গত?</p>
+                        <p class="mt-[1px]"><span class="font-bold">উত্তর:</span> 'খেয়া' কবিতাটি রবীন্দ্রনাথ ঠাকুরের রচনা এবং এটি 'চৈতালি' কাব্যগ্রন্থের অন্তর্গত।</p>
+                    </div>
+                    <div class="qa-box">
+                        <p class="font-bold">২. নৌকার কাজ কী? 'পারাপার' শব্দের অর্থ কী?</p>
+                        <p class="mt-[1px]"><span class="font-bold">উত্তর:</span> নৌকার মূল কাজ হলো মানুষকে এক তীর থেকে অন্য তীরে পৌঁছে দেওয়া। 'পারাপার' শব্দের অর্থ- এক প্রান্ত থেকে অন্য প্রান্তে নিয়ে যাওয়া।</p>
+                    </div>
+                    <div class="qa-box">
+                        <p class="font-bold">৩. 'নব নব সভ্যতার উদ্দেশ্যে'- কী কথা বলা হয়েছে?</p>
+                        <p class="mt-[1px]"><span class="font-bold">উত্তর:</span> এখানে 'হলাহল' শব্দটি দ্বারা মানুষের হিংসা, বিদ্বেষ ও বিষধর স্বভাব বোঝানো হয়েছে। এগুলো দূর করেই নূতন সভ্যতার পথ তৈরি হয়।</p>
+                    </div>
+                    <div class="qa-box">
+                        <p class="font-bold">৪. 'খেয়া' কবিতায় 'নদী' শব্দের অর্থ কী এবং নদী কিসের প্রতীক?</p>
+                        <p class="mt-[1px]"><span class="font-bold">উত্তর:</span> নদী এখানে জীবনের প্রবাহ ও জীবনের যাত্রাপথের প্রতীক।</p>
+                    </div>
+                    <div class="qa-box">
+                        <p class="font-bold">৫. 'খেয়া' কবিতায় 'খেয়ানৌকা' কীসের প্রতীক?</p>
+                        <p class="mt-[1px]"><span class="font-bold">উত্তর:</span> জীবনের প্রতীক।</p>
+                    </div>
+                    <div class="qa-box">
+                        <p class="font-bold">৬. কোন কারণে পৃথিবীতে নতুন নতুন ইতিহাস গড়ে ওঠে?</p>
+                        <p class="mt-[1px]"><span class="font-bold">উত্তর:</span> সমাজে কেউ রাজনৈতিক ক্ষমতা দখলকে কেন্দ্র করে ইতিহাস গড়ে ওঠে।</p>
+                    </div>
+                    <div class="qa-box">
+                        <p class="font-bold">৭. "পৃথিবীতে কত দ্বন্দ্ব কত সর্বনাশ”- এখানে 'দ্বন্দ্ব' শব্দের অর্থ কী?</p>
+                        <p class="mt-[1px]"><span class="font-bold">উত্তর:</span> 'দ্বন্দ্ব' শব্দের অর্থ বিরোধ, কলহ বা ঝগড়া।</p>
+                    </div>
+                    <div class="qa-box">
+                        <p class="font-bold">৮. নদীর দূর তীরে কী আছে?</p>
+                        <p class="mt-[1px]"><span class="font-bold">উত্তর:</span> নদীর দুই পারে দুটি গ্রাম আছে।</p>
+                    </div>
+                    <div class="qa-box">
+                        <p class="font-bold">৯. 'খেয়া' কবিতায় দুটি গ্রাম কিসের দিকে চেয়ে আছে?</p>
+                        <p class="mt-[1px]"><span class="font-bold">উত্তর:</span> দুটি গ্রাম একে অপরের দিকে মমতা ও আকাঙক্ষার দৃষ্টিতে চেয়ে আছে।</p>
+                    </div>
+                    <div class="qa-box">
+                        <p class="font-bold">১০. খেয়া নৌকা কতক্ষণ পারাপার করে?</p>
+                        <p class="mt-[1px]"><span class="font-bold">উত্তর:</span> খেয়া নৌকা সকাল থেকে সন্ধ্যা পর্যন্ত নিয়মিত পারাপার করে।</p>
+                    </div>
+                    <div class="qa-box">
+                        <p class="font-bold">১১. "পৃথিবীতে কত দ্বন্দ্ব, কত সর্বনাশ”- এই দ্বন্দ্ব-সর্বনাশ কী তৈরি করে?</p>
+                        <p class="mt-[1px]"><span class="font-bold">উত্তর:</span> নতুন নতুন ইতিহাস।</p>
+                    </div>
+                    <div class="qa-box">
+                        <p class="font-bold">১২. "দুই তীরে দুই গ্রাম আছে"- এখানে গ্রাম দুটি কেমন?</p>
+                        <p class="mt-[1px]"><span class="font-bold">উত্তর:</span> জানাশোনা।</p>
+                    </div>
+                    <div class="qa-box">
+                        <p class="font-bold">১৩. "এই খেয়া চিরদিন চলে"- খেয়া কোথায় চলে?</p>
+                        <p class="mt-[1px]"><span class="font-bold">উত্তর:</span> নদীর স্রোতে।</p>
+                    </div>
+                    <div class="qa-box">
+                        <p class="font-bold">১৪. "পৃথিবীতে কত দ্বন্দ্ব, কত ..... "- শূন্যস্থানে কোন শব্দটি বসবে?</p>
+                        <p class="mt-[1px]"><span class="font-bold">উত্তর:</span> সর্বনাশ।</p>
+                    </div>
+                    <div class="qa-box">
+                        <p class="font-bold">১৫. 'দোহাঁ-পানে' কথার অর্থ কী?</p>
+                        <p class="mt-[1px]"><span class="font-bold">উত্তর:</span> একে অপরের দিকে চেয়ে থাকা।</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Box 6 -->
+        <div class="album-art" id="slide-6" style="background: #ffffff;">
+            <div class="canvas-container" id="canvas-container-6">
+                <canvas id="myCanvas-6"></canvas>
+                <div id="text-layer-6">
+                    <div id="scale-wrapper-6">
+                        <div class="text-gray-800 text-[9.5px] md:text-[10.5px] text-justify leading-tight two-columns">
+                            <div class="qa-box">
+                                <p class="font-bold">১. নদীগ্রাস কাকে বলে?</p>
+                                <p class="mt-[1px]"><span class="font-bold">উত্তর:</span> <span class="font-semibold">সংজ্ঞা:</span> কোনো জলবিভাজিকার দু-পাশে প্রবাহিত দুটি নদীর মধ্যে যদি একটি অন্যটির তুলনায় বেশি শক্তিশালী হয় অর্থাৎ তার গভীরতা ও ক্ষয়কারী ক্ষমতা বেশি হয়, তাহলে কিছুকাল পরে যখন মধ্যবর্তী জলবিভাজিকা বিলুপ্ত হয়, তখন দুর্বল নদীটির জল সবল নদীটিতে এসে পড়ে তার উপনদীতে পরিণত হয়। এই অবস্থায় সবল নদীটি দুর্বল নদীটিকে গ্রাস করেছে বলে ধরা হয়। একেই নদীগ্রাস বলে।</p>
+                            </div>
+                            <div class="qa-box">
+                                <p class="font-bold">২. নদীর ক্ষয়সীমা বা ক্ষয়ের শেষসীমা বলতে কী বোঝ?</p>
+                                <p class="mt-[1px]"><span class="font-bold">উত্তর:</span> <span class="font-semibold">সংজ্ঞা:</span> নদী ভূপৃষ্ঠে যে গভীরতা পর্যন্ত ক্ষয় করতে সক্ষম, সেই গভীরতাকেই নদীর ক্ষয়সীমা বা ক্ষয়ের শেষসীমা বলে। <span class="font-semibold">বৈশিষ্ট্য:</span> সাধারণভাবে নদীর ক্ষয়সীমা হল নিকটতম সমুদ্রপৃষ্ঠ। নদী যখন কোনো হ্রদে এসে মিলিত হয়, তখন সেই হ্রদপৃষ্ঠই হয় নদীর ক্ষয়সীমা। যেমন-মরু অঞ্চলে নদীর ক্ষয়সীমা হল প্লায়া হ্রদ।</p>
+                            </div>
+                            <div class="qa-box">
+                                <p class="font-bold">৩. অন্তর্জাত শক্তি কী?</p>
+                                <p class="mt-[1px]"><span class="font-bold">উত্তর:</span> <span class="font-semibold">সংজ্ঞা:</span> পৃথিবীর অভ্যন্তরে সৃষ্ট সংকোচন, প্রসারণ, উত্থান, অবনমন, বিচ্ছেদ, বিকৃতি, নির্গমন প্রভৃতি যেসব প্রক্রিয়ার জন্য ভূপৃষ্ঠের ভূমিরূপ প্রভাবিত বা পরিবর্তিত হয়, সেগুলিকে ভূ-অভ্যন্তরীণ বা অন্তর্জাত শক্তি বলে। <span class="font-semibold">বৈশিষ্ট্য:</span> এইসব অন্তর্জাত শক্তির মূল উৎস পৃথিবীর অভ্যন্তরে সৃষ্ট প্রচন্ড তাপ ও চাপ। অন্তর্জাত শক্তির প্রভাবেই ভূ-আলোড়ন, ভূমিকম্প, অগ্ন্যুৎপাত প্রভৃতি অন্তর্জাত প্রক্রিয়ার উদ্ভব ঘটে, যেগুলির মাধ্যমে মহাদেশ, মালভূমি, চ্যুতি, ফাটল, গ্রস্ত উপত্যকা, উত্থিত বা নিমজ্জিত উপকূল ইত্যাদি তৈরি হয়।</p>
+                            </div>
+                            <div class="qa-box">
+                                <p class="font-bold">৪. বহির্জাত শক্তি কী?</p>
+                                <p class="mt-[1px]"><span class="font-bold">উত্তর:</span> <span class="font-semibold">সংজ্ঞা:</span> যেসব প্রাকৃতিক শক্তি প্রতিনিয়ত ভূপৃষ্ঠে এবং ভূপৃষ্ঠের সামান্য নীচে অর্থাৎ উপপৃষ্ঠীয় অংশে ক্রিয়াশীল থাকে, তাদের বহির্জাত শক্তি বলে। <span class="font-semibold">উদাহরণ:</span> নদী, হিমবাহ, বায়ু, সমুদ্রতরঙ্গ প্রভৃতি বহির্জাত শক্তি।</p>
+                            </div>
+                            <div class="qa-box">
+                                <p class="font-bold">৫. পর্যায়ন বা ক্রমায়ন কাকে বলে?</p>
+                                <p class="mt-[1px]"><span class="font-bold">উত্তর:</span> <span class="font-semibold">সংজ্ঞা:</span> চেম্বারলিন ও স্যালিসবেরি দুই বিজ্ঞানী প্রথম 'পর্যায়ন' বা 'gradation' শব্দটি ব্যবহার করেন। ক্ষয়, পরিবহণ ও সঞ্চয় কাজের মাধ্যমে অসমতল এবং বন্ধুর ভূপ্রকৃতি সমতলভাগে পরিণত হওয়ার প্রক্রিয়াকে পর্যায়ন বলে। এককথায় বলা যায়, অবরোহণ এবং আরোহণের সম্মিলিত ফল হল পর্যায়ন। একে ক্রমায়নও বলা হয়।</p>
+                            </div>
+                            <div class="qa-box">
+                                <p class="font-bold">৬. অবরোহণ কী?</p>
+                                <p class="mt-[1px]"><span class="font-bold">উত্তর:</span> <span class="font-semibold">সংজ্ঞা:</span> যে প্রক্রিয়ায় আবহবিকার, পুঞ্জিত স্খলন, নদী, হিমবাহ প্রভৃতি বহির্জাত শক্তিসমূহের প্রভাবে ভূপৃষ্ঠের উঁচু জায়গাগুলি ধীরে ধীরে ক্ষয়ে গিয়ে ক্রমশ নীচু হয়ে আসে, সেই প্রক্রিয়া বা প্রক্রিয়াসমূহকে এককথায় অবরোহণ বলে। <span class="font-semibold">উদাহরণ:</span> অবরোহণের ফলেই সুউচ্চ পর্বত ক্ষয় হতে হতে প্রথমে ক্ষয়জাত পর্বত, তারপর ক্ষয়জাত মালভূমি এবং শেষে ক্ষয়জাত সমভূমিতে পরিণত হয়।</p>
+                            </div>
+                            <div class="qa-box">
+                                <p class="font-bold">৭. আরোহণ কাকে বলে?</p>
+                                <p class="mt-[1px]"><span class="font-bold">উত্তর:</span> <span class="font-semibold">সংজ্ঞা:</span> সঞ্চয়, অবক্ষেপণ এবং অধঃক্ষেপণের মাধ্যমে ভূপৃষ্ঠের নীচু অংশগুলি বা নিম্নভূমিসমূহ ভরাট হওয়ার যে প্রক্রিয়া তাকেই আরোহণ বলে। এর আর-এক নাম স্তূপীকরণ। <span class="font-semibold">বৈশিষ্ট্য:</span> ① এই পদ্ধতির মধ্য দিয়ে নিম্নভূমির উচ্চতা বেড়ে যায়। ② পর্বতের পাদদেশে সঞ্চয়জাত ভূমিরূপ তৈরি হয়। ③ নদী অববাহিকায় পলল ব্যজনী ও প্লাবনভূমির মতো ভূমিরূপ তৈরি হয়।</p>
+                            </div>
+                            <div class="qa-box">
+                                <p class="font-bold">৮. নগ্নীভবন কাকে বলে?</p>
+                                <p class="mt-[1px]"><span class="font-bold">উত্তর:</span> <span class="font-semibold">ধারণা:</span> আবহবিকারের মাধ্যমে সৃষ্ট চূর্ণবিচূর্ণ শিলাসমূহ অভিকর্ষের টানে পুঞ্জিত স্খলনরূপে নীচে নামে এবং শেষে ক্ষয়ীভবনের মাধ্যমে সেখান থেকে দূরে অপসারিত হয়। সুতরাং আবহবিকার, পুঞ্জিত স্খলন এবং ক্ষয়ীভবন-এই তিনটি প্রাকৃতিক প্রক্রিয়ার সম্মিলিত কার্যে ভূপৃষ্ঠের শিলাস্তর উন্মুক্ত বা নগ্ন হয়ে যায়। অর্থাৎ আবহবিকার, পুঞ্জিত স্খলন এবং ক্ষয়ীভবনের মিলিত প্রক্রিয়াকে নগ্নীভবন বলে।</p>
+                            </div>
+                            <div class="qa-box">
+                                <p class="font-bold">৯. মানুষ এবং অন্যান্য জীব কীভাবে বহির্জাত শক্তির প্রক্রিয়া হিসেবে কাজ করে?</p>
+                                <p class="mt-[1px]"><span class="font-bold">উত্তর:</span> মানুষ-সহ সমগ্র জীবজগৎ ভূপৃষ্ঠের ক্ষয় এবং সঞ্চয়কার্যে অংশগ্রহণ করে বহির্জাত শক্তির প্রক্রিয়া হিসেবে কাজ করে। মানুষ রাস্তাঘাট, বাঁধ, জলাধার ইত্যাদি নির্মাণের কাজে এবং উইপোকা, ইঁদুর, খরগোশ, প্রেইরি কুকুর ইত্যাদি প্রাণী জীবনধারণের প্রয়োজনে শিলাকে ক্ষয় ও চূর্ণবিচূর্ণ করে। এইভাবেই ক্ষয়কার্য ঘটে। অন্যদিকে জলাভূমি, লেগুনে যেসব শ্যাওলা, গাছপালা জন্মায়, তাদের ফুল, পাতা, ফল ইত্যাদি পচে গিয়ে জৈব পদার্থ তৈরি করে। সেসব দিয়েই জলাভূমি ভরাট হয়। মানুষ নিজেও জলাভূমি ভরাট করে, নদী-সমুদ্রে বাঁধ দিয়ে ভূমিক্ষয় রোধ করে এবং ভূমিভাগের সঞ্চয় প্রক্রিয়াকে জারি রাখে।</p>
+                            </div>
+                            <div class="qa-box">
+                                <p class="font-bold">১০. সমপ্রায়ভূমি ও মোনাডনক কাকে বলে?</p>
+                                <p class="mt-[1px]"><span class="font-bold">উত্তর:</span> <span class="font-semibold">সংজ্ঞা:</span> বহু যুগ ধরে কোনো প্রাচীন মালভূমি বা উচ্চভূমি অঞ্চল প্রধানত নদীর কার্যের মাধ্যমে অনবরত ক্ষয় হলে বেশ নীচু হয়ে যায় এবং তার বন্ধুরতাও অনেকটা হ্রাস পায়। এর ফলে যে ভূমিটি সৃষ্টি হয় তা অনেকটা সমভূমিরই মতো। এজন্য ওই ভূমিকে সমপ্রায়ভূমি বলে। সমপ্রায়ভূমির মাঝে মাঝে দু-একটি কঠিন শিলাগঠিত অংশ ক্ষয় প্রতিরোধ করে টিলার আকারে দাঁড়িয়ে থাকে। এগুলির নাম মোনাডনক। <span class="font-semibold">উদাহরণ:</span> ছোটোনাগপুর মালভূমির কোনো কোনো অংশ সমপ্রায়ভূমি এবং এখানকার পরেশনাথ, পাঞ্চেৎ প্রভৃতি পাহাড় মোনাডনক।</p>
+                            </div>
+                            <div class="qa-box">
+                                <p class="font-bold">১১. নদীর মধ্যগতি বলতে কী বোঝ?</p>
+                                <p class="mt-[1px]"><span class="font-bold">উত্তর:</span> <span class="font-semibold">সংজ্ঞা:</span> নদী যখন পার্বত্য অঞ্চল ছেড়ে সমভূমিতে এসে পড়ে, সেই সমভূমি অঞ্চলের ওপর দিয়ে বয়ে যাওয়া নদীর প্রবাহকে মধ্যগতি বলে। মধ্যগতিতে নদীস্রোত হ্রাস পেলেও নদীতে জলের পরিমাণ বৃদ্ধি পায়। এই অংশে নদীর প্রধান কাজ বহন এবং সঞ্চয় করা। <span class="font-semibold">উদাহরণ:</span> গঙ্গা নদীর হরিদ্বার থেকে ঝাড়খন্ডের রাজমহল পর্যন্ত প্রবাহপথটি মধ্যগতি মধ্যে পড়ে।</p>
+                            </div>
+                            <div class="qa-box">
+                                <p class="font-bold">১২. নদীর নিম্নগতি বা বদ্বীপপ্রবাহ কাকে বলে?</p>
+                                <p class="mt-[1px]"><span class="font-bold">উত্তর:</span> <span class="font-semibold">সংজ্ঞা:</span> সমভূমির ওপর দিয়ে মধ্যগতিতে প্রবাহিত হতে হতে নদী যখন মোহানার কাছাকাছি চলে আসে, শুরু হয় নদীর নিম্নগতি। অর্থাৎ মোহানা অঞ্চলের ওপর দিয়ে ধীরগতিতে প্রবাহিত নদীর গতিপথকে বলে নিম্নগতি। যেহেতু নিম্নগতিতে প্রবাহিত নদী মোহানায় বদ্বীপ গড়ে তোলে, তাই এই গতির আর--এক নাম বদ্বীপপ্রবাহ। <span class="font-semibold">উদাহরণ:</span> ঝাড়খণ্ডের রাজমহলের পর থেকে বঙ্গোপসাগরের মোহানা পর্যন্ত অংশ গঙ্গা নদীর নিম্নগতি বা বদ্বীপপ্রবাহ।</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Box 7 -->
+        <div class="album-art" id="slide-7" style="background: #ffffff;">
+            <div class="canvas-container" id="canvas-container-7">
+                <canvas id="myCanvas-7"></canvas>
+                <div id="text-layer-7">
+                    <div id="scale-wrapper-7">
+                        <div class="text-gray-800 text-[9.5px] md:text-[10.5px] text-justify leading-[1.15] two-columns">
+                            <div class="qa-box">
+                                <p><span class="font-bold">১. ভূমিরূপ গঠনকারী প্রক্রিয়া:</span> প্রধানত দু-রকম প্রাকৃতিক প্রক্রিয়ায় পৃথিবীর ভূমিরূপ অর্থাৎ পাহাড়, পর্বত, মালভূমি, সমভূমি প্রভৃতি গঠিত হয়েছে। এর মধ্যে একটি ভূ-অভ্যন্তরে সৃষ্ট অর্থাৎ অন্তর্জাত প্রক্রিয়া এবং অন্যটি ভূপৃষ্ঠের বাইরে সৃষ্ট বা বহির্জাত প্রক্রিয়া।</p>
+                            </div>
+                            <div class="qa-box">
+                                <p><span class="font-bold">২. বহির্জাত শক্তি:</span> যেসব প্রাকৃতিক শক্তি প্রতিনিয়ত ভূপৃষ্ঠে এবং ভুপৃষ্ঠের সামান্য নীচে অর্থাৎ উপপৃষ্ঠীয় অংশে ক্রিয়াশীল থাকে, তাদের বহির্জাত শক্তি বলে।</p>
+                            </div>
+                            <div class="qa-box">
+                                <p><span class="font-bold">৩. বহির্জাত প্রক্রিয়া:</span> বহির্জাত শক্তিসমূহ যে পদ্ধতিতে ভূপৃষ্ঠ এবং উপপৃষ্ঠকে ক্ষয়, বহন ও সঞ্চয় কাজের মাধ্যমে নগ্ন বা পরিবর্তিত করে, সেই পদ্ধতিকে বলে বহির্জাত প্রক্রিয়া।</p>
+                            </div>
+                            <div class="qa-box">
+                                <p><span class="font-bold">৪. জলচক্র:</span> জল কখনও বাষ্প, কখনও মেঘ, কখনও অধঃক্ষেপণ রূপে আকাশ ও পৃথিবীর মধ্যে অবিরামভাবে আবর্তিত হয়ে যে চক্র সৃষ্টি করে, তাকেই বলে জলচক্র।</p>
+                            </div>
+                            <div class="qa-box">
+                                <p><span class="font-bold">৫. ধারণ অববাহিকা:</span> যে অঞ্চলের ছোটো ছোটো জলধারা থেকে নদী সর্বপ্রথম জল সংগ্রহ করে তার প্রবাহকে বাড়ায়, সেই অঞ্চলকে ধারণ অববাহিকা বলে।</p>
+                            </div>
+                            <div class="qa-box">
+                                <p><span class="font-bold">৬. নদী উপত্যকা:</span> দুই উচ্চভূমির মধ্যবর্তী দীর্ঘ ও সংকীর্ণ নিম্নভূমিকে বলা হয় উপত্যকা। আর সেই সংকীর্ণ নিম্নভূমির মধ্য দিয়ে যখন নদী প্রবাহিত হয়, তখন তাকে বলা হয় নদী উপত্যকা। অর্থাৎ নদী যে অংশের মধ্য দিয়ে প্রবাহিত হয়, তাকেই নদী উপত্যকা বলে।</p>
+                            </div>
+                            <div class="qa-box">
+                                <p><span class="font-bold">৭. নদীর অববাহিকা:</span> কোনো নদী ও তার সব উপনদী এবং শাখানদী যে অঞ্চলের ওপর দিয়ে প্রবাহিত হয়, সেই সমগ্র অঞ্চলটিকে ওই নদীর অববাহিকা বলে।</p>
+                            </div>
+                            <div class="qa-box">
+                                <p><span class="font-bold">৮. জলবিভাজিকা:</span> যে উচ্চভূমি দুই বা তারও বেশি নদী অথবা নদী ব্যবস্থাকে পৃথক করে, সেই উচ্চভূমিকে বলা হয় জলবিভাজিকা।</p>
+                            </div>
+                            <div class="qa-box">
+                                <p><span class="font-bold">৯. নদীর গতি:</span> উৎস থেকে মোহানা পর্যন্ত নদীর গতিপথকে তিনটি অংশে ভাগ করা যায়—উচ্চগতি বা পার্বত্যপ্রবাহ, মধ্যগতি বা সমভূমিপ্রবাহ এবং নিম্নগতি বা বদ্বীপপ্রবাহ।</p>
+                            </div>
+                            <div class="qa-box">
+                                <p><span class="font-bold">১০. আদর্শ নদী:</span> আদর্শ নদী হল সেই নদী, যার উচ্চ, মধ্য ও নিম্ন-এই তিনটি গতিপথই সুস্পষ্টভাবে লক্ষ করা যায়। ভারতের গঙ্গা একটি আদর্শ নদী।</p>
+                            </div>
+                            <div class="qa-box">
+                                <p><span class="font-bold">১১. নদীর কাজ:</span> নদী তার প্রবাহপথের বিভিন্ন অংশে ভূমির ঢাল ও জলের পরিমাণের তারতম্য অনুসারে যে ক্ষয়, বহন ও সঞ্চয় বা অবক্ষেপণ করে, তাকেই এককথায় নদীর কাজ বলে।</p>
+                            </div>
+                            <div class="qa-box">
+                                <p><span class="font-bold">১২. নদীর কাজের ধরন:</span> উৎস থেকে মোহানা পর্যন্ত নদী তার চলার পথে তিন ধরনের কাজ করে—ক্ষয়সাধন, বহন এবং সঞ্চয় বা অবক্ষেপণ। এর মধ্যে উচ্চগতিতে নদী প্রধানত ক্ষয় ও বহন কাজ, মধ্যগতিতে ক্ষয় ও সঞ্চয় কাজ এবং নিম্নগতিতে মূলত সঞ্চয় বা অবক্ষেপণ করে।</p>
+                            </div>
+                            <div class="qa-box">
+                                <p><span class="font-bold">১৩. নদীর ক্ষয়কাজ:</span> নদীর জলের আঘাতে যখন নদীখাতের শিলা চূর্ণবিচূর্ণ হয়ে যায় বা নদীখাত থেকে শিলাচূর্ণ, বালি, মাটি ইত্যাদি সরে যায়, তখন সেই স্থানে একে নদীর ক্ষয়কাজ বলে।</p>
+                            </div>
+                            <div class="qa-box">
+                                <p><span class="font-bold">১৪. নদীর বহন কাজ:</span> নদীর জলের সাহায্যে ক্ষয়জাত পদার্থসমূহ এক জায়গা থেকে আর-এক জায়গায় অপসারিত হয়। একে নদীর বহন কাজ বলে।</p>
+                            </div>
+                            <div class="qa-box">
+                                <p><span class="font-bold">১৫. নদীর সঞ্চয় কাজ বা অবক্ষেপণ:</span> নদী তার পরিবাহিত পদার্থগুলিকে তলদেশে বা দুইপাশে অবক্ষেপণ করে। একে নদীর সঞ্চয় কাজ বা অবক্ষেপণ বলে।</p>
+                            </div>
+                            <div class="qa-box">
+                                <p><span class="font-bold">১৬. পর্যায়ন:</span> চেম্বারলিন ও স্যালিসবেরি দুই বিজ্ঞানী প্রথম 'পর্যায়ন' বা 'gradation' শব্দটি ব্যবহার করেন। ক্ষয়, পরিবহণ ও সঞ্চয় কাজের মাধ্যমে অসমতল এবং বন্ধুর ভূপ্রকৃতি সমতলভাগে পরিণত হওয়ার প্রক্রিয়াকে পর্যায়ন বলে। এককথায় বলা যায়, অবরোহণ এবং আরোহণের সম্মিলিত ফল হল পর্যায়ন। একে ক্রমায়নও বলা হয়।</p>
+                            </div>
+                            <div class="qa-box">
+                                <p><span class="font-bold">১৭. গঙ্গা-পদ্মা-মেঘনার বদ্বীপের সক্রিয় অংশের ওপর পৃথিবীব্যাপী জলবায়ু পরিবর্তনের প্রভাব:</span> বর্তমানে বিশ্বব্যাপী বায়ুমন্ডলের উন্নতা বৃদ্ধি তথা জলবায়ু পরিবর্তনের কারণে সমুদ্রে জলের জোগান বেড়ে চলেছে। তার ফলে সমুদ্র জলতলের উচ্চতার বৃদ্ধি ঘটছে। সেজন্য ইতিমধ্যেই সুন্দরবনের ঘোড়ামারা দ্বীপের অর্ধেকটা এবং নিউমুর দ্বীপের পুরোটাই জলের তলায় চলে গেছে। লোহাচড়া দ্বীপটিও একসময় জলমগ্ন হয়েছিল, এখন আংশিকভাবে জেগে উঠেছে।</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- T-Popup Overlay -->
+    <div class="t-popup-overlay" id="tPopupOverlay"></div>
+
+    <!-- T-Popup Bottom Sheet -->
+    <div class="t-popup-sheet" id="tPopupSheet">
+        <div class="t-popup-header">
+            <button class="t-popup-icon-btn" id="tPopupCloseBtn">
+                <span class="material-symbols-outlined" style="font-size: 26px;">close</span>
+            </button>
+        </div>
+        <div class="t-action-row">
+            <div class="t-action-item" id="langEnglishBtn">
+                <div class="t-action-icon-box" id="langEnglishBox">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="26" height="26" viewBox="0 0 24 24" fill="none">
+                        <path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2 5h14M9 2v3m4 0q-2 8-9 11m2-7q2 4 6 6m1 7l5-11l5 11m-1.4-3h-7.2"/>
+                    </svg>
+                </div>
+                <span>English</span>
+            </div>
+            <div class="t-action-item" id="langBengaliBtn">
+                <div class="t-action-icon-box" id="langBengaliBox">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="26" height="26" viewBox="0 0 24 24" fill="none">
+                        <g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5">
+                            <path d="M5.6 5.657c1.2-1.172 4.2-2.343 6-1.172c3.349 2.18 1.2 5.858-2.4 6.444c1.6 0 4.8.703 4.8 3.515c0 4.35-4.8 6.74-8.4 4.965S2 14.757 2 13"/>
+                            <path d="M19 10c-.948 3.75-4.027 3.246-5.8 2.394M19 5v15M16 4c1.5.433 3.5.866 6 0"/>
+                        </g>
+                    </svg>
+                </div>
+                <span>Bengali</span>
+            </div>
+            <div class="t-action-item">
+                <div class="t-action-icon-box">
+                    <svg width="26" height="26" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 14 14" fill="none">
+                        <path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" d="M7 .54v13M.5 7h13"/>
+                    </svg>
+                </div>
+                <span>Add</span>
+            </div>
+        </div>
+    </div> 
+
+    <!-- অ্যাকশন বাটনস -->
+    <div class="action-buttons">
+        <div class="btn btn-grouped" style="padding: 0; overflow: hidden;">
+            <div class="thumb-action" id="likeBtn" style="padding: 10px 12px 10px 18px; gap: 8px;">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+                    <path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3zM7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3"></path>
+                </svg>
+                <span id="likeCount">28k</span>
+            </div>
+            
+            <div class="divider"></div>
+            
+            <div class="thumb-action" id="dislikeBtn" style="padding: 10px 18px 10px 12px;">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+                    <path d="M10 15v4a3 3 0 0 0 3 3l4-9V2H5.72a2 2 0 0 0-2 1.7l-1.38 9a2 2 0 0 0 2 2.3zm7-13h3a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2h-3"></path>
+                </svg>
+            </div>
+        </div>
+
+        <!-- Use Toggle Button -->
+        <button class="btn" id="useToggleBtn" style="padding: 8px 12px 8px 16px;">
+            <span id="toggleText">Use</span>
+            <div class="toggle-track" id="toggleTrack">
+                <div class="toggle-thumb" id="toggleThumb"></div>
+            </div>
+        </button>
+    </div>
+
+     
+
+    <!-- Font Menu Popup Overlay & Container -->
+    <div class="font-menu-overlay" id="fontMenuOverlay"></div>
+    <div class="font-menu-popup" id="fontMenuPopup">
+        <button class="font-menu-item" onclick="applyFontPairing(0); closeFontMenu();">Default Fonts</button>
+        <div class="font-menu-divider"></div>
+        <button class="font-menu-item" onclick="applyFontPairing(1); closeFontMenu();">Times + Lato</button>
+        <div class="font-menu-divider"></div>
+        <button class="font-menu-item" onclick="applyFontPairing(2); closeFontMenu();">Times + Open Sans</button>
+        <div class="font-menu-divider"></div>
+        <button class="font-menu-item" onclick="applyFontPairing(3); closeFontMenu();">Times + C. Garamond</button>
+        <div class="font-menu-divider"></div>
+        <button class="font-menu-item" onclick="applyFontPairing(4); closeFontMenu();">Times + L. Baskerville</button>
+        <div class="font-menu-divider"></div>
+        <button class="font-menu-item" onclick="applyFontPairing(5); closeFontMenu();">Times + DM Sans</button>
+    </div>
+
+</div>
+
+<script>
+    // =============================================
+    // DYNAMIC TRANSLATION DATA
+    // =============================================
+    let slideTranslations = {};
+
+    function getEnglishHTML(id) {
+        const enHTML = {
+            1: `
+                <div>
+                    <p class="font-bold">1. "Observing their play passes my time" - Who does 'their' refer to? What does the speaker mean by 'play'? 1+4</p>
+                    <p class="mt-0.5"><span class="font-bold">Answer:</span> In the quote, 'their' refers to the wind and the clouds.</p>
+                    <p class="mt-0.5">The speaker, writer Begum Rokeya, witnessed the beautiful interplay of wind and clouds in the pleasant environment of Kurseong during her Himalayan journey. Sometimes she saw a light breeze blowing away a piece of cloud. Sometimes the setting sun cast a golden glow on the clouds in the western sky. It looked as if molten gold had been poured over the mountains, while soft clouds rushed around in the wind. The writer calls this charming hide-and-seek of wind, clouds, and sun a 'play'. She was so captivated by this beauty that she couldn't focus on any work—spending her time merely observing nature's play.</p>
+                </div>
+                <div>
+                    <p class="font-bold">2. Describe the natural beauty depicted by writer Begum Rokeya in the prose 'Journey to Himalaya'.</p>
+                    <p class="mt-0.5"><span class="font-bold">Answer:</span> Begum Rokeya was a travel enthusiast. Desiring to see the Himalayas, she started her journey from Siliguri via the Himalayan Railway. Along the way, she witnessed extraordinary natural beauty.</p>
+                    <p class="mt-0.5"><span class="font-bold">Natural Beauty:</span> The train gradually ascended through winding paths. High mountain peaks were visible on either side, sometimes covered with dense forests. Even at an altitude of about three thousand feet, it wasn't too cold, though the train passed through clouds. Looking down, the white fog sometimes resembled a river. From above, trees, creepers, and grass looked beautiful. The green tea gardens caught the most attention. Rows of plants made the whole environment even more delightful. The narrow mountain paths looked like the earth's parting, and the dark forest like its hair. She saw many waterfalls—whose beauty she couldn't express in words. The hide-and-seek of wind and clouds, the light of the setting sun, all left her enchanted. Hearing the murmur of the waterfall, she expressed her gratitude to God.</p>
+                </div>
+                <div>
+                    <p class="font-bold">3. "They are gradually losing their virtues." - Who is referred to as 'they'? What are their virtues? How does the writer think they are losing them? 1+2+2</p>
+                    <p class="mt-0.5"><span class="font-bold">Answer:</span> In the quote from 'Journey to Himalaya', 'they' refers to the Bhutiani women.</p>
+                    <p class="mt-0.5"><span class="font-bold">Virtues of Bhutianis:</span> They are hardworking, active, courageous, and truthful.</p>
+                    <p class="mt-0.5"><span class="font-bold">How they are losing them:</span> The Bhutianis identify themselves as 'Paharani' and call people from the plains 'Nicheka Admi'. Their interaction with people from the plains has gradually increased, even leading to marriages. Due to this association, some flaws of the plainspeople—like petty theft, adulterating milk with water—are now seen among the Bhutianis. The writer feels this is how they are losing their former virtues.</p>
+                </div>
+            `,
+            2: `
+                <p class="text-gray-700 italic">
+                    <span class="font-bold">[Story Cue:</span> After retiring from his job, a gentleman wishes to meet his childhood friends—he arranges everything at his home on a specific day—time passes and no one arrives—in deep sorrow, while looking around, he finds the invitation letters tucked inside a storybook—he had forgotten to mail them.]
+                </p>
+                <p class="font-bold text-center text-[8.5px] sm:text-[9.5px] md:text-[10.5px] mt-2 underline decoration-wavy decoration-1 underline-offset-2">
+                    Story: Friends of Old Days
+                </p>
+                <p class="mt-1">
+                    After retiring from his job, Mr. Madhusudan felt that a major chapter of his life had ended. Suddenly, he remembered his childhood friends—Rabi, Ajit, Nirmal, Binod—with whom he had shared so much laughter and joy during school life! He hadn't seen them for years. He decided to invite them all one day. They would chat, share stories, and reminisce like the old days. He planned a get-together at his home on a Saturday afternoon. He wrote the invitation letters by hand and addressed them to everyone. The day approached. Mr. Madhusudan was busy from the morning—arranging a new tablecloth, snacks, tea, sweets, and fruits with his wife. The clock struck three. He waited in the decorated living room. Four o'clock passed, then five—no one came. Even at six, the room was completely silent. Sitting by the window, he looked outside—streetlights were turning on one by one. His heart grew heavy. The old school playground, playmates, and smiling faces flashed before his eyes. He thought, "Time changes so many things! Maybe they are all busy, someone might have left the city, or maybe someone is no longer alive..." Heartbroken, he went to the courtyard and walked alone. Darkness had fallen in the sky. But the light of those bright childhood days still burned in his heart—it hadn't extinguished, only shadowed by the layer of age.
+                </p>
+                <p class="mt-2 font-bold text-center">
+                    Moral: Time changes, people change, but the memories of childhood friendship are never lost.
+                </p>
+            `,
+            3: `
+                <p class="text-gray-700 italic">
+                    <span class="font-bold">[Story Cue:</span> After retiring from his job, a gentleman wishes to meet his childhood friends—he arranges everything at his home on a specific day—time passes and no one arrives—in deep sorrow, while looking around, he finds the invitation letters tucked inside a storybook—he had forgotten to mail them.]
+                </p>
+                <p class="font-bold text-center text-[8.5px] sm:text-[9.5px] md:text-[10.5px] mt-2 underline">
+                    Story: Friends of Old Days
+                </p>
+                <p class="mt-1">
+                    After retiring from his job, Mr. Madhusudan felt that a major chapter of his life had ended. Suddenly, he remembered his childhood friends—Rabi, Ajit, Nirmal, Binod—with whom he had shared so much laughter and joy during school life! He hadn't seen them for years. He decided to invite them all one day. They would chat, share stories, and reminisce like the old days. He planned a get-together at his home on a Saturday afternoon. He wrote the invitation letters by hand and addressed them to everyone. The day approached. Mr. Madhusudan was busy from the morning—arranging a new tablecloth, snacks, tea, sweets, and fruits with his wife. The clock struck three. He waited in the decorated living room. Four o'clock passed, then five—no one came. Even at six, the room was completely silent. Sitting by the window, he looked outside—streetlights were turning on one by one. His heart grew heavy. The old school playground, playmates, and smiling faces flashed before his eyes. He thought, "Time changes so many things! Maybe they are all busy, someone might have left the city, or maybe someone is no longer alive..." Heartbroken, he went to the courtyard and walked alone. Darkness had fallen in the sky. But the light of those bright childhood days still burned in his heart—it hadn't extinguished, only shadowed by the layer of age.
+                </p>
+                <p class="mt-2 font-bold text-center">
+                    Moral: Time changes, people change, but the memories of childhood friendship are never lost.
+                </p>
+            `,
+            4: `
+                <div>
+                    <p class="font-bold">1. "Set fire to all the prisons" - To whom has the poet addressed this?</p>
+                    <p class="mt-0.5"><span class="font-bold">Answer:</span> Kazi Nazrul Islam's rebel poem 'Bhangar Gaan' was written in the context of the freedom struggle. He addresses this call to the oppressed Indian people, especially the revolutionary youth and freedom fighters. He asks them to set fire to the prisons because the prison is a symbol of British oppression and slavery where freedom fighters were kept. The poet symbolically asks to break every iron door, shatter the locks, and light a fire to destroy the chains of exploitation to pave the way for liberation.</p>
+                </div>
+                <div>
+                    <p class="font-bold">2. "Will God be hanged? Who gives this vile information to the destructive flame" - Explain the significance.</p>
+                    <p class="mt-0.5"><span class="font-bold">Answer:</span> Here 'God' does not mean an ordinary deity; the poet refers to the young revolutionaries ready to sacrifice their lives for the country's independence. They despise death and are immortal in their ideals—so even if their bodies are hanged, the fire of their struggle cannot be extinguished. The British rulers thought that hanging revolutionaries would stop the freedom movement. The poet mocks this misconception as 'vile information' because it is utter foolishness. 'Destructive flame' refers to the false belief keeping the nation in the darkness of subjugation. The poet's question is a sharp protest against the rulers.</p>
+                </div>
+                <div>
+                    <p class="font-bold">3. "Who is the master? Who is that king?" - Explain the significance.</p>
+                    <p class="mt-0.5"><span class="font-bold">Answer:</span> Here, 'master' and 'king' refer to the British imperialist rulers who were exploiting subjugated India through absolute dominance. The poet questions—are they really the true masters or kings of the country? By what right do they punish the free-spirited truth (the ideals of the freedom fighters)? This is a sharp satire questioning the oppressive role of the rulers. By asking "Will God be hanged?", the poet uses sarcasm to show that such tyrannical rulers might even hang God—symbolizing the absurdity of their authority.</p>
+                </div>
+                <div>
+                    <p class="font-bold">4. "O young Ishan." - Who is 'young Ishan'? What has the poet asked him to do?</p>
+                    <p class="mt-0.5"><span class="font-bold">Answer:</span> In 'Bhangar Gaan', 'young Ishan' implies youth ('Tarun') and Lord Shiva ('Ishan'), but here the poet refers to the young revolutionaries imprisoned in English jails. Poet Kazi Nazrul Islam has asked the freedom-seeking young revolutionaries to blow the horn of destruction like Lord Mahadev, pierce the prison walls, and fly the flag of destruction. The poet compares the young revolutionaries to Mahadev.</p>
+                </div>
+                <div>
+                    <p class="font-bold">5. "Play the music of Gajan." - What is 'Gajan'? Why is it necessary to play its music?</p>
+                    <p class="mt-0.5"><span class="font-bold">Answer:</span> During Chaitra Sankranti, Lord Shiva, the god of destruction, is worshipped, which is known as Gajan in rural Bengal. By playing the music of this Gajan, the poet wanted the revolutionary youth power to break the walls of the English prison and establish a free and independent truth. The poet has used the hint of destruction present in the music of Gajan to fulfill the dream of independence.</p>
+                </div>
+            `,
+            5: `
+                <div class="qa-box">
+                    <p class="font-bold">1. Who wrote the poem 'Kheya' and which book does it belong to?</p>
+                    <p class="mt-[1px]"><span class="font-bold">Answer:</span> The poem 'Kheya' is written by Rabindranath Tagore and belongs to the 'Chaitali' poetry book.</p>
+                </div>
+                <div class="qa-box">
+                    <p class="font-bold">2. What is a boat's function? What does 'Parapar' mean?</p>
+                    <p class="mt-[1px]"><span class="font-bold">Answer:</span> A boat's main function is to ferry people from one bank to another. 'Parapar' means crossing from one side to the other.</p>
+                </div>
+                <div class="qa-box">
+                    <p class="font-bold">3. 'Towards new civilizations' - What does this mean?</p>
+                    <p class="mt-[1px]"><span class="font-bold">Answer:</span> Here the word 'poison' refers to human envy, malice, and venomous nature. By removing these, the path for a new civilization is paved.</p>
+                </div>
+                <div class="qa-box">
+                    <p class="font-bold">4. What does 'river' mean in the poem and what is its symbol?</p>
+                    <p class="mt-[1px]"><span class="font-bold">Answer:</span> The river here is a symbol of life's flow and the journey of life.</p>
+                </div>
+                <div class="qa-box">
+                    <p class="font-bold">5. What is the 'ferry boat' a symbol of?</p>
+                    <p class="mt-[1px]"><span class="font-bold">Answer:</span> It is a symbol of life.</p>
+                </div>
+                <div class="qa-box">
+                    <p class="font-bold">6. Why is new history created in the world?</p>
+                    <p class="mt-[1px]"><span class="font-bold">Answer:</span> New history is created due to conflicts over political power in society.</p>
+                </div>
+                <div class="qa-box">
+                    <p class="font-bold">7. "How much conflict, how much ruin" - Meaning of 'conflict'?</p>
+                    <p class="mt-[1px]"><span class="font-bold">Answer:</span> 'Conflict' means dispute, quarrel, or fight.</p>
+                </div>
+                <div class="qa-box">
+                    <p class="font-bold">8. What is on the distant banks of the river?</p>
+                    <p class="mt-[1px]"><span class="font-bold">Answer:</span> There are two villages on the two banks.</p>
+                </div>
+                <div class="qa-box">
+                    <p class="font-bold">9. What do the two villages look towards?</p>
+                    <p class="mt-[1px]"><span class="font-bold">Answer:</span> They look towards each other with eyes of affection and longing.</p>
+                </div>
+                <div class="qa-box">
+                    <p class="font-bold">10. How long does the ferry cross?</p>
+                    <p class="mt-[1px]"><span class="font-bold">Answer:</span> The ferry crosses regularly from morning till evening.</p>
+                </div>
+                <div class="qa-box">
+                    <p class="font-bold">11. What do conflict and ruin create?</p>
+                    <p class="mt-[1px]"><span class="font-bold">Answer:</span> New history.</p>
+                </div>
+                <div class="qa-box">
+                    <p class="font-bold">12. "Two villages on two banks" - How are they?</p>
+                    <p class="mt-[1px]"><span class="font-bold">Answer:</span> They are familiar with each other.</p>
+                </div>
+                <div class="qa-box">
+                    <p class="font-bold">13. "This ferry runs forever" - Where does it run?</p>
+                    <p class="mt-[1px]"><span class="font-bold">Answer:</span> In the river's current.</p>
+                </div>
+                <div class="qa-box">
+                    <p class="font-bold">14. "How much conflict, how much ....." - Fill the blank.</p>
+                    <p class="mt-[1px]"><span class="font-bold">Answer:</span> Ruin.</p>
+                </div>
+                <div class="qa-box">
+                    <p class="font-bold">15. What does 'Doha-pane' mean?</p>
+                    <p class="mt-[1px]"><span class="font-bold">Answer:</span> Looking at each other.</p>
+                </div>
+            `,
+            6: `
+                <div id="scale-wrapper-6">
+                    <div class="text-gray-800 text-[9.5px] md:text-[10.5px] text-justify leading-tight two-columns">
+                        <div class="qa-box">
+                            <p class="font-bold">1. What is river capture?</p>
+                            <p class="mt-[1px]"><span class="font-bold">Answer:</span> <span class="font-semibold">Definition:</span> If one of two rivers flowing on either side of a water divide is stronger (i.e., greater depth and erosive power), eventually the divide diminishes and the weaker river's water falls into the stronger one, becoming its tributary. This process is called river capture.</p>
+                        </div>
+                        <div class="qa-box">
+                            <p class="font-bold">2. What is the base level of erosion?</p>
+                            <p class="mt-[1px]"><span class="font-bold">Answer:</span> <span class="font-semibold">Definition:</span> The depth up to which a river can erode the earth's surface is its base level. <span class="font-semibold">Features:</span> Usually, it is the nearest sea level. For a river meeting a lake, the lake surface is the base level (e.g., playa lake in deserts).</p>
+                        </div>
+                        <div class="qa-box">
+                            <p class="font-bold">3. What are endogenetic forces?</p>
+                            <p class="mt-[1px]"><span class="font-bold">Answer:</span> <span class="font-semibold">Definition:</span> Internal processes like contraction, expansion, upliftment, or faulting that alter the earth's surface are endogenetic forces. <span class="font-semibold">Features:</span> Their main source is extreme internal heat and pressure. They cause earthquakes, volcanism, and form plateaus, faults, and rift valleys.</p>
+                        </div>
+                        <div class="qa-box">
+                            <p class="font-bold">4. What are exogenetic forces?</p>
+                            <p class="mt-[1px]"><span class="font-bold">Answer:</span> <span class="font-semibold">Definition:</span> Natural forces continuously acting on or slightly below the earth's surface are exogenetic forces. <span class="font-semibold">Examples:</span> River, glacier, wind, and sea waves.</p>
+                        </div>
+                        <div class="qa-box">
+                            <p class="font-bold">5. What is gradation?</p>
+                            <p class="mt-[1px]"><span class="font-bold">Answer:</span> <span class="font-semibold">Definition:</span> Scientists Chamberlin and Salisbury coined the term. The process of converting uneven landforms into a plain surface through erosion, transportation, and deposition is gradation. It is the combined effect of degradation and aggradation.</p>
+                        </div>
+                        <div class="qa-box">
+                            <p class="font-bold">6. What is degradation?</p>
+                            <p class="mt-[1px]"><span class="font-bold">Answer:</span> <span class="font-semibold">Definition:</span> The process by which elevated landforms are gradually worn down by weathering, mass wasting, and exogenetic forces is degradation. <span class="font-semibold">Example:</span> High mountains eroding into relict mountains, then plateaus, and finally plains.</p>
+                        </div>
+                        <div class="qa-box">
+                            <p class="font-bold">7. What is aggradation?</p>
+                            <p class="mt-[1px]"><span class="font-bold">Answer:</span> <span class="font-semibold">Definition:</span> The process of filling up depressions through deposition and sedimentation is aggradation. <span class="font-semibold">Features:</span> ① Increases land elevation. ② Forms depositional landforms at mountain bases. ③ Creates alluvial fans and floodplains in river basins.</p>
+                        </div>
+                        <div class="qa-box">
+                            <p class="font-bold">8. What is denudation?</p>
+                            <p class="mt-[1px]"><span class="font-bold">Answer:</span> <span class="font-semibold">Concept:</span> The combined action of weathering, mass wasting, and erosion that removes the top layer and exposes the underlying rock structure is called denudation.</p>
+                        </div>
+                        <div class="qa-box">
+                            <p class="font-bold">9. How do humans and organisms act as exogenetic forces?</p>
+                            <p class="mt-[1px]"><span class="font-bold">Answer:</span> Humans erode rocks by building roads and dams, while animals like rodents break rocks for shelter. Dead plants in wetlands decompose into organic matter, filling them up. Humans also fill wetlands and build embankments, continuing the deposition process.</p>
+                        </div>
+                        <div class="qa-box">
+                            <p class="font-bold">10. What are peneplain and monadnock?</p>
+                            <p class="mt-[1px]"><span class="font-bold">Answer:</span> <span class="font-semibold">Definition:</span> Long-term river erosion turns an ancient plateau into a low, almost flat land called a peneplain. Hard rock masses resisting erosion stand as isolated hills, known as monadnocks. <span class="font-semibold">Example:</span> Parts of the Chota Nagpur plateau are peneplains; Pareshnath and Panchet hills are monadnocks.</p>
+                        </div>
+                        <div class="qa-box">
+                            <p class="font-bold">11. What is the middle course of a river?</p>
+                            <p class="mt-[1px]"><span class="font-bold">Answer:</span> <span class="font-semibold">Definition:</span> The flow of a river over plain lands after leaving the mountains is its middle course. Water volume increases but speed decreases. Main work is transportation and deposition. <span class="font-semibold">Example:</span> Ganga's flow from Haridwar to Rajmahal.</p>
+                        </div>
+                        <div class="qa-box">
+                            <p class="font-bold">12. What is the lower or deltaic course of a river?</p>
+                            <p class="mt-[1px]"><span class="font-bold">Answer:</span> <span class="font-semibold">Definition:</span> The slow flow of a river near its mouth is the lower course. Since the river builds deltas here, it is also called the deltaic course. <span class="font-semibold">Example:</span> Ganga's flow from Rajmahal to the Bay of Bengal.</p>
+                        </div>
+                    </div>
+                </div>
+            `,
+            7: `
+                <div id="scale-wrapper-7">
+                    <div class="text-gray-800 text-[9.5px] md:text-[10.5px] text-justify leading-[1.15] two-columns">
+                        <div class="qa-box">
+                            <p><span class="font-bold">1. Landform-building processes:</span> Earth's landforms are built by two main natural processes: internal or endogenetic processes, and external or exogenetic processes.</p>
+                        </div>
+                        <div class="qa-box">
+                            <p><span class="font-bold">2. Exogenetic forces:</span> Natural forces continuously active on or slightly below the earth's surface are called exogenetic forces.</p>
+                        </div>
+                        <div class="qa-box">
+                            <p><span class="font-bold">3. Exogenetic processes:</span> The methods by which exogenetic forces denude or alter the surface through erosion, transportation, and deposition.</p>
+                        </div>
+                        <div class="qa-box">
+                            <p><span class="font-bold">4. Water cycle:</span> The continuous circulation of water between the sky and earth as vapor, clouds, and precipitation.</p>
+                        </div>
+                        <div class="qa-box">
+                            <p><span class="font-bold">5. Catchment basin:</span> The area from which small streams collect water to increase a river's flow.</p>
+                        </div>
+                        <div class="qa-box">
+                            <p><span class="font-bold">6. River valley:</span> A long, narrow depression between two highlands. When a river flows through it, it's called a river valley.</p>
+                        </div>
+                        <div class="qa-box">
+                            <p><span class="font-bold">7. River basin:</span> The entire geographical area drained by a river along with its tributaries and distributaries.</p>
+                        </div>
+                        <div class="qa-box">
+                            <p><span class="font-bold">8. Water divide:</span> An elevated landform that separates two or more river systems.</p>
+                        </div>
+                        <div class="qa-box">
+                            <p><span class="font-bold">9. River courses:</span> A river's path is divided into three sections: upper (mountain), middle (plain), and lower (deltaic) course.</p>
+                        </div>
+                        <div class="qa-box">
+                            <p><span class="font-bold">10. Ideal river:</span> A river that distinctly exhibits all three courses (e.g., the Ganga River).</p>
+                        </div>
+                        <div class="qa-box">
+                            <p><span class="font-bold">11. River's work:</span> The erosion, transportation, and deposition performed by a river depending on slope and water volume.</p>
+                        </div>
+                        <div class="qa-box">
+                            <p><span class="font-bold">12. Types of river work:</span> Upper course mainly erodes and transports, middle course erodes and deposits, and lower course mainly deposits.</p>
+                        </div>
+                        <div class="qa-box">
+                            <p><span class="font-bold">13. River erosion:</span> The breaking and removal of rocks from the riverbed by the impact of flowing water.</p>
+                        </div>
+                        <div class="qa-box">
+                            <p><span class="font-bold">14. River transportation:</span> The movement of eroded materials from one place to another by river water.</p>
+                        </div>
+                        <div class="qa-box">
+                            <p><span class="font-bold">15. River deposition:</span> The dropping of transported materials on the riverbed or along its banks.</p>
+                        </div>
+                        <div class="qa-box">
+                            <p><span class="font-bold">16. Gradation:</span> Term coined by Chamberlin & Salisbury. The leveling of uneven terrain through erosion and deposition. It is the combined result of degradation and aggradation.</p>
+                        </div>
+                        <div class="qa-box">
+                            <p><span class="font-bold">17. Impact of climate change on Ganga delta:</span> Global warming has raised sea levels, causing submergence. Half of Ghoramara Island and the entirety of New Moore Island are now underwater. Lohachara Island was submerged but has partially re-emerged.</p>
+                        </div>
+                    </div>
+                </div>
+            `
+        };
+        return enHTML[id] || '';
+    }
+
+    // Capture the original Bengali HTML right away
+    for (let i = 1; i <= 7; i++) {
+        const layer = document.getElementById('text-layer-' + i);
+        if (layer) {
+            slideTranslations[i] = {
+                bengali: layer.innerHTML,
+                english: getEnglishHTML(i)
+            };
+        }
+    }
+
+    // --- Canvas Resize Logic for Integrated Templates ---
+    function resizeAllCanvases() {
+        for (let i = 1; i <= 7; i++) {
+            const canvas = document.getElementById('myCanvas-' + i);
+            const container = document.getElementById('canvas-container-' + i);
+            
+            if (canvas && container) {
+                const rect = container.getBoundingClientRect();
+                // Ensuring proper rendering dynamically
+                canvas.width = rect.width * (window.devicePixelRatio || 1);
+                canvas.height = rect.height * (window.devicePixelRatio || 1);
+
+                const ctx = canvas.getContext('2d');
+                ctx.fillStyle = 'white';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+            }
+        }
+    }
+
+    window.addEventListener('load', resizeAllCanvases);
+    window.addEventListener('resize', resizeAllCanvases);
+    resizeAllCanvases();
+
+    // --- Original App JavaScript Below ---
+    const playerContainer = document.getElementById('playerContainer');
+
+    // --- Carousel Cover Flow / Dock Logic ---
+    const albumArtContainer = document.getElementById('albumArtContainer');
+    const albumArts = document.querySelectorAll('.album-art');
+
+    const totalPages = albumArts.length; 
+    let currentActiveIndex = -1; 
+    
+    // Realistic fake initial likes for each box
+    const baseLikes =[28400, 12500, 8900, 56000, 3200, 45000];
+    const pagesLikeData = Array.from({ length: totalPages }, (_, i) => ({
+        likes: baseLikes[i % baseLikes.length],
+        isLiked: false,
+        isDisliked: false,
+        isUsed: false 
+    }));
+
+    function formatNumber(num) {
+        if (num >= 1000) {
+            return (num / 1000).toFixed(1).replace('.0', '') + 'k';
+        }
+        return num;
+    }
+
+    function updateActiveAlbum() {
+        const containerRect = albumArtContainer.getBoundingClientRect();
+        const containerCenter = containerRect.left + containerRect.width / 2;
+
+        let closest = null;
+        let minDistance = Infinity;
+        let activeIndex = 0;
+
+        albumArts.forEach((art, index) => {
+            const rect = art.getBoundingClientRect();
+            const artCenter = rect.left + rect.width / 2;
+            const distance = Math.abs(containerCenter - artCenter);
+
+            if (distance < minDistance) {
+                minDistance = distance;
+                closest = art;
+                activeIndex = index; 
+            }
+        });
+
+        albumArts.forEach(art => art.classList.remove('active'));
+        if (closest) {
+            closest.classList.add('active');
+        }
+
+        if (currentActiveIndex !== activeIndex) {
+            currentActiveIndex = activeIndex;
+            updateLikeUI();
+            updateToggleUI(); 
+        }
+    }
+
+    function updateLikeUI() {
+        const data = pagesLikeData[currentActiveIndex];
+        const likeCount = document.getElementById('likeCount');
+        const likeBtn = document.getElementById('likeBtn');
+        const dislikeBtn = document.getElementById('dislikeBtn');
+
+        likeCount.innerText = formatNumber(data.likes);
+
+        if (data.isLiked) {
+            likeBtn.classList.add('thumb-active');
+        } else {
+            likeBtn.classList.remove('thumb-active', 'animate-pop');
+        }
+
+        if (data.isDisliked) {
+            dislikeBtn.classList.add('thumb-active');
+        } else {
+            dislikeBtn.classList.remove('thumb-active', 'animate-pop');
+        }
+    }
+
+    function updateToggleUI() {
+        const data = pagesLikeData[currentActiveIndex];
+        const toggleTrack = document.getElementById('toggleTrack');
+        const toggleText = document.getElementById('toggleText');
+
+        if (data.isUsed) {
+            toggleTrack.classList.add('active');
+            toggleText.innerText = 'Using';
+        } else {
+            toggleTrack.classList.remove('active');
+            toggleText.innerText = 'Use';
+        }
+        
+        updateMagicBorders();
+    }
+
+    function updateMagicBorders() {
+        albumArts.forEach((art, index) => {
+            if (pagesLikeData[index].isUsed) {
+                art.classList.add('magic-border-active');
+            } else {
+                art.classList.remove('magic-border-active');
+            }
+        });
+    }
+
+    albumArtContainer.addEventListener('scroll', () => {
+        window.requestAnimationFrame(updateActiveAlbum);
+    });
+    window.addEventListener('resize', updateActiveAlbum);
+    setTimeout(updateActiveAlbum, 50);
+
+    const moreMenuBtn = document.getElementById('moreMenuBtn');
+    const tPopupOverlay = document.getElementById('tPopupOverlay');
+    const tPopupSheet = document.getElementById('tPopupSheet');
+    const tPopupCloseBtn = document.getElementById('tPopupCloseBtn');
+
+    let isPlaying = false; 
+
+    moreMenuBtn.addEventListener('click', () => {
+        if (isPlaying) return;
+        tPopupOverlay.classList.add('active');
+        tPopupSheet.classList.add('active');
+    });
+
+    tPopupCloseBtn.addEventListener('click', () => {
+        tPopupOverlay.classList.remove('active');
+        tPopupSheet.classList.remove('active');
+    });
+
+    tPopupOverlay.addEventListener('click', () => {
+        tPopupOverlay.classList.remove('active');
+        tPopupSheet.classList.remove('active');
+    });
+
+    // --- Font Menu Logic ---
+    const fontMenuBtn = document.getElementById('fontMenuBtn');
+    const fontMenuOverlay = document.getElementById('fontMenuOverlay');
+    const fontMenuPopup = document.getElementById('fontMenuPopup');
+
+    fontMenuBtn.addEventListener('click', () => {
+        if (isPlaying) return;
+        fontMenuOverlay.classList.add('active');
+        fontMenuPopup.classList.add('active');
+    });
+
+    function closeFontMenu() {
+        fontMenuOverlay.classList.remove('active');
+        fontMenuPopup.classList.remove('active');
+    }
+
+    fontMenuOverlay.addEventListener('click', closeFontMenu);
+
+     
+
+    const likeBtn = document.getElementById('likeBtn');
+    const dislikeBtn = document.getElementById('dislikeBtn');
+    const likeCount = document.getElementById('likeCount');
+
+    likeBtn.addEventListener('click', () => {
+        const data = pagesLikeData[currentActiveIndex];
+
+        if (data.isLiked) {
+            likeBtn.classList.remove('thumb-active', 'animate-pop');
+            data.isLiked = false;
+            data.likes--;
+        } else {
+            likeBtn.classList.remove('animate-pop');
+            void likeBtn.offsetWidth; 
+            likeBtn.classList.add('thumb-active', 'animate-pop');
+            data.isLiked = true;
+            data.likes++;
+
+            if (data.isDisliked) {
+                dislikeBtn.classList.remove('thumb-active', 'animate-pop');
+                data.isDisliked = false;
+            }
+        }
+        likeCount.innerText = formatNumber(data.likes);
+    });
+
+    dislikeBtn.addEventListener('click', () => {
+        const data = pagesLikeData[currentActiveIndex];
+
+        if (data.isDisliked) {
+            dislikeBtn.classList.remove('thumb-active', 'animate-pop');
+            data.isDisliked = false;
+        } else {
+            dislikeBtn.classList.remove('animate-pop');
+            void dislikeBtn.offsetWidth; 
+            dislikeBtn.classList.add('thumb-active', 'animate-pop');
+            data.isDisliked = true;
+
+            if (data.isLiked) {
+                likeBtn.classList.remove('thumb-active', 'animate-pop');
+                data.isLiked = false;
+                data.likes--;
+                likeCount.innerText = formatNumber(data.likes);
+            }
+        }
+    });
+
+    const useToggleBtn = document.getElementById('useToggleBtn');
+
+    useToggleBtn.addEventListener('click', () => {
+        const data = pagesLikeData[currentActiveIndex];
+
+        if (data.isUsed) {
+            data.isUsed = false;
+        } else {
+            pagesLikeData.forEach(page => page.isUsed = false);
+            data.isUsed = true;
+        }
+
+        updateToggleUI();
+        updateMagicBorders();
+    });
+
+    // =============================================
+    // Dynamic Font Switching System
+    // =============================================
+
+    const fontPairings = {
+        1: { mainFont: "'Baloo Da 2', cursive", subFont: "'Hind Siliguri', sans-serif", mainWeight: "600", subWeight: "300", subStyle: "normal", subLetterSpacing: "0.01em" },
+        2: { mainFont: "'Noto Serif Bengali', serif", subFont: "'Anek Bangla', sans-serif", mainWeight: "600", subWeight: "300", subStyle: "normal", subLetterSpacing: "0em" },
+        3: { mainFont: "'Hind Siliguri', sans-serif", subFont: "'Noto Serif Bengali', serif", mainWeight: "700", subWeight: "400", subStyle: "italic", subLetterSpacing: "0em" },
+        4: { mainFont: "'Anek Bangla', sans-serif", subFont: "'Baloo Da 2', cursive", mainWeight: "600", subWeight: "400", subStyle: "normal", subLetterSpacing: "0em" },
+        5: { mainFont: "'Kalpurush', sans-serif", subFont: "'Hind Siliguri', sans-serif", mainWeight: "500", subWeight: "500", subStyle: "normal", subLetterSpacing: "0.03em" }
+    };
+
+    let currentLang = 'bengali';
+
+    function getPairingForLang(fontId, lang) {
+        if (lang === 'english') {
+            const englishFontPairings = {
+                0: { mainFont: "'Times New Roman', Times, serif", subFont: "'Times New Roman', Times, serif", mainWeight: "700", subWeight: "400", subStyle: "normal",  subLetterSpacing: "0em" },
+                1: { mainFont: "'Times New Roman', Times, serif", subFont: "'Lato', sans-serif",              mainWeight: "700", subWeight: "300", subStyle: "normal",  subLetterSpacing: "0.01em" },
+                2: { mainFont: "'Times New Roman', Times, serif", subFont: "'Open Sans', sans-serif",         mainWeight: "700", subWeight: "400", subStyle: "normal",  subLetterSpacing: "0em" },
+                3: { mainFont: "'Times New Roman', Times, serif", subFont: "'Cormorant Garamond', serif",     mainWeight: "700", subWeight: "400", subStyle: "italic",  subLetterSpacing: "0em" },
+                4: { mainFont: "'Times New Roman', Times, serif", subFont: "'Libre Baskerville', serif",      mainWeight: "700", subWeight: "400", subStyle: "normal",  subLetterSpacing: "0em" },
+                5: { mainFont: "'Times New Roman', Times, serif", subFont: "'DM Sans', sans-serif",           mainWeight: "700", subWeight: "500", subStyle: "normal",  subLetterSpacing: "0.02em" }
+            };
+            return englishFontPairings[fontId] || englishFontPairings[0];
+        }
+        return fontPairings[fontId] || null;
+    }
+
+    function applyFontPairing(fontId) {
+        if (fontId === 0) {
+            for (let i = 1; i <= 7; i++) {
+                const layer = document.getElementById('text-layer-' + i);
+                if (!layer) continue;
+
+                const allElements = layer.querySelectorAll('p, h3, span');
+                allElements.forEach(el => {
+                    el.style.fontFamily = '';
+                    el.style.fontWeight = '';
+                    el.style.fontStyle = '';
+                    el.style.letterSpacing = '';
+                });
+            }
+
+            document.querySelectorAll('[data-font-id]').forEach(item => {
+                item.style.borderLeft = '';
+                item.style.background = '';
+            });
+
+            return;
+        }
+
+        const pairing = getPairingForLang(fontId, currentLang);
+        if (!pairing) return;
+
+        for (let i = 1; i <= 7; i++) {
+            const layer = document.getElementById('text-layer-' + i);
+            if (!layer) continue;
+
+            const mainElements = layer.querySelectorAll('p.font-bold, h3, .font-bold');
+            mainElements.forEach(el => {
+                el.style.fontFamily = pairing.mainFont;
+                el.style.fontWeight = pairing.mainWeight;
+                el.style.fontStyle = 'normal';
+            });
+
+            const allP = layer.querySelectorAll('p');
+            allP.forEach(el => {
+                if (!el.classList.contains('font-bold')) {
+                    el.style.fontFamily = pairing.subFont;
+                    el.style.fontWeight = pairing.subWeight;
+                    el.style.fontStyle = pairing.subStyle;
+                    el.style.letterSpacing = pairing.subLetterSpacing;
+                }
+            });
+
+            const boldSpans = layer.querySelectorAll('span.font-bold, span.font-semibold');
+            boldSpans.forEach(el => {
+                el.style.fontFamily = pairing.mainFont;
+                el.style.fontWeight = pairing.mainWeight;
+            });
+        }
+
+        document.querySelectorAll('[data-font-id]').forEach(item => {
+            item.style.borderLeft = '';
+            item.style.background = '';
+        });
+        const activeItem = document.querySelector('[data-font-id="' + fontId + '"]');
+        if (activeItem) {
+            activeItem.style.borderLeft = '3px solid rgba(0,0,0,0.6)';
+            activeItem.style.background = 'rgba(0,0,0,0.08)';
+        }
+    
+
+        closeSlideUpPanel();
+    }
+
+    document.querySelectorAll('[data-font-id]').forEach(item => {
+        item.addEventListener('click', () => {
+            const fontId = parseInt(item.getAttribute('data-font-id'));
+            applyFontPairing(fontId);
+        });
+    });
+
+    function applyLanguageFont(lang) {
+        currentLang = lang;
+
+        const activeItem = document.querySelector('[data-font-id][style*="border-left"]');
+        let activeFontId = 0;
+        if (activeItem) {
+            activeFontId = parseInt(activeItem.getAttribute('data-font-id'));
+        }
+
+        const engBox = document.getElementById('langEnglishBox');
+        const benBox = document.getElementById('langBengaliBox');
+        if (lang === 'english') {
+            engBox.classList.add('lang-active');
+            benBox.classList.remove('lang-active');
+        } else {
+            benBox.classList.add('lang-active');
+            engBox.classList.remove('lang-active');
+        }
+
+        // ১. Swap Text InnerHTML First
+        if (Object.keys(slideTranslations).length > 0) {
+            for (let i = 1; i <= 7; i++) {
+                const layer = document.getElementById('text-layer-' + i);
+                if (layer && slideTranslations[i]) {
+                    layer.innerHTML = slideTranslations[i][lang];
+                }
+            }
+        }
+
+        // ২. Update Labels in the Queue Panel
+        document.querySelectorAll('[data-font-id]').forEach(item => {
+            const h3 = item.querySelector('h3');
+            const p  = item.querySelector('p');
+
+            if (h3) {
+                h3.textContent = lang === 'english'
+                    ? (h3.dataset.en || h3.textContent)
+                    : (h3.dataset.bn || h3.textContent);
+                h3.style.fontFamily = lang === 'english'
+                    ? (h3.dataset.fontEn || "'Georgia', serif")
+                    : (h3.dataset.fontBn || "'Baloo Da 2', cursive");
+            }
+
+            if (p) {
+                p.textContent = lang === 'english'
+                    ? (p.dataset.en || p.textContent)
+                    : (p.dataset.bn || p.textContent);
+                p.style.fontFamily = lang === 'english'
+                    ? (p.dataset.fontEn || "'Arial', sans-serif")
+                    : (p.dataset.fontBn || "'Hind Siliguri', sans-serif");
+            }
+        });
+
+        // ৩. Apply Font Combination to the new injected HTML texts
+        const pairing = getPairingForLang(activeFontId, lang);
+
+        for (let i = 1; i <= 7; i++) {
+            const layer = document.getElementById('text-layer-' + i);
+            if (!layer) continue;
+
+            if (!pairing) {
+                layer.querySelectorAll('p, h3, span').forEach(el => {
+                    el.style.fontFamily = '';
+                    el.style.fontWeight = '';
+                    el.style.fontStyle = '';
+                    el.style.letterSpacing = '';
+                });
+                continue;
+            }
+
+            layer.querySelectorAll('p.font-bold, h3, .font-bold').forEach(el => {
+                el.style.fontFamily = pairing.mainFont;
+                el.style.fontWeight = pairing.mainWeight;
+                el.style.fontStyle  = 'normal';
+            });
+
+            layer.querySelectorAll('p').forEach(el => {
+                if (!el.classList.contains('font-bold')) {
+                    el.style.fontFamily    = pairing.subFont;
+                    el.style.fontWeight    = pairing.subWeight;
+                    el.style.fontStyle     = pairing.subStyle;
+                    el.style.letterSpacing = pairing.subLetterSpacing;
+                }
+            });
+
+            layer.querySelectorAll('span.font-bold, span.font-semibold').forEach(el => {
+                el.style.fontFamily = pairing.mainFont;
+                el.style.fontWeight = pairing.mainWeight;
+            });
+        }
+
+        tPopupOverlay.classList.remove('active');
+        tPopupSheet.classList.remove('active');
+    }
+
+    document.getElementById('langEnglishBtn').addEventListener('click', () => {
+        applyLanguageFont('english');
+    });
+
+    document.getElementById('langBengaliBtn').addEventListener('click', () => {
+        applyLanguageFont('bengali');
+    });
+
+    document.getElementById('langBengaliBox').classList.add('lang-active');
+
+</script>
+
+</body>
+</html>
