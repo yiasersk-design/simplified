@@ -1215,10 +1215,8 @@ window.switchTab = function(tab) {
     if (!slider || !btnNotebook || !btnMetaAi) return;
 
     if (tab === 'notebook') {
-        // Notebook এ ক্লিক করলে সরাসরি নতুন পেজে রিডাইরেক্ট হবে
-        window.location.href = '/Modules/Notebook.html';
+        window.location.href = './Notebook.html';
     } else if (tab === 'meta-ai') {
-        // Meta Ai তে থাকলে यहीं থাকবে এবং Active state আপডেট করবে
         slider.classList.add('right-active');
         btnMetaAi.classList.add('active');
         btnNotebook.classList.remove('active');
