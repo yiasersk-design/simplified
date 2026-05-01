@@ -81,6 +81,10 @@
             z-index: 10;
         }
 
+        .back-nav-btn:active {
+            background: transparent !important;
+        }
+
         .back-nav-btn svg {
             width: 32px; 
             height: 32px;
@@ -615,7 +619,7 @@
     
     <nav class="nav-header">
         <!-- Menu Icon (Left Side) -->
-        <button class="nav-btn back-nav-btn" title="Menu">
+        <button class="nav-btn back-nav-btn" title="Menu" onclick="window.location.href='/Modules/Notebook.html'">
             <svg xmlns="http://www.w3.org/2000/svg" width="200" height="200" viewBox="0 0 24 24">
                 <path fill="none" stroke="#000000" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5"/>
             </svg>
