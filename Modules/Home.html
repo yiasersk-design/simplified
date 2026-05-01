@@ -99,13 +99,13 @@
         @keyframes colorize { 0%, 100% { filter: hue-rotate(0deg); } 20% { filter: hue-rotate(-30deg); } 40% { filter: hue-rotate(-60deg); } 60% { filter: hue-rotate(-90deg); } 80% { filter: hue-rotate(-45deg); } }
 
         /* Quick-Act Toggle Styles */
-        .toggle-wrapper { display: flex; width: 100%; height: 36px; border-radius: 6px; border: 1px solid #e5e7eb; position: relative; background: #ffffff; }
-        .slider { position: absolute; top: -1px; bottom: -1px; left: -1px; right: 50%; background-color: #f0f5ff; border: 1px solid #dbeafe; border-radius: 6px; transition: all 0.4s cubic-bezier(0.25, 1, 0.4, 1); z-index: 0; box-shadow: 0 1px 2px rgba(0, 0, 0, 0.02); }
+        .toggle-wrapper { display: flex; width: 100%; height: 36px; border-radius: 6px; border: 1px solid #e5e7eb; position: relative; background: #ffffff; margin: 0 auto; }
+        .slider { position: absolute; top: -1px; bottom: -1px; left: -1px; right: 50%; background-color: #f0f5ff; border: 1px solid #dbeafe; border-radius: 6px; transition: none; z-index: 0; box-shadow: 0 1px 2px rgba(0, 0, 0, 0.02); }
         .slider.right-active { left: 50%; right: -1px; }
-        .toggle-btn { flex: 1; height: 100%; display: flex; justify-content: center; align-items: center; gap: 6px; border: none; background: transparent; font-size: 15px; font-weight: 500; color: #111827; border-radius: 6px; cursor: pointer; position: relative; z-index: 1; transition: color 0.3s ease, transform 0.15s ease; }
+        .toggle-btn { flex: 1; height: 100%; display: flex; justify-content: center; align-items: center; gap: 6px; border: none; background: transparent; font-size: 15px; font-weight: 500; color: #111827; border-radius: 6px; cursor: pointer; position: relative; z-index: 1; transition: none; }
         .toggle-btn.active { color: #3b82f6; }
-        .toggle-btn:active { transform: scale(0.97); }
-        .toggle-btn svg { transition: all 0.3s ease; }
+        .toggle-btn:active { transform: none; }
+        .toggle-btn svg { transition: none; }
         .toggle-btn#btn-notebook svg { fill: currentColor; }
         .toggle-btn#btn-meta-ai svg { stroke: currentColor; fill: none; }
     </style>
@@ -673,17 +673,17 @@ window.loadSession = function(id, forceLoad = false) {
     
     if (!session.chatHTML || session.chatHTML.trim() === '') {
         chatContainer.innerHTML = `
-            <div id="welcomeScreen" class="absolute top-[130px] left-1/2 transform -translate-x-1/2 z-10 fade-in pointer-events-none flex justify-center w-full">
+            <div id="welcomeScreen" class="absolute top-[130px] left-1/2 transform -translate-x-1/2 z-10 pointer-events-none flex justify-center w-full">
                 <div class="pointer-events-auto flex flex-col items-center">
                     <div class="toggle-wrapper" style="width: 250px;">
-                        <div class="slider" id="active-slider"></div>
-                        <button class="toggle-btn active" id="btn-notebook" onclick="switchTab('notebook')">
+                        <div class="slider right-active" id="active-slider"></div>
+                        <button class="toggle-btn" id="btn-notebook" onclick="switchTab('notebook')">
                             <svg width="12" height="15" viewBox="0 0 14 18" xmlns="http://www.w3.org/2000/svg">
                                 <path d="M8.2 0L0 10H6.5L5.8 18L14 8H7.5L8.2 0Z" />
                             </svg>
                             Notebook
                         </button>
-                        <button class="toggle-btn" id="btn-meta-ai" onclick="switchTab('meta-ai')">
+                        <button class="toggle-btn active" id="btn-meta-ai" onclick="switchTab('meta-ai')">
                             <svg width="15" height="15" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round" stroke-width="2">
                                 <path d="M6 3h12l4 6-10 12L2 9l4-6z"/>
                                 <path d="M2 9h20"/>
@@ -698,7 +698,6 @@ window.loadSession = function(id, forceLoad = false) {
         chatContainer.innerHTML = session.chatHTML;
     }
     
-    // Toggle State Restore
     const headerToggleBtn = document.getElementById('headerToggleBtn');
     const bottomNavElement = document.getElementById('bottomNav');
     if (headerToggleBtn && bottomNavElement) {
@@ -717,18 +716,17 @@ window.loadSession = function(id, forceLoad = false) {
 window.createNewSession = function() {
     currentSessionId = Date.now();
     chatContainer.innerHTML = `
-        <div id="welcomeScreen" class="absolute top-[130px] left-1/2 transform -translate-x-1/2 z-10 fade-in pointer-events-none flex justify-center w-full">
+        <div id="welcomeScreen" class="absolute top-[130px] left-1/2 transform -translate-x-1/2 z-10 pointer-events-none flex justify-center w-full">
             <div class="pointer-events-auto flex flex-col items-center">
-                <!-- Toggle Switch -->
                 <div class="toggle-wrapper" style="width: 250px;">
-                    <div class="slider" id="active-slider"></div>
-                    <button class="toggle-btn active" id="btn-notebook" onclick="switchTab('notebook')">
+                    <div class="slider right-active" id="active-slider"></div>
+                    <button class="toggle-btn" id="btn-notebook" onclick="switchTab('notebook')">
                         <svg width="12" height="15" viewBox="0 0 14 18" xmlns="http://www.w3.org/2000/svg">
                             <path d="M8.2 0L0 10H6.5L5.8 18L14 8H7.5L8.2 0Z" />
                         </svg>
                         Notebook
                     </button>
-                    <button class="toggle-btn" id="btn-meta-ai" onclick="switchTab('meta-ai')">
+                    <button class="toggle-btn active" id="btn-meta-ai" onclick="switchTab('meta-ai')">
                         <svg width="15" height="15" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round" stroke-width="2">
                             <path d="M6 3h12l4 6-10 12L2 9l4-6z"/>
                             <path d="M2 9h20"/>
@@ -743,7 +741,6 @@ window.createNewSession = function() {
     localStorage.setItem('metaAINotes_sessions', JSON.stringify(chatSessions));
     localStorage.setItem('metaAINotes_currentId', currentSessionId.toString());
     
-    // Reset Toggle State for New Note
     const headerToggleBtn = document.getElementById('headerToggleBtn');
     const bottomNavElement = document.getElementById('bottomNav');
     if (headerToggleBtn && bottomNavElement) {
@@ -1218,12 +1215,10 @@ window.switchTab = function(tab) {
     if (!slider || !btnNotebook || !btnMetaAi) return;
 
     if (tab === 'notebook') {
-        slider.classList.remove('right-active');
-        btnNotebook.classList.add('active');
-        btnMetaAi.classList.remove('active');
-        isNoteModeActive = true;
-        window.showToast('Switched to Notebook Mode', 'success');
+        // Notebook এ ক্লিক করলে সরাসরি নতুন পেজে রিডাইরেক্ট হবে
+        window.location.href = '/Modules/Notebook.html';
     } else if (tab === 'meta-ai') {
+        // Meta Ai তে থাকলে यहीं থাকবে এবং Active state আপডেট করবে
         slider.classList.add('right-active');
         btnMetaAi.classList.add('active');
         btnNotebook.classList.remove('active');
