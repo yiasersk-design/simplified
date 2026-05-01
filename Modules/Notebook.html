@@ -488,22 +488,25 @@
 // --- UI Versioning System ---
 (function handleUIVersioning() {
     const CURRENT_UI_VERSION = "1.0.0"; // যখনই UI/UX বা ডিজাইন আপডেট করবেন, এই মান পরিবর্তন করবেন (যেমন: "1.0.1")
-    const storedUiVersion = localStorage.getItem('aiNoteMaker_uiVersion');
+    const storedUiVersion = localStorage.getItem('metaAINotes_uiVersion');
     
     if (storedUiVersion !== CURRENT_UI_VERSION) {
+        // শুধুমাত্র Design/UI সম্পর্কিত Key-গুলো এখানে রাখবেন। User Data (যেমন: session, apiKeys) ভুলেও রাখবেন না।
         const uiRelatedKeys =[
-            'aiNoteMaker_userStyles',
-            'aiNoteMaker_pageMargins',
-            'aiNoteMaker_aspectRatio',
-            'aiNoteMaker_themePreferences',
-            'aiNoteMaker_fontSize'
+            'metaAINotes_userStyles',
+            'metaAINotes_pageMargins',
+            'metaAINotes_aspectRatio',
+            'metaAINotes_themePreferences',
+            'metaAINotes_fontSize'
         ];
         
+        // পুরনো UI ডেটা রিমুভ করা হচ্ছে
         uiRelatedKeys.forEach(key => {
             localStorage.removeItem(key);
         });
         
-        localStorage.setItem('aiNoteMaker_uiVersion', CURRENT_UI_VERSION);
+        // নতুন ভার্সন লোকাল স্টোরেজে সেভ করা হলো
+        localStorage.setItem('metaAINotes_uiVersion', CURRENT_UI_VERSION);
         console.log("✅ UI Data Cleared. App updated to UI Version: " + CURRENT_UI_VERSION);
     }
 })();
@@ -521,8 +524,8 @@ window.showToast = function(msg, type) {
 
 // --- Home Variables & Functions ---
 let inputTimerInterval = null;
-let chatSessions = JSON.parse(localStorage.getItem('aiNoteMaker_sessions')) ||[];
-let savedCurrentId = localStorage.getItem('aiNoteMaker_currentId');
+let chatSessions = JSON.parse(localStorage.getItem('metaAINotes_sessions')) ||[];
+let savedCurrentId = localStorage.getItem('metaAINotes_currentId');
 let currentSessionId = savedCurrentId ? parseInt(savedCurrentId) : null;
 let createdPageData = null;
 let contentList =[];
@@ -550,20 +553,20 @@ const sidebarMenu = document.getElementById('sidebarMenu');
 const sidebarOverlay = document.getElementById('sidebarOverlay');
 
 function getProfileData() {
-    return JSON.parse(localStorage.getItem('aiNoteMaker_profileData') || '{"name":"My Account","apis":[]}');
+    return JSON.parse(localStorage.getItem('metaAINotes_profileData') || '{"name":"My Account","apis":[]}');
 }
 
 function startReverseTimer() {
     if (inputTimerInterval) clearInterval(inputTimerInterval);
     inputTimerInterval = setInterval(() => {
         if (!chatInput) return;
-        const limitData = JSON.parse(localStorage.getItem('aiNoteMaker_apiLimit')) || { used: 0 };
+        const limitData = JSON.parse(localStorage.getItem('metaAINotes_apiLimit')) || { used: 0 };
         const GLOBAL_API_LIMIT = 50;
         let isGlobalLimit = limitData.used >= GLOBAL_API_LIMIT;
         
-        const modelStatuses = JSON.parse(localStorage.getItem('aiNoteMaker_modelStatuses')) || {};
-        const modelResetTimes = JSON.parse(localStorage.getItem('aiNoteMaker_modelResetTimes')) || {};
-        const currentActiveModel = localStorage.getItem('aiNoteMaker_activeModel') || 'gpt-4o-1';
+        const modelStatuses = JSON.parse(localStorage.getItem('metaAINotes_modelStatuses')) || {};
+        const modelResetTimes = JSON.parse(localStorage.getItem('metaAINotes_modelResetTimes')) || {};
+        const currentActiveModel = localStorage.getItem('metaAINotes_activeModel') || 'gpt-4o-1';
         let isModelLimit = modelStatuses[currentActiveModel] === 'limit';
         
         if (isGlobalLimit || isModelLimit) {
@@ -571,8 +574,8 @@ function startReverseTimer() {
             let diff = resetTimeMs - new Date().getTime();
 
             if (diff <= 0) {
-                if (isModelLimit) { modelStatuses[currentActiveModel] = 'ok'; delete modelResetTimes[currentActiveModel]; localStorage.setItem('aiNoteMaker_modelStatuses', JSON.stringify(modelStatuses)); localStorage.setItem('aiNoteMaker_modelResetTimes', JSON.stringify(modelResetTimes)); }
-                if (isGlobalLimit) { limitData.used = 0; limitData.date = new Date().toDateString(); localStorage.setItem('aiNoteMaker_apiLimit', JSON.stringify(limitData)); }
+                if (isModelLimit) { modelStatuses[currentActiveModel] = 'ok'; delete modelResetTimes[currentActiveModel]; localStorage.setItem('metaAINotes_modelStatuses', JSON.stringify(modelStatuses)); localStorage.setItem('metaAINotes_modelResetTimes', JSON.stringify(modelResetTimes)); }
+                if (isGlobalLimit) { limitData.used = 0; limitData.date = new Date().toDateString(); localStorage.setItem('metaAINotes_apiLimit', JSON.stringify(limitData)); }
                 resetInputBoxToNormal(chatInput);
             } else {
                 let hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
@@ -666,10 +669,31 @@ window.loadSession = function(id, forceLoad = false) {
     let session = chatSessions.find(s => s.id === id);
     if(!session) return;
     currentSessionId = session.id;
-    localStorage.setItem('aiNoteMaker_currentId', currentSessionId.toString());
+    localStorage.setItem('metaAINotes_currentId', currentSessionId.toString());
     
     if (!session.chatHTML || session.chatHTML.trim() === '') {
-        chatContainer.innerHTML = '';
+        chatContainer.innerHTML = `
+            <div id="welcomeScreen" class="absolute top-[130px] left-1/2 transform -translate-x-1/2 z-10 pointer-events-none flex justify-center w-full">
+                <div class="pointer-events-auto flex flex-col items-center">
+                    <div class="toggle-wrapper" style="width: 250px;">
+                        <div class="slider right-active" id="active-slider"></div>
+                        <button class="toggle-btn" id="btn-notebook" onclick="switchTab('notebook')">
+                            <svg width="12" height="15" viewBox="0 0 14 18" xmlns="http://www.w3.org/2000/svg">
+                                <path d="M8.2 0L0 10H6.5L5.8 18L14 8H7.5L8.2 0Z" />
+                            </svg>
+                            Notebook
+                        </button>
+                        <button class="toggle-btn active" id="btn-meta-ai" onclick="switchTab('meta-ai')">
+                            <svg width="15" height="15" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round" stroke-width="2">
+                                <path d="M6 3h12l4 6-10 12L2 9l4-6z"/>
+                                <path d="M2 9h20"/>
+                            </svg>
+                            Meta Ai
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `;
     } else {
         chatContainer.innerHTML = session.chatHTML;
     }
@@ -691,10 +715,31 @@ window.loadSession = function(id, forceLoad = false) {
 
 window.createNewSession = function() {
     currentSessionId = Date.now();
-    chatContainer.innerHTML = '';
+    chatContainer.innerHTML = `
+        <div id="welcomeScreen" class="absolute top-[130px] left-1/2 transform -translate-x-1/2 z-10 pointer-events-none flex justify-center w-full">
+            <div class="pointer-events-auto flex flex-col items-center">
+                <div class="toggle-wrapper" style="width: 250px;">
+                    <div class="slider right-active" id="active-slider"></div>
+                    <button class="toggle-btn" id="btn-notebook" onclick="switchTab('notebook')">
+                        <svg width="12" height="15" viewBox="0 0 14 18" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M8.2 0L0 10H6.5L5.8 18L14 8H7.5L8.2 0Z" />
+                        </svg>
+                        Notebook
+                    </button>
+                    <button class="toggle-btn active" id="btn-meta-ai" onclick="switchTab('meta-ai')">
+                        <svg width="15" height="15" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round" stroke-width="2">
+                            <path d="M6 3h12l4 6-10 12L2 9l4-6z"/>
+                            <path d="M2 9h20"/>
+                        </svg>
+                        Meta Ai
+                    </button>
+                </div>
+            </div>
+        </div>
+    `;
     chatSessions.push({ id: currentSessionId, title: "New Note", chatHTML: chatContainer.innerHTML, isNavHidden: false });
-    localStorage.setItem('aiNoteMaker_sessions', JSON.stringify(chatSessions));
-    localStorage.setItem('aiNoteMaker_currentId', currentSessionId.toString());
+    localStorage.setItem('metaAINotes_sessions', JSON.stringify(chatSessions));
+    localStorage.setItem('metaAINotes_currentId', currentSessionId.toString());
     
     const headerToggleBtn = document.getElementById('headerToggleBtn');
     const bottomNavElement = document.getElementById('bottomNav');
@@ -719,12 +764,44 @@ window.deleteCurrentNote = function() {
     
     if (sessionIndex !== -1) {
         chatSessions.splice(sessionIndex, 1);
-        
-        localStorage.setItem('aiNoteMaker_sessions', JSON.stringify(chatSessions));
-        
+        localStorage.setItem('metaAINotes_sessions', JSON.stringify(chatSessions));
         window.showToast('Note deleted successfully', 'error');
         
         if (chatSessions.length > 0) {
+            const nextIndex = sessionIndex > 0 ? sessionIndex - 1 : 0;
+            window.loadSession(chatSessions[nextIndex].id, true);
+        } else {
+            window.createNewSession();
+        }
+    }
+};
+
+window.deleteCurrentNote = function() {
+    // থ্রি-ডট মেনু হাইড করা
+    const menu = document.getElementById('threeDotMenu');
+    if (menu) menu.classList.add('hidden');
+    
+    if (!currentSessionId) return;
+
+    // ইউজারকে কনফার্ম করা
+    if (!confirm("Are you sure you want to delete this note?")) return;
+
+    // বর্তমান সেশনের ইনডেক্স খুঁজে বের করা
+    const sessionIndex = chatSessions.findIndex(s => s.id === currentSessionId);
+    
+    if (sessionIndex !== -1) {
+        // অ্যারে থেকে সেশনটি রিমুভ করা
+        chatSessions.splice(sessionIndex, 1);
+        
+        // লোকাল স্টোরেজ আপডেট করা
+        localStorage.setItem('metaAINotes_sessions', JSON.stringify(chatSessions));
+        
+        // ডিলিট হওয়ার মেসেজ দেখানো
+        window.showToast('Note deleted successfully', 'error');
+        
+        // যদি আরও নোট থাকে, তবে অন্য একটি নোট ওপেন করা। আর না থাকলে নতুন নোট তৈরি করা।
+        if (chatSessions.length > 0) {
+            // ডিলিট করার পর তার আগের নোটটি ওপেন হবে
             const nextIndex = sessionIndex > 0 ? sessionIndex - 1 : 0;
             window.loadSession(chatSessions[nextIndex].id, true);
         } else {
@@ -762,7 +839,7 @@ window.toggleSaveMenu = function(e) {
 
 // API Connection and Chat Logic
 function getActiveApiConfig() {
-    const profileData = JSON.parse(localStorage.getItem('aiNoteMaker_profileData') || '{"apis":[]}');
+    const profileData = JSON.parse(localStorage.getItem('metaAINotes_profileData') || '{"apis":[]}');
     const activeApi = profileData.apis.find(api => api.isActive);
     if (!activeApi && profileData.apis.length > 0) return profileData.apis[0];
     return activeApi;
@@ -782,7 +859,7 @@ function saveCurrentChatState() {
                 updateSidebarList();
             }
         }
-        localStorage.setItem('aiNoteMaker_sessions', JSON.stringify(chatSessions));
+        localStorage.setItem('metaAINotes_sessions', JSON.stringify(chatSessions));
     }
 }
 
@@ -1138,8 +1215,8 @@ window.switchTab = function(tab) {
     if (!slider || !btnNotebook || !btnMetaAi) return;
 
     if (tab === 'notebook') {
-        // Notebook এ ক্লিক করলে সরাসরি নতুন পেজে রিডাইরেক্ট হবে
-        window.location.href = '/Modules/Notebook.html';
+        // Notebook এ ক্লিক করলে সরাসরি নতুন পেজে রিডাইরেক্ট হবে (পাথ ঠিক করা হয়েছে)
+        window.location.href = './Modules/Notebook.html';
     } else if (tab === 'meta-ai') {
         // Meta Ai তে থাকলে यहीं থাকবে এবং Active state আপডেট করবে
         slider.classList.add('right-active');
@@ -1181,7 +1258,7 @@ headerToggleBtn.addEventListener('change', function() {
         let sessionIndex = chatSessions.findIndex(s => s.id === currentSessionId);
         if (sessionIndex !== -1) {
             chatSessions[sessionIndex].isNavHidden = this.checked;
-            localStorage.setItem('aiNoteMaker_sessions', JSON.stringify(chatSessions));
+            localStorage.setItem('metaAINotes_sessions', JSON.stringify(chatSessions));
         }
     }
 });
