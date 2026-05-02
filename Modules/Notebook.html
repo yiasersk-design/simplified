@@ -826,42 +826,55 @@ function handleSendMessage() {
 
     const chatContainer = document.getElementById('chatContainer');
     const micActiveIcon = document.getElementById('micActiveIcon');
+    const micInactiveIcon = document.getElementById('micInactiveIcon');
     
+    // Mode Detection: Inactive icon hidden means Answer mode, else Question mode
     const isQuestionMode = micActiveIcon && micActiveIcon.classList.contains('hidden');
     const currentMessageType = isQuestionMode ? 'QUE' : 'ANS';
 
-    // Safely find the type of the LAST actual message by ignoring dividers
+    // Find the type of the LAST actual message
     let lastMessageType = null;
     const children = chatContainer.children;
     for (let i = children.length - 1; i >= 0; i--) {
         const lastHTML = children[i].innerHTML;
         if (lastHTML.includes('>Que</span>')) {
             lastMessageType = 'QUE';
-            break; // Found the last actual message
+            break;
         } else if (lastHTML.includes('>Ans</span>')) {
             lastMessageType = 'ANS';
-            break; // Found the last actual message
+            break;
         }
     }
 
+    // Sequence Validations
     if (!lastMessageType && currentMessageType === 'ANS') {
         window.showToast('প্রথমে একটি প্রশ্ন (Question) পাঠাতে হবে!', 'error');
         return; 
     }
-
     if (lastMessageType === 'QUE' && currentMessageType === 'QUE') {
         window.showToast('পরপর দুটি প্রশ্ন পাঠানো যাবে না, আগে উত্তর দিন!', 'error');
         return; 
     }
-
     if (lastMessageType === 'ANS' && currentMessageType === 'ANS') {
         window.showToast('পরপর দুটি উত্তর পাঠানো যাবে না, আগে নতুন প্রশ্ন করুন!', 'error');
         return; 
     }
 
+    // Send Message
     appendMessage(message);
     chatInput.value = '';
     chatInput.style.height = 'auto';
+    
+    // Auto-Toggle Logic: Switches to the opposite mode after successful send
+    if (currentMessageType === 'QUE') {
+        // Switch to Answer Mode
+        micInactiveIcon.classList.add('hidden');
+        micActiveIcon.classList.remove('hidden');
+    } else {
+        // Switch to Question Mode
+        micActiveIcon.classList.add('hidden');
+        micInactiveIcon.classList.remove('hidden');
+    }
     
     const audioIcon = document.getElementById('audioIcon');
     const sendIcon = document.getElementById('sendIcon');
@@ -870,6 +883,8 @@ function handleSendMessage() {
     sendIcon.classList.add('hidden');
     chatInput.focus();
 }
+
+
 
 
 
