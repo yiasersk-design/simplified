@@ -775,7 +775,6 @@ function appendMessage(content) {
     }
 
     const micActiveIcon = document.getElementById('micActiveIcon');
-    // Logic updated: Default state (when active icon is hidden) is now Question Mode
     const isQuestionMode = micActiveIcon && micActiveIcon.classList.contains('hidden');
 
     const msgDiv = document.createElement('div');
@@ -785,20 +784,16 @@ function appendMessage(content) {
 
     if (isQuestionMode) {
         // Question: Left Aligned
-        // mt-1 changed to mt-0 to remove gap completely
         msgDiv.className = 'flex justify-start w-full mt-0 fade-in relative px-2';
         contentContainer.className = 'flex flex-col items-start max-w-[90%]';
-        // Reduced text size to text-[14px]
         innerDiv.className = 'user-msg-bubble select-none cursor-text bg-blue-50 border border-blue-200 shadow-sm text-blue-900 px-2.5 py-1.5 rounded-[6px] rounded-tl-[2px] text-[14px] font-medium leading-snug w-fit max-w-full inline-block break-words whitespace-pre-wrap overflow-hidden text-left transition-colors duration-200';
         
         timeLabel.className = 'text-[10px] text-blue-500 flex items-center gap-1.5 font-bold tracking-wide mt-1 ml-1';
         timeLabel.innerHTML = `<span class="bg-blue-100 text-blue-600 px-1.5 py-[1px] rounded-[4px] text-[9px] uppercase tracking-widest border border-blue-200">Que</span> ` + timeString;
     } else {
         // Answer: Full Width
-        // mt-1 changed to mt-0 to remove gap completely
         msgDiv.className = 'flex justify-center w-full mt-0 fade-in relative px-2';
         contentContainer.className = 'flex flex-col items-start w-full';
-        // Reduced text size to text-[14px]
         innerDiv.className = 'user-msg-bubble select-none cursor-text bg-[#f4f4f5] border border-gray-200 shadow-sm text-gray-800 px-2.5 py-1.5 rounded-[6px] text-[14px] font-normal leading-snug w-full block break-words whitespace-pre-wrap overflow-hidden text-left transition-colors duration-200';
         
         timeLabel.className = 'text-[10px] text-gray-500 flex items-center gap-1.5 font-medium tracking-wide mt-1 ml-1';
@@ -811,62 +806,59 @@ function appendMessage(content) {
     contentContainer.appendChild(timeLabel);
     msgDiv.appendChild(contentContainer);
     chatContainer.appendChild(msgDiv);
+
+    // Full width Zig-Zag visual divider SVG
+    if (!isQuestionMode) {
+        const dividerDiv = document.createElement('div');
+        dividerDiv.className = 'w-full flex items-center justify-center fade-in select-none pointer-events-none mt-1.5 mb-1';
+        dividerDiv.innerHTML = '<div class="w-full h-[4px] opacity-40" style="background-image: url(\'data:image/svg+xml,%3Csvg%20width%3D%2220%22%20height%3D%224%22%20viewBox%3D%220%200%2020%204%22%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%3E%3Cpath%20d%3D%22M0%204%20L5%200%20L10%204%20L15%200%20L20%204%22%20fill%3D%22none%22%20stroke%3D%22%239ca3af%22%20stroke-width%3D%221.2%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3C%2Fsvg%3E\'); background-repeat: repeat-x; background-size: 20px 4px; background-position: center;"></div>';
+        chatContainer.appendChild(dividerDiv);
+    }
+
     chatContainer.scrollTop = chatContainer.scrollHeight;
     saveCurrentChatState();
 }
-
-
-
-
-
-
-
-
-
 
 function handleSendMessage() {
     const chatInput = document.getElementById('chatInput');
     const message = chatInput.value.trim();
     if (!message) return;
 
-    // Sequence Validation Logic (Que -> Ans -> Que -> Ans)
     const chatContainer = document.getElementById('chatContainer');
     const micActiveIcon = document.getElementById('micActiveIcon');
     
-    // Check current mode: if icon is hidden, it is Question mode
     const isQuestionMode = micActiveIcon && micActiveIcon.classList.contains('hidden');
     const currentMessageType = isQuestionMode ? 'QUE' : 'ANS';
 
-    // Find the type of the last sent message
+    // Safely find the type of the LAST actual message by ignoring dividers
     let lastMessageType = null;
-    if (chatContainer.lastElementChild) {
-        const lastHTML = chatContainer.lastElementChild.innerHTML;
+    const children = chatContainer.children;
+    for (let i = children.length - 1; i >= 0; i--) {
+        const lastHTML = children[i].innerHTML;
         if (lastHTML.includes('>Que</span>')) {
             lastMessageType = 'QUE';
+            break; // Found the last actual message
         } else if (lastHTML.includes('>Ans</span>')) {
             lastMessageType = 'ANS';
+            break; // Found the last actual message
         }
     }
 
-    // Rule 1: The very first message must be a Question
     if (!lastMessageType && currentMessageType === 'ANS') {
         window.showToast('প্রথমে একটি প্রশ্ন (Question) পাঠাতে হবে!', 'error');
-        return; // Stop sending
+        return; 
     }
 
-    // Rule 2: Prevent sending two Questions in a row
     if (lastMessageType === 'QUE' && currentMessageType === 'QUE') {
         window.showToast('পরপর দুটি প্রশ্ন পাঠানো যাবে না, আগে উত্তর দিন!', 'error');
-        return; // Stop sending
+        return; 
     }
 
-    // Rule 3: Prevent sending two Answers in a row
     if (lastMessageType === 'ANS' && currentMessageType === 'ANS') {
         window.showToast('পরপর দুটি উত্তর পাঠানো যাবে না, আগে নতুন প্রশ্ন করুন!', 'error');
-        return; // Stop sending
+        return; 
     }
 
-    // If all validations pass, append the message
     appendMessage(message);
     chatInput.value = '';
     chatInput.style.height = 'auto';
@@ -878,6 +870,12 @@ function handleSendMessage() {
     sendIcon.classList.add('hidden');
     chatInput.focus();
 }
+
+
+
+
+
+
 
 
 document.getElementById('sendBtn').addEventListener('click', handleSendMessage);
