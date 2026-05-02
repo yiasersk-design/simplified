@@ -829,6 +829,44 @@ function handleSendMessage() {
     const message = chatInput.value.trim();
     if (!message) return;
 
+    // Sequence Validation Logic (Que -> Ans -> Que -> Ans)
+    const chatContainer = document.getElementById('chatContainer');
+    const micActiveIcon = document.getElementById('micActiveIcon');
+    
+    // Check current mode: if icon is hidden, it is Question mode
+    const isQuestionMode = micActiveIcon && micActiveIcon.classList.contains('hidden');
+    const currentMessageType = isQuestionMode ? 'QUE' : 'ANS';
+
+    // Find the type of the last sent message
+    let lastMessageType = null;
+    if (chatContainer.lastElementChild) {
+        const lastHTML = chatContainer.lastElementChild.innerHTML;
+        if (lastHTML.includes('>Que</span>')) {
+            lastMessageType = 'QUE';
+        } else if (lastHTML.includes('>Ans</span>')) {
+            lastMessageType = 'ANS';
+        }
+    }
+
+    // Rule 1: The very first message must be a Question
+    if (!lastMessageType && currentMessageType === 'ANS') {
+        window.showToast('প্রথমে একটি প্রশ্ন (Question) পাঠাতে হবে!', 'error');
+        return; // Stop sending
+    }
+
+    // Rule 2: Prevent sending two Questions in a row
+    if (lastMessageType === 'QUE' && currentMessageType === 'QUE') {
+        window.showToast('পরপর দুটি প্রশ্ন পাঠানো যাবে না, আগে উত্তর দিন!', 'error');
+        return; // Stop sending
+    }
+
+    // Rule 3: Prevent sending two Answers in a row
+    if (lastMessageType === 'ANS' && currentMessageType === 'ANS') {
+        window.showToast('পরপর দুটি উত্তর পাঠানো যাবে না, আগে নতুন প্রশ্ন করুন!', 'error');
+        return; // Stop sending
+    }
+
+    // If all validations pass, append the message
     appendMessage(message);
     chatInput.value = '';
     chatInput.style.height = 'auto';
@@ -840,6 +878,7 @@ function handleSendMessage() {
     sendIcon.classList.add('hidden');
     chatInput.focus();
 }
+
 
 document.getElementById('sendBtn').addEventListener('click', handleSendMessage);
 
