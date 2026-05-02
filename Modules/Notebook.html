@@ -155,8 +155,9 @@
                             </div>
                         </div>
                         <div class="flex items-center gap-[10px]">
-                            <button class="w-[42px] h-[42px] rounded-full bg-[#f4f4f5] flex items-center justify-center text-gray-900 hover:bg-gray-200 transition-colors focus:outline-none">
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="w-5 h-5"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" x2="12" y1="19" y2="22"/></svg>
+                            <button id="micToggleBtn" class="w-[42px] h-[42px] rounded-full bg-[#f4f4f5] flex items-center justify-center text-gray-900 hover:bg-gray-200 transition-colors focus:outline-none">
+                                <svg id="micInactiveIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="w-5 h-5"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" x2="12" y1="19" y2="22"/></svg>
+                                <svg id="micActiveIcon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="w-5 h-5 hidden text-red-500"><g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"><path d="M8.593 3.217H4.698A1.948 1.948 0 0 0 2.75 5.164v13.633c0 1.075.872 1.947 1.948 1.947h3.895a1.948 1.948 0 0 0 1.947-1.947V5.164a1.948 1.948 0 0 0-1.947-1.947"/><path d="M6.645 17.379a1.503 1.503 0 1 0 0-3.007a1.503 1.503 0 0 0 0 3.007M10.54 7.93l3.116 11.685a1.948 1.948 0 0 0 2.386 1.373l3.768-.974a1.947 1.947 0 0 0 1.373-2.386L17.658 4.385a1.947 1.947 0 0 0-2.386-1.373l-3.758 1.003c-.406.111-.764.35-1.023.682"/><path d="M16.665 17.241a1.502 1.502 0 1 0 0-3.004a1.502 1.502 0 0 0 0 3.004"/></g></svg>
                             </button>
                             <button id="sendBtn" class="w-[42px] h-[42px] rounded-full bg-[#f4f4f5] flex items-center justify-center text-gray-900 hover:bg-gray-200 transition-colors focus:outline-none">
                                 <svg id="audioIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="w-5 h-5"><path d="M2 10v3"/><path d="M6 6v11"/><path d="M10 3v18"/><path d="M14 8v7"/><path d="M18 5v13"/><path d="M22 10v3"/></svg>
@@ -813,6 +814,22 @@ function handleSendMessage() {
 }
 
 document.getElementById('sendBtn').addEventListener('click', handleSendMessage);
+
+const micToggleBtn = document.getElementById('micToggleBtn');
+const micInactiveIcon = document.getElementById('micInactiveIcon');
+const micActiveIcon = document.getElementById('micActiveIcon');
+
+function toggleMicIcon(e) {
+    e.preventDefault(); // এটি ইনপুট ফিল্ড থেকে ফোকাস সরাতে দেবে না (কিবোর্ড ওপেন থাকবে)
+    e.stopPropagation();
+    
+    micInactiveIcon.classList.toggle('hidden');
+    micActiveIcon.classList.toggle('hidden');
+}
+
+// click ইভেন্টের বদলে mousedown এবং touchstart ব্যবহার করা হলো
+micToggleBtn.addEventListener('mousedown', toggleMicIcon);
+micToggleBtn.addEventListener('touchstart', toggleMicIcon, { passive: false });
 
 document.getElementById('chatInput').addEventListener('input', function() {
     const audioIcon = document.getElementById('audioIcon');
