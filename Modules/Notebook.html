@@ -785,18 +785,18 @@ function appendMessage(content) {
 
     if (isQuestionMode) {
         // Question: Left Aligned
-        msgDiv.className = 'flex justify-start w-full mt-2 fade-in relative px-2';
+        // mt-1 changed to mt-0 to remove gap completely
+        msgDiv.className = 'flex justify-start w-full mt-0 fade-in relative px-2';
         contentContainer.className = 'flex flex-col items-start max-w-[90%]';
-        // Padding reduced to px-2.5 py-1.5 and line-height adjusted to leading-snug for a tightly packed look
         innerDiv.className = 'user-msg-bubble select-none cursor-text bg-blue-50 border border-blue-200 shadow-sm text-blue-900 px-2.5 py-1.5 rounded-[6px] rounded-tl-[2px] text-[15px] font-medium leading-snug w-fit max-w-full inline-block break-words whitespace-pre-wrap overflow-hidden text-left transition-colors duration-200';
         
         timeLabel.className = 'text-[10px] text-blue-500 flex items-center gap-1.5 font-bold tracking-wide mt-1 ml-1';
         timeLabel.innerHTML = `<span class="bg-blue-100 text-blue-600 px-1.5 py-[1px] rounded-[4px] text-[9px] uppercase tracking-widest border border-blue-200">Que</span> ` + timeString;
     } else {
         // Answer: Full Width
-        msgDiv.className = 'flex justify-center w-full mt-2 fade-in relative px-2';
+        // mt-1 changed to mt-0 to remove gap completely
+        msgDiv.className = 'flex justify-center w-full mt-0 fade-in relative px-2';
         contentContainer.className = 'flex flex-col items-start w-full';
-        // Padding reduced to px-2.5 py-1.5 and line-height adjusted to leading-snug for a tightly packed look
         innerDiv.className = 'user-msg-bubble select-none cursor-text bg-[#f4f4f5] border border-gray-200 shadow-sm text-gray-800 px-2.5 py-1.5 rounded-[6px] text-[15px] font-normal leading-snug w-full block break-words whitespace-pre-wrap overflow-hidden text-left transition-colors duration-200';
         
         timeLabel.className = 'text-[10px] text-gray-500 flex items-center gap-1.5 font-medium tracking-wide mt-1 ml-1';
@@ -812,6 +812,11 @@ function appendMessage(content) {
     chatContainer.scrollTop = chatContainer.scrollHeight;
     saveCurrentChatState();
 }
+
+
+
+
+
 
 
 
