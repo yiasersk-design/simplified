@@ -211,8 +211,8 @@
 
     <!-- মূল ওয়ার্কস্পেস (ক্যানভাস এরিয়া) -->
     <main class="flex-1 w-full overflow-hidden flex justify-center items-center p-4 sm:p-8 pb-[calc(80px+env(safe-area-inset-bottom))] relative">
-        <div id="design-canvas" class="bg-white shadow-[0_0_25px_rgba(0,0,0,0.15)] w-full max-w-[650px] aspect-square relative flex flex-col justify-center items-center overflow-hidden transition-all duration-300">
-            <img id="main-bg-image" src="https://placehold.co/800x800/ffffff/ffffff?text=+" alt="Canvas Artwork" class="w-full h-full object-cover pointer-events-none">
+        <div id="design-canvas" class="bg-white shadow-[0_0_25px_rgba(0,0,0,0.15)] w-full max-w-[650px] aspect-[21/29] relative flex flex-col justify-center items-center overflow-hidden transition-all duration-300">
+            <img id="main-bg-image" src="https://placehold.co/840x1160/ffffff/ffffff?text=+" alt="Canvas Artwork" class="w-full h-full object-cover pointer-events-none">
         </div>
 
         <!-- Floating Formatting Toolbox (Visible only in Full Canvas Mode) -->
@@ -1163,7 +1163,7 @@
                 const bgImage = document.getElementById('main-bg-image');
                 // Fetch a random aesthetic image
                 const randomId = Math.floor(Math.random() * 1000);
-                bgImage.src = `https://picsum.photos/800/800?random=${randomId}`;
+                bgImage.src = `https://picsum.photos/840/1160?random=${randomId}`;
                 
                 // wait for image load to save state
                 bgImage.onload = () => saveState();
@@ -1172,8 +1172,8 @@
             // Reset Workspace
             document.getElementById('btn-reset').addEventListener('click', () => {
                 if(confirm("Are you sure you want to completely reset your workspace?")) {
-                    canvasContainer.className = 'bg-white shadow-[0_0_25px_rgba(0,0,0,0.15)] w-full max-w-[650px] aspect-square relative flex flex-col justify-center items-center overflow-hidden transition-all duration-300';
-                    canvasContainer.innerHTML = '<img id="main-bg-image" src="https://placehold.co/800x800/ffffff/ffffff?text=+" alt="Canvas Artwork" class="w-full h-full object-cover pointer-events-none">';
+                    canvasContainer.className = 'bg-white shadow-[0_0_25px_rgba(0,0,0,0.15)] w-full max-w-[650px] aspect-[21/29] relative flex flex-col justify-center items-center overflow-hidden transition-all duration-300';
+                    canvasContainer.innerHTML = '<img id="main-bg-image" src="https://placehold.co/840x1160/ffffff/ffffff?text=+" alt="Canvas Artwork" class="w-full h-full object-cover pointer-events-none">';
                     setActive(null);
                     saveState();
                 }
@@ -1272,7 +1272,7 @@
                     const ratio = btn.getAttribute('data-ratio');
                     
                     // Remove all previous aspect ratio classes
-                    canvasContainer.classList.remove('aspect-square', 'aspect-video', 'aspect-[3/4]', 'aspect-[4/5]', 'aspect-[9/16]');
+                    canvasContainer.classList.remove('aspect-square', 'aspect-video', 'aspect-[3/4]', 'aspect-[4/5]', 'aspect-[9/16]', 'aspect-[21/29]');
                     
                     // Add the new selected aspect ratio class
                     canvasContainer.classList.add(ratio);
