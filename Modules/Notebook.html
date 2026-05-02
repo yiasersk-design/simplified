@@ -153,19 +153,7 @@
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5"><circle cx="12" cy="12" r="1.5"/><circle cx="19" cy="12" r="1.5"/><circle cx="5" cy="12" r="1.5"/></svg>
                     </button>                    
                     <div id="threeDotMenu" class="hidden absolute top-12 right-0 w-40 bg-white rounded-xl shadow-[0_4px_20px_rgba(0,0,0,0.15)] border border-gray-100 overflow-hidden z-50 transition-all origin-top-right fade-in">
-                        <button onclick="renameCurrentNote()" class="w-full text-left px-3 py-2.5 hover:bg-gray-50 text-[14px] font-medium text-gray-800 flex items-center gap-2.5 focus:outline-none">
-                            <svg class="w-4 h-4 text-gray-500" viewBox="0 0 24 24" fill="none"><g stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4.333 16.048L16.57 3.81a2.56 2.56 0 0 1 3.62 3.619L7.951 19.667a2 2 0 0 1-1.022.547L3 21l.786-3.93a2 2 0 0 1 .547-1.022Z"/><path d="m14.5 6.5l3 3"/></g></svg>
-                            Rename
-                        </button>
-                        <button onclick="togglePinCurrentNote()" class="w-full text-left px-3 py-2.5 hover:bg-gray-50 text-[14px] font-medium text-gray-800 flex items-center gap-2.5 focus:outline-none border-t border-gray-50">
-                            <svg class="w-4 h-4 text-gray-500" viewBox="0 0 24 24" fill="currentColor"><path d="m20.3 5.1l1.4-1.4c.4-.4.4-1 0-1.4s-1-.4-1.4 0L9.8 12.8C9 12.3 8 12 7 12c-2.8 0-5 2.2-5 5s2.2 5 5 5s5-2.2 5-5c0-1-.3-2-.8-2.8l4.9-4.9l1.4 1.4c.4.4 1 .4 1.4 0c.4-.4.4-1 0-1.4l-1.4-1.4l1.4-1.4l1.4 1.4c.4.4 1 .4 1.4 0c.4-.4.4-1 0-1.4l-1.4-1.4zM7 20c-1.7 0-3-1.3-3-3s1.3-3 3-3s3 1.3 3 3s-1.3 3-3 3z"/></svg>
-                            Pin / Unpin
-                        </button>
-                        <button onclick="openRateLimitModal()" class="w-full text-left px-3 py-2.5 hover:bg-blue-50 text-[14px] font-medium text-blue-600 flex items-center gap-2.5 focus:outline-none border-t border-gray-50">
-                            <svg class="w-4 h-4 text-blue-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
-                            API Status
-                        </button>
-                        <button onclick="deleteCurrentNote()" class="w-full text-left px-3 py-2.5 hover:bg-red-50 text-[14px] font-medium text-red-600 flex items-center gap-2.5 focus:outline-none border-t border-gray-50">
+                        <button onclick="deleteCurrentNote()" class="w-full text-left px-3 py-2.5 hover:bg-red-50 text-[14px] font-medium text-red-600 flex items-center gap-2.5 focus:outline-none">
                             <svg class="w-4 h-4 text-red-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
                             Delete
                         </button>
