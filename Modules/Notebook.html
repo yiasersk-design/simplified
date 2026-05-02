@@ -162,6 +162,7 @@
                             <button id="sendBtn" class="w-[42px] h-[42px] rounded-full bg-[#f4f4f5] flex items-center justify-center text-gray-900 hover:bg-gray-200 transition-colors focus:outline-none">
                                 <svg id="audioIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="w-5 h-5"><path d="M2 10v3"/><path d="M6 6v11"/><path d="M10 3v18"/><path d="M14 8v7"/><path d="M18 5v13"/><path d="M22 10v3"/></svg>
                                 <svg id="sendIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="w-5 h-5 hidden"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
+                                <svg id="updateIcon" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5 hidden"><path d="M9 .5L11.5 3L9 5.5"/><path d="M.5 6V4a1 1 0 0 1 1-1h10M5 13.5L2.5 11L5 8.5"/><path d="M13.5 8v2a1 1 0 0 1-1 1h-10"/></svg>
                             </button>
                         </div>
                     </div>
@@ -757,6 +758,74 @@ function saveCurrentChatState() {
     }
 }
 
+// --- NEW EDIT FEATURE STATES & HELPER ---
+let currentlyEditingBubble = null;
+let currentlyEditingTimeLabel = null;
+
+// formatText কে গ্লোবাল করা হয়েছে যাতে এডিট আপডেট করার সময় পুনরায় ব্যবহার করা যায়
+window.formatText = function(text) {
+    let html = text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+    html = html.replace(/\*\*([\s\S]*?)\*\*/g, '<strong class="font-bold">$1</strong>');
+    html = html.replace(/\*([\s\S]*?)\*/g, '<strong class="font-bold">$1</strong>');
+    return html;
+};
+
+// Event Delegation for Interactive Label Clicking (Works perfectly ignoring CSS uppercase)
+document.getElementById('chatContainer').addEventListener('click', function(e) {
+    const target = e.target;
+    
+    // Check if clicked element is a SPAN
+    if (target.tagName === 'SPAN') {
+        const labelText = target.textContent.trim().toLowerCase();
+        
+        // Match ignoring case (works for 'QUE', 'Que', 'ANS', 'Ans')
+        if (labelText === 'que' || labelText === 'ans') {
+            const timeLabelDiv = target.parentElement;
+            const contentContainer = timeLabelDiv.parentElement;
+            if (!contentContainer) return;
+            
+            const bubbleElement = contentContainer.querySelector('.user-msg-bubble');
+            if (bubbleElement) {
+                currentlyEditingBubble = bubbleElement;
+                currentlyEditingTimeLabel = timeLabelDiv;
+                
+                // আইকন আপডেট করার লজিক (Question/Answer Mode)
+                const micInactiveIcon = document.getElementById('micInactiveIcon'); 
+                const micActiveIcon = document.getElementById('micActiveIcon');     
+
+                if (labelText === 'que') {
+                    // Question মোড চালু হবে
+                    micActiveIcon.classList.add('hidden');
+                    micInactiveIcon.classList.remove('hidden');
+                } else if (labelText === 'ans') {
+                    // Answer মোড চালু হবে
+                    micInactiveIcon.classList.add('hidden');
+                    micActiveIcon.classList.remove('hidden');
+                }
+                
+                // Extract raw markdown/text (fallback for old saved messages)
+                let rawText = bubbleElement.getAttribute('data-raw');
+                if (!rawText) {
+                    rawText = bubbleElement.innerHTML
+                        .replace(/<strong class="font-bold">([\s\S]*?)<\/strong>/gi, '**$1**')
+                        .replace(/<br\s*\/?>/gi, '\n')
+                        .replace(/&amp;/g, '&')
+                        .replace(/&lt;/g, '<')
+                        .replace(/&gt;/g, '>');
+                }
+                
+                const chatInput = document.getElementById('chatInput');
+                chatInput.value = rawText;
+                chatInput.focus();
+                
+                // Trigger input event to resize textarea and show update icon
+                chatInput.dispatchEvent(new Event('input'));
+                window.showToast('Edit mode activated. Modify your message.', 'success');
+            }
+        }
+    }
+});
+
 function appendMessage(content) {
     const chatContainer = document.getElementById('chatContainer');
     
@@ -767,13 +836,6 @@ function appendMessage(content) {
 
     const timeString = new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
 
-    function formatText(text) {
-        let html = text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-        html = html.replace(/\*\*([\s\S]*?)\*\*/g, '<strong class="font-bold">$1</strong>');
-        html = html.replace(/\*([\s\S]*?)\*/g, '<strong class="font-bold">$1</strong>');
-        return html;
-    }
-
     const micActiveIcon = document.getElementById('micActiveIcon');
     const isQuestionMode = micActiveIcon && micActiveIcon.classList.contains('hidden');
 
@@ -783,24 +845,26 @@ function appendMessage(content) {
     const timeLabel = document.createElement('div');
 
     if (isQuestionMode) {
-        // Question: Left Aligned
         msgDiv.className = 'flex justify-start w-full mt-0 fade-in relative px-2';
-        contentContainer.className = 'flex flex-col items-start max-w-[90%]';
+        contentContainer.className = 'flex flex-col items-start max-w-[90%] relative';
         innerDiv.className = 'user-msg-bubble select-none cursor-text bg-blue-50 border border-blue-200 shadow-sm text-blue-900 px-2.5 py-1.5 rounded-[6px] rounded-tl-[2px] text-[14px] font-medium leading-snug w-fit max-w-full inline-block break-words whitespace-pre-wrap overflow-hidden text-left transition-colors duration-200';
         
         timeLabel.className = 'text-[10px] text-blue-500 flex items-center gap-1.5 font-bold tracking-wide mt-1 ml-1';
-        timeLabel.innerHTML = `<span class="bg-blue-100 text-blue-600 px-1.5 py-[1px] rounded-[4px] text-[9px] uppercase tracking-widest border border-blue-200">Que</span> ` + timeString;
+        // Added cursor-pointer & hover effect to signify interactivity
+        timeLabel.innerHTML = `<span class="bg-blue-100 text-blue-600 px-1.5 py-[1px] rounded-[4px] text-[9px] uppercase tracking-widest border border-blue-200 cursor-pointer hover:bg-blue-200 transition-colors" title="Click to Edit">Que</span> <span>${timeString}</span>`;
     } else {
-        // Answer: Full Width
         msgDiv.className = 'flex justify-center w-full mt-0 fade-in relative px-2';
-        contentContainer.className = 'flex flex-col items-start w-full';
+        contentContainer.className = 'flex flex-col items-start w-full relative';
         innerDiv.className = 'user-msg-bubble select-none cursor-text bg-[#f4f4f5] border border-gray-200 shadow-sm text-gray-800 px-2.5 py-1.5 rounded-[6px] text-[14px] font-normal leading-snug w-full block break-words whitespace-pre-wrap overflow-hidden text-left transition-colors duration-200';
         
-        timeLabel.className = 'text-[10px] text-gray-500 flex items-center gap-1.5 font-medium tracking-wide mt-1 ml-1';
-        timeLabel.innerHTML = `<span class="bg-gray-200 text-gray-600 px-1.5 py-[1px] rounded-[4px] text-[9px] uppercase tracking-widest border border-gray-300">Ans</span> ` + timeString;
+        timeLabel.className = 'text-[10px] text-gray-500 flex items-center gap-1.5 font-medium tracking-wide mt-1 ml-1 w-full';
+        // Added cursor-pointer & hover effect to signify interactivity
+        timeLabel.innerHTML = `<span class="bg-gray-200 text-gray-600 px-1.5 py-[1px] rounded-[4px] text-[9px] uppercase tracking-widest border border-gray-300 cursor-pointer hover:bg-gray-300 transition-colors" title="Click to Edit">Ans</span> <span>${timeString}</span>`;
     }
     
-    innerDiv.innerHTML = formatText(content);
+    // Save original raw string for easy retrieving in edit mode
+    innerDiv.setAttribute('data-raw', content);
+    innerDiv.innerHTML = window.formatText(content);
 
     contentContainer.appendChild(innerDiv);
     contentContainer.appendChild(timeLabel);
@@ -822,7 +886,48 @@ function appendMessage(content) {
 function handleSendMessage() {
     const chatInput = document.getElementById('chatInput');
     const message = chatInput.value.trim();
-    if (!message) return;
+    
+    // Cancel edit if input is empty
+    if (!message) {
+        if (currentlyEditingBubble) {
+            currentlyEditingBubble = null;
+            currentlyEditingTimeLabel = null;
+            window.showToast('Edit mode cancelled.', 'error');
+            
+            // Reset Icons
+            document.getElementById('updateIcon').classList.add('hidden');
+            document.getElementById('sendIcon').classList.add('hidden');
+            document.getElementById('audioIcon').classList.remove('hidden');
+        }
+        return;
+    }
+
+    // --- ACTIVE EDIT MODE OVERRIDE ---
+    if (currentlyEditingBubble) {
+        currentlyEditingBubble.setAttribute('data-raw', message);
+        currentlyEditingBubble.innerHTML = window.formatText(message);
+        
+        // Append minimal "Edited" badge if it doesn't already exist
+        if (!currentlyEditingTimeLabel.querySelector('.edited-badge')) {
+            const badgeHTML = `<span class="edited-badge text-[8px] text-gray-500 font-medium ml-1.5 bg-gray-100 px-1.5 py-[1px] rounded-[4px] border border-gray-200 uppercase tracking-widest pointer-events-none">Edited</span>`;
+            currentlyEditingTimeLabel.insertAdjacentHTML('beforeend', badgeHTML);
+        }
+        
+        currentlyEditingBubble = null;
+        currentlyEditingTimeLabel = null;
+        
+        chatInput.value = '';
+        chatInput.style.height = 'auto';
+        
+        // Reset to Audio Icon
+        document.getElementById('audioIcon').classList.remove('hidden');
+        document.getElementById('sendIcon').classList.add('hidden');
+        document.getElementById('updateIcon').classList.add('hidden');
+        
+        saveCurrentChatState();
+        window.showToast('Message updated!', 'success');
+        return; // Prevents the sequence validation and appending logic below
+    }
 
     const chatContainer = document.getElementById('chatContainer');
     const micActiveIcon = document.getElementById('micActiveIcon');
@@ -856,7 +961,7 @@ function handleSendMessage() {
         return; 
     }
     if (lastMessageType === 'ANS' && currentMessageType === 'ANS') {
-        window.showToast('পরপর দুটি উত্তর পাঠানো যাবে না, আগে নতুন প্রশ্ন করুন!', 'error');
+        window.showToast('পরপর দুটি উত্তর পাঠানো যাবে পণ্ডিত না, আগে নতুন প্রশ্ন করুন!', 'error');
         return; 
     }
 
@@ -867,11 +972,9 @@ function handleSendMessage() {
     
     // Auto-Toggle Logic: Switches to the opposite mode after successful send
     if (currentMessageType === 'QUE') {
-        // Switch to Answer Mode
         micInactiveIcon.classList.add('hidden');
         micActiveIcon.classList.remove('hidden');
     } else {
-        // Switch to Question Mode
         micActiveIcon.classList.add('hidden');
         micInactiveIcon.classList.remove('hidden');
     }
@@ -914,12 +1017,26 @@ micToggleBtn.addEventListener('touchstart', toggleMicIcon, { passive: false });
 document.getElementById('chatInput').addEventListener('input', function() {
     const audioIcon = document.getElementById('audioIcon');
     const sendIcon = document.getElementById('sendIcon');
+    const updateIcon = document.getElementById('updateIcon');
     if (this.value.trim().length > 0) {
         audioIcon.classList.add('hidden');
-        sendIcon.classList.remove('hidden');
+        if (currentlyEditingBubble) {
+            sendIcon.classList.add('hidden');
+            updateIcon.classList.remove('hidden');
+        } else {
+            sendIcon.classList.remove('hidden');
+            updateIcon.classList.add('hidden');
+        }
     } else {
-        audioIcon.classList.remove('hidden');
-        sendIcon.classList.add('hidden');
+        if (currentlyEditingBubble) {
+            audioIcon.classList.add('hidden');
+            sendIcon.classList.add('hidden');
+            updateIcon.classList.remove('hidden');
+        } else {
+            audioIcon.classList.remove('hidden');
+            sendIcon.classList.add('hidden');
+            updateIcon.classList.add('hidden');
+        }
     }
     this.style.height = 'auto';
     this.style.height = (this.scrollHeight) + 'px';
