@@ -774,6 +774,10 @@ function appendMessage(content) {
         return html;
     }
 
+    // Mode detection: Mic Active = Question, Mic Inactive = Answer
+    const micActiveIcon = document.getElementById('micActiveIcon');
+    const isQuestionMode = micActiveIcon && !micActiveIcon.classList.contains('hidden');
+
     const msgDiv = document.createElement('div');
     msgDiv.className = 'flex justify-end w-full mt-2 fade-in relative px-2';
     
@@ -781,12 +785,28 @@ function appendMessage(content) {
     contentContainer.className = 'flex flex-col items-end max-w-[85%]';
 
     const innerDiv = document.createElement('div');
-    innerDiv.className = 'user-msg-bubble select-none cursor-text bg-[#f4f4f5] border border-gray-100 shadow-sm text-gray-900 px-4 py-2.5 rounded-[12px] rounded-tr-[4px] text-[15px] font-normal leading-relaxed w-fit max-w-full inline-block break-words whitespace-pre-wrap overflow-hidden text-left transition-colors duration-200';
+    
+    // Applying dynamic styles based on Question/Answer mode
+    if (isQuestionMode) {
+        // Question (Que) Style: Light blue background, slightly bolder text for emphasis
+        innerDiv.className = 'user-msg-bubble select-none cursor-text bg-blue-50 border border-blue-200 shadow-sm text-blue-900 px-4 py-2.5 rounded-[12px] rounded-tr-[4px] text-[15px] font-medium leading-relaxed w-fit max-w-full inline-block break-words whitespace-pre-wrap overflow-hidden text-left transition-colors duration-200';
+    } else {
+        // Answer (Ans) Style: Default gray background, regular text
+        innerDiv.className = 'user-msg-bubble select-none cursor-text bg-[#f4f4f5] border border-gray-200 shadow-sm text-gray-800 px-4 py-2.5 rounded-[12px] rounded-tr-[4px] text-[15px] font-normal leading-relaxed w-fit max-w-full inline-block break-words whitespace-pre-wrap overflow-hidden text-left transition-colors duration-200';
+    }
+    
     innerDiv.innerHTML = formatText(content);
     
     const timeLabel = document.createElement('div');
-    timeLabel.className = 'text-[10px] text-gray-400 flex items-center gap-1 font-medium tracking-wide mt-1 mr-1';
-    timeLabel.innerHTML = timeString;
+    
+    // Dynamic badges (QUE / ANS) next to the time
+    if (isQuestionMode) {
+        timeLabel.className = 'text-[10px] text-blue-500 flex items-center gap-1.5 font-bold tracking-wide mt-1 mr-1';
+        timeLabel.innerHTML = `<span class="bg-blue-100 text-blue-600 px-1.5 py-[1px] rounded-[4px] text-[9px] uppercase tracking-widest border border-blue-200">Que</span> ` + timeString;
+    } else {
+        timeLabel.className = 'text-[10px] text-gray-500 flex items-center gap-1.5 font-medium tracking-wide mt-1 mr-1';
+        timeLabel.innerHTML = `<span class="bg-gray-200 text-gray-600 px-1.5 py-[1px] rounded-[4px] text-[9px] uppercase tracking-widest border border-gray-300">Ans</span> ` + timeString;
+    }
 
     contentContainer.appendChild(innerDiv);
     contentContainer.appendChild(timeLabel);
@@ -795,6 +815,7 @@ function appendMessage(content) {
     chatContainer.scrollTop = chatContainer.scrollHeight;
     saveCurrentChatState();
 }
+
 
 function handleSendMessage() {
     const chatInput = document.getElementById('chatInput');
