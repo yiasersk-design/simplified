@@ -42,62 +42,6 @@
         .item-color:has(+ *:hover) { transform: scale(1.2); z-index: 9999; }
         .item-color:has(+ * + *:hover) { transform: scale(1.1); z-index: 999; }
 
-        /* Loader Profile Styles */
-        .profile-loader {
-            --color-one: #ffbf48;
-            --color-two: #be4a1d;
-            --color-three: #ffbf4780;
-            --color-four: #bf4a1d80;
-            --color-five: #ffbf4740;
-            --time-animation: 2s;
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            width: 100px;
-            height: 100px;
-            border-radius: 50%;
-            transform: translate(-50%, -50%) scale(0.26); /* Scaled down for 26px avatar */
-            box-shadow: 0 0 25px 0 var(--color-three), 0 20px 50px 0 var(--color-four);
-            animation: colorize calc(var(--time-animation) * 3) ease-in-out infinite;
-        }
-
-        .profile-loader::before {
-            content: "";
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100px;
-            height: 100px;
-            border-radius: 50%;
-            border-top: solid 1px var(--color-one);
-            border-bottom: solid 1px var(--color-two);
-            background: linear-gradient(180deg, var(--color-five), var(--color-four));
-            box-shadow: inset 0 10px 10px 0 var(--color-three), inset 0 -10px 10px 0 var(--color-four);
-        }
-
-        .profile-loader .box {
-            width: 100px;
-            height: 100px;
-            background: linear-gradient(180deg, var(--color-one) 30%, var(--color-two) 70%);
-            mask: url(#clipping);
-            -webkit-mask: url(#clipping);
-        }
-
-        .profile-loader svg { position: absolute; top: 0; left: 0; }
-        .profile-loader svg #clipping { filter: contrast(15); animation: roundness calc(var(--time-animation) / 2) linear infinite; }
-        .profile-loader svg #clipping polygon { filter: blur(7px); }
-        .profile-loader svg #clipping polygon:nth-child(1) { transform-origin: 75% 25%; transform: rotate(90deg); }
-        .profile-loader svg #clipping polygon:nth-child(2) { transform-origin: 50% 50%; animation: rotation var(--time-animation) linear infinite reverse; }
-        .profile-loader svg #clipping polygon:nth-child(3) { transform-origin: 50% 60%; animation: rotation var(--time-animation) linear infinite; animation-delay: calc(var(--time-animation) / -3); }
-        .profile-loader svg #clipping polygon:nth-child(4) { transform-origin: 40% 40%; animation: rotation var(--time-animation) linear infinite reverse; }
-        .profile-loader svg #clipping polygon:nth-child(5) { transform-origin: 40% 40%; animation: rotation var(--time-animation) linear infinite reverse; animation-delay: calc(var(--time-animation) / -2); }
-        .profile-loader svg #clipping polygon:nth-child(6) { transform-origin: 60% 40%; animation: rotation var(--time-animation) linear infinite; }
-        .profile-loader svg #clipping polygon:nth-child(7) { transform-origin: 60% 40%; animation: rotation var(--time-animation) linear infinite; animation-delay: calc(var(--time-animation) / -1.5); }
-
-        @keyframes rotation { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-        @keyframes roundness { 0%, 60%, 100% { filter: contrast(15); } 20%, 40% { filter: contrast(3); } }
-        @keyframes colorize { 0%, 100% { filter: hue-rotate(0deg); } 20% { filter: hue-rotate(-30deg); } 40% { filter: hue-rotate(-60deg); } 60% { filter: hue-rotate(-90deg); } 80% { filter: hue-rotate(-45deg); } }
-
         /* Quick-Act Toggle Styles */
         .toggle-wrapper { display: flex; width: 100%; height: 36px; border-radius: 6px; border: 1px solid #e5e7eb; position: relative; background: #ffffff; margin: 0 auto; }
         .slider { position: absolute; top: -1px; bottom: -1px; left: -1px; right: 50%; background-color: #f0f5ff; border: 1px solid #dbeafe; border-radius: 6px; transition: none; z-index: 0; box-shadow: 0 1px 2px rgba(0, 0, 0, 0.02); }
@@ -107,7 +51,6 @@
         .toggle-btn:active { transform: none; }
         .toggle-btn svg { transition: none; }
         .toggle-btn#btn-notebook svg { fill: currentColor; }
-        .toggle-btn#btn-meta-ai svg { stroke: currentColor; fill: none; }
     </style>
 </head>
 <body class="bg-gray-100 flex items-center justify-center w-full h-[100dvh] overflow-hidden overscroll-none">
@@ -163,11 +106,7 @@
         </header>
         
         <main id="chatContainer" class="flex-1 overflow-y-auto px-4 pt-[64px] pb-2 flex flex-col gap-6 cursor-pointer bg-white relative z-0 w-full">
-            <div id="apiLimitWatermark" class="hidden absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-center pointer-events-none z-0 opacity-[0.15] select-none w-full px-4 flex flex-col items-center justify-center">
-                <svg class="w-16 h-16 mb-2 text-gray-800" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-                <div class="text-[18px] font-black text-gray-800 uppercase tracking-widest">API Limit Exceeded</div>
-                <div id="watermarkWaitTime" class="text-[14px] font-bold text-gray-800 mt-1"></div>
-            </div>
+            <!-- Chat history goes here -->
         </main>
 
         <div class="flex-none bg-white z-20 pb-1 relative">
@@ -189,7 +128,7 @@
                         </div>
                     </div>
 
-                    <textarea id="chatInput" rows="1" placeholder="Ask Meta AI or type a note..." class="w-full bg-transparent text-[16px] px-1 py-1 outline-none placeholder-gray-400 text-gray-900 mb-[6px] resize-none overflow-y-auto max-h-[120px] leading-[1.3]" spellcheck="false"></textarea>
+                    <textarea id="chatInput" rows="1" placeholder="Type a note..." class="w-full bg-transparent text-[16px] px-1 py-1 outline-none placeholder-gray-400 text-gray-900 mb-[6px] resize-none overflow-y-auto max-h-[120px] leading-[1.3]" spellcheck="false"></textarea>
                     
                     <div class="flex justify-between items-center px-1">
                         <div class="relative">
@@ -213,17 +152,9 @@
                                     <svg class="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
                                     Edit by Number
                                 </button>
-                                <button id="refineLastMsgBtn" class="w-full text-left px-3 py-2.5 hover:bg-gray-50 text-[14px] font-medium text-gray-800 flex items-center gap-2.5 focus:outline-none border-t border-gray-50">
-                                    <svg class="w-4 h-4 text-purple-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path></svg>
-                                    Refine Text
-                                </button>
                             </div>
                         </div>
                         <div class="flex items-center gap-[10px]">
-                            <button class="h-[42px] bg-[#f4f4f5] hover:bg-gray-200 rounded-full px-4 hidden sm:flex items-center justify-center gap-1.5 transition-colors focus:outline-none">
-                                <span class="text-[15px] font-medium text-gray-900">Fast</span>
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" class="w-[14px] h-[14px] text-gray-500 mt-[1px]"><path d="m6 9 6 6 6-6"/></svg>
-                            </button>
                             <button class="w-[42px] h-[42px] rounded-full bg-[#f4f4f5] flex items-center justify-center text-gray-900 hover:bg-gray-200 transition-colors focus:outline-none">
                                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="w-5 h-5"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" x2="12" y1="19" y2="22"/></svg>
                             </button>
@@ -244,12 +175,10 @@
 
                 <button id="btnMiddleNav" onclick="window.location.href='#'" class="p-2 w-12 h-12 flex items-center justify-center focus:outline-none relative group">
                     <svg class="w-7 h-7" viewBox="0 0 32 32">
-                        <defs><linearGradient id="metaGrad" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#3b82f6" /><stop offset="100%" stop-color="#a855f7" /></linearGradient></defs>
-                        <circle cx="16" cy="16" r="14" fill="none" stroke="url(#metaGrad)" stroke-width="3" class="opacity-100" />
+                        <circle cx="16" cy="16" r="14" fill="none" stroke="#3b82f6" stroke-width="3" class="opacity-100" />
                     </svg>
                 </button>
                 
-                <!-- New Template Button -->
                 <button id="btnRightNav" onclick="window.location.href='Page.html'" title="Template" class="p-2 w-12 h-12 flex items-center justify-center text-[#9ca3af] hover:text-gray-800 transition-colors focus:outline-none relative">
                     <svg class="w-6 h-6" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none">
                         <g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5">
@@ -437,38 +366,6 @@
             </div>
             <div class="shrink-0 px-3 pb-2">
                 <div id="sidebarDivider" class="my-2 border-t border-gray-100 mx-2 transition-all duration-300"></div>
-                <button id="sidebarSettingsBtn" onclick="window.location.href='./Setting.html'" class="w-full flex items-center gap-3 px-4 py-3.5 text-gray-700 hover:bg-blue-50 hover:text-blue-600 rounded-xl transition-colors text-left focus:outline-none transition-all duration-300">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
-                    <span class="font-medium text-[16px]">Settings / AI Model</span>
-                </button>
-            </div>
-        </div>
-
-        <div id="rateLimitModal" class="hidden fixed inset-0 bg-black/50 z-[100] flex items-center justify-center p-4 fade-in">
-            <div class="bg-white rounded-xl w-full max-w-[320px] shadow-2xl overflow-hidden flex flex-col transform transition-all">
-                <div class="px-5 py-4 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
-                    <h3 class="font-bold text-gray-800 text-[16px] flex items-center gap-2">
-                        <svg class="w-5 h-5 text-blue-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
-                        API Rate Limit
-                    </h3>
-                </div>
-                <div class="p-5 flex flex-col gap-4">
-                    <div class="flex justify-between items-center bg-blue-50/50 p-3 rounded-lg border border-blue-100">
-                        <span class="text-[14px] font-medium text-gray-600">Used Today:</span>
-                        <span id="rateUsedText" class="text-[16px] font-bold text-blue-600">0</span>
-                    </div>
-                    <div class="flex justify-between items-center bg-green-50/50 p-3 rounded-lg border border-green-100">
-                        <span class="text-[14px] font-medium text-gray-600">Remaining:</span>
-                        <span id="rateRemainingText" class="text-[16px] font-bold text-green-600">50</span>
-                    </div>
-                    <div id="rateWaitTimeBox" class="hidden mt-2 p-3 bg-red-50 rounded-lg border border-red-100 text-center">
-                        <span class="block text-[13px] font-bold text-red-500 uppercase tracking-wide mb-1">Limit Reached!</span>
-                        <span id="rateWaitTimeText" class="text-[13px] font-medium text-red-600"></span>
-                    </div>
-                    <div class="flex justify-end mt-2">
-                        <button onclick="closeRateLimitModal()" class="w-full px-4 py-2.5 bg-gray-100 hover:bg-gray-200 rounded-lg text-gray-700 font-medium text-[14px] transition-colors">Close</button>
-                    </div>
-                </div>
             </div>
         </div>
 
@@ -477,7 +374,7 @@
 <script>
 // --- UI Versioning System ---
 (function handleUIVersioning() {
-    const CURRENT_UI_VERSION = "1.0.0"; // যখনই UI/UX বা ডিজাইন আপডেট করবেন, এই মান পরিবর্তন করবেন (যেমন: "1.0.1")
+    const CURRENT_UI_VERSION = "1.0.0"; 
     const storedUiVersion = localStorage.getItem('aiNoteMaker_uiVersion');
     
     if (storedUiVersion !== CURRENT_UI_VERSION) {
@@ -502,7 +399,6 @@ window.showToast = function(msg, type) {
     const tc = document.getElementById('toastContainer');
     if(!tc) return;
     const t = document.createElement('div');
-    // rounded-lg এর বদলে rounded-md ব্যবহার করা হয়েছে যাতে এজ একটু কম গোলাকার হয়
     t.className = `px-4 py-2.5 rounded-md text-[13.5px] font-medium shadow-sm border whitespace-nowrap transition-opacity duration-300 ${type === 'error' ? 'bg-red-50 text-red-500 border-red-100' : 'bg-green-50 text-green-600 border-green-100'}`;
     t.innerText = msg;
     tc.appendChild(t);
@@ -510,7 +406,6 @@ window.showToast = function(msg, type) {
 };
 
 // --- Home Variables & Functions ---
-let inputTimerInterval = null;
 let chatSessions = JSON.parse(localStorage.getItem('aiNoteMaker_sessions')) ||[];
 let savedCurrentId = localStorage.getItem('aiNoteMaker_currentId');
 let currentSessionId = savedCurrentId ? parseInt(savedCurrentId) : null;
@@ -539,56 +434,6 @@ const burgerMenuBtn = document.getElementById('burgerMenuBtn');
 const sidebarMenu = document.getElementById('sidebarMenu');
 const sidebarOverlay = document.getElementById('sidebarOverlay');
 
-function getProfileData() {
-    return JSON.parse(localStorage.getItem('aiNoteMaker_profileData') || '{"name":"My Account","apis":[]}');
-}
-
-function startReverseTimer() {
-    if (inputTimerInterval) clearInterval(inputTimerInterval);
-    inputTimerInterval = setInterval(() => {
-        if (!chatInput) return;
-        const limitData = JSON.parse(localStorage.getItem('aiNoteMaker_apiLimit')) || { used: 0 };
-        const GLOBAL_API_LIMIT = 50;
-        let isGlobalLimit = limitData.used >= GLOBAL_API_LIMIT;
-        
-        const modelStatuses = JSON.parse(localStorage.getItem('aiNoteMaker_modelStatuses')) || {};
-        const modelResetTimes = JSON.parse(localStorage.getItem('aiNoteMaker_modelResetTimes')) || {};
-        const currentActiveModel = localStorage.getItem('aiNoteMaker_activeModel') || 'gpt-4o-1';
-        let isModelLimit = modelStatuses[currentActiveModel] === 'limit';
-        
-        if (isGlobalLimit || isModelLimit) {
-            let resetTimeMs = isModelLimit && modelResetTimes[currentActiveModel] ? modelResetTimes[currentActiveModel] : new Date().setHours(24, 0, 0, 0);
-            let diff = resetTimeMs - new Date().getTime();
-
-            if (diff <= 0) {
-                if (isModelLimit) { modelStatuses[currentActiveModel] = 'ok'; delete modelResetTimes[currentActiveModel]; localStorage.setItem('aiNoteMaker_modelStatuses', JSON.stringify(modelStatuses)); localStorage.setItem('aiNoteMaker_modelResetTimes', JSON.stringify(modelResetTimes)); }
-                if (isGlobalLimit) { limitData.used = 0; limitData.date = new Date().toDateString(); localStorage.setItem('aiNoteMaker_apiLimit', JSON.stringify(limitData)); }
-                resetInputBoxToNormal(chatInput);
-            } else {
-                let hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-                let minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-                let seconds = Math.floor((diff % (1000 * 60)) / 1000);
-                chatInput.disabled = true;
-                chatInput.value = ""; 
-                chatInput.placeholder = `⏳ ${(hours<10?"0"+hours:hours)}:${(minutes<10?"0"+minutes:minutes)}:${(seconds<10?"0"+seconds:seconds)}`;
-                chatInput.classList.remove('placeholder-gray-400');
-                chatInput.classList.add('placeholder-red-500', 'text-center', 'font-mono', 'tracking-[0.1em]', 'font-bold');
-                if(sendBtn) sendBtn.classList.add('opacity-50', 'pointer-events-none');
-            }
-        } else {
-            if (chatInput.disabled && chatInput.placeholder.includes("⏳")) resetInputBoxToNormal(chatInput);
-        }
-    }, 1000);
-}
-
-function resetInputBoxToNormal(chatInput) {
-    chatInput.disabled = false;
-    chatInput.placeholder = "Ask Meta AI or type a note...";
-    chatInput.classList.remove('placeholder-red-500', 'text-center', 'font-mono', 'tracking-[0.1em]', 'font-bold');
-    chatInput.classList.add('placeholder-gray-400', 'text-left');
-    if(sendBtn) sendBtn.classList.remove('opacity-50', 'pointer-events-none');
-}
-
 // Sidebar Logic
 function openSidebar() {
     sidebarOverlay.classList.remove('hidden');
@@ -610,7 +455,6 @@ window.openFullScreenSearch = function() {
     document.getElementById('searchBoxContainer').classList.add('shadow-sm', 'ring-2', 'ring-blue-100', 'border-blue-300');
     document.getElementById('sidebarTopMenu').classList.add('hidden');
     document.getElementById('sidebarDivider').classList.add('hidden');
-    document.getElementById('sidebarSettingsBtn').classList.add('hidden');
 };
 
 window.closeFullScreenSearch = function(e) {
@@ -622,7 +466,6 @@ window.closeFullScreenSearch = function(e) {
     document.getElementById('searchBoxContainer').classList.remove('shadow-sm', 'ring-2', 'ring-blue-100', 'border-blue-300');
     document.getElementById('sidebarTopMenu').classList.remove('hidden');
     document.getElementById('sidebarDivider').classList.remove('hidden');
-    document.getElementById('sidebarSettingsBtn').classList.remove('hidden');
     const searchInput = document.getElementById('sidebarSearchInput');
     searchInput.value = ''; filterSidebarNotes(); searchInput.blur();
 };
@@ -643,7 +486,6 @@ function setupChatContextMenu() {
     if (!chatContextMenu) {
         chatContextMenu = document.createElement('div');
         chatContextMenu.id = 'chatItemContextMenu';
-        // Minimal, icon-only float menu design - Edge (border-radius) reduced using rounded-md
         chatContextMenu.className = 'fixed hidden flex items-center gap-1 bg-white shadow-[0_8px_30px_rgba(0,0,0,0.18)] rounded-md p-1.5 z-[150] border border-gray-200 transform scale-95 opacity-0 transition-all duration-200 origin-bottom-left';
         
         chatContextMenu.innerHTML = `
@@ -726,19 +568,17 @@ function showChatContextMenu(clientX, clientY, sessionId) {
     
     chatContextMenu.classList.remove('hidden');
     
-    // Smooth transition
     setTimeout(() => {
         chatContextMenu.classList.remove('scale-95', 'opacity-0');
         chatContextMenu.classList.add('scale-100', 'opacity-100');
     }, 10);
 
-    // Calculate position preventing overflow
     let top = clientY - 60; 
     let left = clientX - 20;
     
-    if (top < 10) top = clientY + 30; // Show below if top space is less
-    if (left + 140 > window.innerWidth) left = window.innerWidth - 150; // Prevent right overflow
-    if (left < 10) left = 10; // Prevent left overflow
+    if (top < 10) top = clientY + 30; 
+    if (left + 140 > window.innerWidth) left = window.innerWidth - 150; 
+    if (left < 10) left = 10;
 
     chatContextMenu.style.top = `${top}px`;
     chatContextMenu.style.left = `${left}px`;
@@ -773,10 +613,8 @@ window.updateSidebarList = function() {
         btn.className = `flex items-center gap-2 px-3 py-2.5 rounded-lg transition-all duration-200 text-left focus:outline-none w-full select-none touch-action-manipulation ${isActive ? 'bg-blue-100 text-blue-800 font-bold shadow-sm ring-1 ring-blue-300 border-l-4 border-blue-600' : 'text-gray-600 hover:bg-gray-100 border-l-4 border-transparent'}`;
         btn.innerHTML = `<span class="truncate text-[14px] flex-1 pointer-events-none pr-1">${session.title}</span><div class="flex items-center gap-1 z-10 pointer-events-none">${pinIconSvg}</div>`;        
         
-        // Disable default right click context menu (mobile browsers long press menu)
         btn.addEventListener('contextmenu', (e) => e.preventDefault());
 
-        // Long Press Logic
         let pressTimer;
         let isLongPress = false;
         
@@ -787,15 +625,13 @@ window.updateSidebarList = function() {
             
             pressTimer = setTimeout(() => {
                 isLongPress = true;
-                // Optional: Provide mobile haptic feedback if supported
                 if (window.navigator && window.navigator.vibrate) window.navigator.vibrate(50);
                 showChatContextMenu(clientX, clientY, session.id);
-            }, 500); // Trigger menu after 500ms hold
+            }, 500);
         };
         
         const cancelPress = () => clearTimeout(pressTimer);
 
-        // Events for Desktop & Mobile
         btn.addEventListener('mousedown', startPress);
         btn.addEventListener('touchstart', startPress, { passive: true });
         
@@ -804,7 +640,6 @@ window.updateSidebarList = function() {
         btn.addEventListener('touchend', cancelPress);
         btn.addEventListener('touchmove', cancelPress);
 
-        // Standard Click action (Load Chat)
         btn.onclick = (e) => {
             if (!isLongPress) {
                 window.loadSession(session.id);
@@ -867,16 +702,13 @@ window.deleteCurrentNote = function() {
     if (menu) menu.classList.add('hidden');
     
     if (!currentSessionId) return;
-
     if (!confirm("Are you sure you want to delete this note?")) return;
 
     const sessionIndex = chatSessions.findIndex(s => s.id === currentSessionId);
     
     if (sessionIndex !== -1) {
         chatSessions.splice(sessionIndex, 1);
-        
         localStorage.setItem('aiNoteMaker_sessions', JSON.stringify(chatSessions));
-        
         window.showToast('Note deleted successfully', 'error');
         
         if (chatSessions.length > 0) {
@@ -901,27 +733,10 @@ document.addEventListener('click', (e) => {
 
 plusBtn.addEventListener('click', (e) => { e.stopPropagation(); plusMenu.classList.toggle('hidden'); });
 
-// Modals
-window.openRateLimitModal = function() {
-    document.getElementById('threeDotMenu').classList.add('hidden');
-    document.getElementById('rateLimitModal').classList.remove('hidden');
-};
-window.closeRateLimitModal = function() {
-    document.getElementById('rateLimitModal').classList.add('hidden');
-};
-
 window.toggleSaveMenu = function(e) {
     e.stopPropagation();
     document.getElementById('topSaveMenu').classList.toggle('hidden');
 };
-
-// API Connection and Chat Logic
-function getActiveApiConfig() {
-    const profileData = JSON.parse(localStorage.getItem('aiNoteMaker_profileData') || '{"apis":[]}');
-    const activeApi = profileData.apis.find(api => api.isActive);
-    if (!activeApi && profileData.apis.length > 0) return profileData.apis[0];
-    return activeApi;
-}
 
 function saveCurrentChatState() {
     if (!currentSessionId) return;
@@ -931,7 +746,7 @@ function saveCurrentChatState() {
         chatSessions[sessionIndex].chatHTML = containerHtml;
         
         if (chatSessions[sessionIndex].title === "New Note" && containerHtml.length > 50) {
-            const firstUserMessage = document.querySelector('#chatContainer > div > div.bg-blue-600');
+            const firstUserMessage = document.querySelector('.user-msg-bubble');
             if (firstUserMessage) {
                 chatSessions[sessionIndex].title = firstUserMessage.innerText.substring(0, 20) + '...';
                 updateSidebarList();
@@ -941,79 +756,7 @@ function saveCurrentChatState() {
     }
 }
 
-// --- New Global State Variables ---
-window.isGenerating = false;
-window.currentAbortController = null;
-window.stopTypingFlag = false;
-
-// Button Reset Function
-window.resetSendButton = function() {
-    window.isGenerating = false;
-    const chatInput = document.getElementById('chatInput');
-    const sendBtn = document.getElementById('sendBtn');
-    const sendIcon = document.getElementById('sendIcon');
-    const audioIcon = document.getElementById('audioIcon');
-    
-    chatInput.disabled = false;
-    
-    sendIcon.innerHTML = `<line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>`;
-    
-    if (chatInput.value.trim().length > 0) {
-        audioIcon.classList.add('hidden');
-        sendIcon.classList.remove('hidden');
-    } else {
-        audioIcon.classList.remove('hidden');
-        sendIcon.classList.add('hidden');
-    }
-    chatInput.focus();
-};
-
-// Global Handler for Message Actions (Copy, Like, Dislike, Listen)
-window.handleMsgAction = function(btn, action) {
-    const wrapper = btn.closest('.flex-col');
-    const textDiv = wrapper.querySelector('.whitespace-pre-wrap');
-    // Clean markdown asterisks for better TTS and copying
-    const rawText = textDiv.innerText.replace(/\*/g, ''); 
-    
-    if (action === 'copy') {
-        navigator.clipboard.writeText(rawText).then(() => {
-            window.showToast('Copied to clipboard!', 'success');
-        });
-    } else if (action === 'like') {
-        btn.classList.toggle('text-blue-600');
-        btn.classList.toggle('fill-current');
-        const dislikeBtn = wrapper.querySelector('.btn-dislike');
-        if (dislikeBtn) dislikeBtn.classList.remove('text-red-500', 'fill-current');
-    } else if (action === 'dislike') {
-        btn.classList.toggle('text-red-500');
-        btn.classList.toggle('fill-current');
-        const likeBtn = wrapper.querySelector('.btn-like');
-        if (likeBtn) likeBtn.classList.remove('text-blue-600', 'fill-current');
-    } else if (action === 'listen') {
-        if (window.speechSynthesis.speaking) {
-            window.speechSynthesis.cancel();
-            if (btn.dataset.speaking === 'true') {
-                btn.dataset.speaking = 'false';
-                btn.classList.remove('text-green-600');
-                return;
-            }
-            document.querySelectorAll('.btn-listen').forEach(b => {
-                b.dataset.speaking = 'false';
-                b.classList.remove('text-green-600');
-            });
-        }
-        const utterance = new SpeechSynthesisUtterance(rawText);
-        utterance.onend = () => {
-            btn.dataset.speaking = 'false';
-            btn.classList.remove('text-green-600');
-        };
-        btn.dataset.speaking = 'true';
-        btn.classList.add('text-green-600');
-        window.speechSynthesis.speak(utterance);
-    }
-};
-
-function appendMessage(role, content, animate = false) {
+function appendMessage(content) {
     const chatContainer = document.getElementById('chatContainer');
     
     const welcomeScreen = document.getElementById('welcomeScreen');
@@ -1030,247 +773,46 @@ function appendMessage(role, content, animate = false) {
         return html;
     }
 
-    if (role === 'user') {
-        const msgDiv = document.createElement('div');
-        msgDiv.className = 'flex justify-end w-full mt-2 fade-in relative px-2';
-        
-        const contentContainer = document.createElement('div');
-        contentContainer.className = 'flex flex-col items-end max-w-[85%]';
+    const msgDiv = document.createElement('div');
+    msgDiv.className = 'flex justify-end w-full mt-2 fade-in relative px-2';
+    
+    const contentContainer = document.createElement('div');
+    contentContainer.className = 'flex flex-col items-end max-w-[85%]';
 
-        const innerDiv = document.createElement('div');
-        innerDiv.className = 'user-msg-bubble select-none cursor-text bg-[#f4f4f5] border border-gray-100 shadow-sm text-gray-900 px-4 py-2.5 rounded-[12px] rounded-tr-[4px] text-[15px] font-normal leading-relaxed w-fit max-w-full inline-block break-words whitespace-pre-wrap overflow-hidden text-left transition-colors duration-200';
-        innerDiv.innerHTML = formatText(content);
-        
-        const timeLabel = document.createElement('div');
-        timeLabel.className = 'text-[10px] text-gray-400 flex items-center gap-1 font-medium tracking-wide mt-1 mr-1';
-        timeLabel.innerHTML = timeString;
+    const innerDiv = document.createElement('div');
+    innerDiv.className = 'user-msg-bubble select-none cursor-text bg-[#f4f4f5] border border-gray-100 shadow-sm text-gray-900 px-4 py-2.5 rounded-[12px] rounded-tr-[4px] text-[15px] font-normal leading-relaxed w-fit max-w-full inline-block break-words whitespace-pre-wrap overflow-hidden text-left transition-colors duration-200';
+    innerDiv.innerHTML = formatText(content);
+    
+    const timeLabel = document.createElement('div');
+    timeLabel.className = 'text-[10px] text-gray-400 flex items-center gap-1 font-medium tracking-wide mt-1 mr-1';
+    timeLabel.innerHTML = timeString;
 
-        contentContainer.appendChild(innerDiv);
-        contentContainer.appendChild(timeLabel);
-        msgDiv.appendChild(contentContainer);
-        chatContainer.appendChild(msgDiv);
-        chatContainer.scrollTop = chatContainer.scrollHeight;
-        saveCurrentChatState();
-    } else {
-        const msgDiv = document.createElement('div');
-        msgDiv.className = 'flex flex-col gap-1.5 w-full mt-4 fade-in px-2';
-        
-        const profileBlock = document.createElement('div');
-        // pl-1 সরিয়ে -ml-1 ব্যবহার করা হলো যাতে লোগো ও নাম আরেকটু বাঁদিকে সরে আসে
-        profileBlock.className = 'flex items-center gap-2 -ml-1 mb-1 w-full';
-        profileBlock.innerHTML = `
-            <div class="w-[26px] h-[26px] rounded-full flex items-center justify-center shadow-sm ring-2 ring-white overflow-hidden bg-white shrink-0 relative">
-                <div class="profile-loader">
-                    <svg width="100" height="100" viewBox="0 0 100 100">
-                      <defs>
-                        <mask id="clipping">
-                          <polygon points="0,0 100,0 100,100 0,100" fill="black" />
-                          <polygon points="25,25 75,25 50,75" fill="white" />
-                          <polygon points="50,25 75,75 25,75" fill="white" />
-                          <polygon points="35,35 65,35 50,65" fill="white" />
-                          <polygon points="35,35 65,35 50,65" fill="white" />
-                          <polygon points="35,35 65,35 50,65" fill="white" />
-                          <polygon points="35,35 65,35 50,65" fill="white" />
-                        </mask>
-                      </defs>
-                    </svg>
-                    <div class="box"></div>
-                </div>
-            </div>
-            <span class="text-[13px] font-bold text-gray-800 tracking-wide w-full">Meta AI</span>
-        `;
-
-        const innerDiv = document.createElement('div');
-        // pl-9 (বাঁ-দিকের প্যাডিং) রিমুভ করে টেক্সটকে সম্পূর্ণ full-width করা হলো
-        innerDiv.className = 'w-full text-[15px] text-gray-900 font-normal leading-[1.4] cursor-text break-words whitespace-pre-wrap overflow-hidden';
-        
-        const actionDiv = document.createElement('div');
-        // অ্যাকশন বাটনগুলোকেও full-width এলাইনমেন্টের জন্য pl-9 সরানো হলো
-        actionDiv.className = 'flex justify-between items-center w-full pr-2 mt-2 opacity-0 transition-opacity duration-300';
-        actionDiv.innerHTML = `
-            <div class="flex gap-[16px] text-gray-400 cursor-default">
-                <button onclick="handleMsgAction(this, 'copy')" class="hover:text-blue-600 transition-colors focus:outline-none" title="Copy"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="w-[18px] h-[18px]"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg></button>
-                <button onclick="handleMsgAction(this, 'listen')" class="btn-listen hover:text-purple-500 transition-colors focus:outline-none" title="Listen"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="w-[18px] h-[18px]"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path></svg></button>
-                <button onclick="handleMsgAction(this, 'like')" class="btn-like hover:text-green-500 transition-colors focus:outline-none" title="Like"><svg viewBox="0 0 24 24" fill="none" class="w-[18px] h-[18px]"><g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"><path d="M5.75 9.415H4.568c-.98 0-1.775.794-1.775 1.775v8.284c0 .98.795 1.776 1.775 1.776h1.184c.98 0 1.775-.795 1.775-1.776V11.19c0-.98-.795-1.775-1.775-1.775"/><path d="m21.16 12.243l-1.42 7.101a2.367 2.367 0 0 1-2.367 1.906h-7.48a2.367 2.367 0 0 1-2.367-2.367v-7.101A3.231 3.231 0 0 1 8.71 9.415l.982-5.918a.888.888 0 0 1 1.278-.65l1.1.544a3.55 3.55 0 0 1 1.87 4.047l-.496 1.965h5.396a2.367 2.367 0 0 1 2.32 2.84"/></g></svg></button>
-                <button onclick="handleMsgAction(this, 'dislike')" class="btn-dislike hover:text-red-500 transition-colors focus:outline-none" title="Dislike"><svg viewBox="0 0 24 24" fill="none" class="w-[18px] h-[18px]"><g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"><path d="M5.75 2.75H4.568c-.98 0-1.775.795-1.775 1.776v8.284c0 .98.795 1.775 1.775 1.775h1.184c.98 0 1.775-.794 1.775-1.775V4.526c0-.98-.795-1.776-1.775-1.776"/><path d="m21.16 11.757l-1.42-7.101a2.368 2.368 0 0 0-2.367-1.906h-7.48a2.367 2.367 0 0 0-2.367 2.367v7.101a3.231 3.231 0 0 0 1.184 2.367l.982 5.918a.887.887 0 0 0 1.278.65l1.1-.543a3.551 3.551 0 0 0 1.87-4.048l-.496-1.965h5.396a2.368 2.368 0 0 0 2.32-2.84"/></g></svg></button>
-            </div>
-            <span class="text-[10px] text-gray-400 font-medium tracking-wide">${timeString}</span>
-        `;
-        
-        msgDiv.appendChild(profileBlock);
-        msgDiv.appendChild(innerDiv);
-        msgDiv.appendChild(actionDiv);
-        chatContainer.appendChild(msgDiv);
-
-        const stopLoaderAnimation = () => {
-            const loaderElem = msgDiv.querySelector('.profile-loader');
-            if (loaderElem) {
-                loaderElem.style.animationPlayState = 'paused';
-                loaderElem.querySelectorAll('*').forEach(el => {
-                    el.style.animationPlayState = 'paused';
-                });
-            }
-        };
-        
-        if (animate) {
-            let index = 0;
-            innerDiv.innerHTML = '';
-            const typingSpeed = 15; 
-            
-            function typeChar() {
-                if (window.stopTypingFlag) {
-                    actionDiv.classList.remove('opacity-0');
-                    saveCurrentChatState();
-                    window.resetSendButton();
-                    stopLoaderAnimation();
-                    return;
-                }
-                
-                if (index < content.length) {
-                    index++;
-                    innerDiv.innerHTML = formatText(content.substring(0, index));
-                    chatContainer.scrollTop = chatContainer.scrollHeight; 
-                    setTimeout(typeChar, typingSpeed);
-                } else {
-                    actionDiv.classList.remove('opacity-0');
-                    saveCurrentChatState(); 
-                    window.resetSendButton(); 
-                    stopLoaderAnimation();
-                }
-            }
-            typeChar();
-        } else {
-            innerDiv.innerHTML = formatText(content);
-            actionDiv.classList.remove('opacity-0');
-            chatContainer.scrollTop = chatContainer.scrollHeight;
-            saveCurrentChatState();
-            window.resetSendButton();
-            stopLoaderAnimation();
-        }
-    }
+    contentContainer.appendChild(innerDiv);
+    contentContainer.appendChild(timeLabel);
+    msgDiv.appendChild(contentContainer);
+    chatContainer.appendChild(msgDiv);
+    chatContainer.scrollTop = chatContainer.scrollHeight;
+    saveCurrentChatState();
 }
 
-async function handleSendMessage() {
-    if (window.isGenerating) {
-        if (window.currentAbortController) {
-            window.currentAbortController.abort();
-        }
-        window.stopTypingFlag = true; 
-        
-        const existingLoader = document.querySelector('[id^="loading-"]');
-        if (existingLoader) {
-            existingLoader.remove();
-        }
-        
-        window.resetSendButton();
-        return;
-    }
-
+function handleSendMessage() {
     const chatInput = document.getElementById('chatInput');
     const message = chatInput.value.trim();
     if (!message) return;
-    
-    const apiConfig = getActiveApiConfig();
-    if (!apiConfig || !apiConfig.key) {
-        showToast('Settings থেকে API Model যুক্ত করে সিলেক্ট করুন।', 'error');
-        return;
-    }
 
-    appendMessage('user', message, false);
+    appendMessage(message);
     chatInput.value = '';
     chatInput.style.height = 'auto';
     
-    window.isGenerating = true;
-    window.stopTypingFlag = false;
-    window.currentAbortController = new AbortController();
-    
-    chatInput.disabled = true;
-    
-    const sendIcon = document.getElementById('sendIcon');
     const audioIcon = document.getElementById('audioIcon');
+    const sendIcon = document.getElementById('sendIcon');
     
-    audioIcon.classList.add('hidden');
-    sendIcon.classList.remove('hidden');
-    sendIcon.innerHTML = `<path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M8.5 4.5h-3a1 1 0 0 0-1 1v13a1 1 0 0 0 1 1h3a1 1 0 0 0 1-1v-13a1 1 0 0 0-1-1m10 0h-3a1 1 0 0 0-1 1v13a1 1 0 0 0 1 1h3a1 1 0 0 0 1-1v-13a1 1 0 0 0-1-1"/>`;
-    
-    const loadingId = 'loading-' + Date.now();
-    const loadingDiv = document.createElement('div');
-    loadingDiv.id = loadingId;
-    loadingDiv.className = 'flex items-center gap-1.5 bg-transparent px-4 py-3.5 rounded-[1.25rem] w-max fade-in mt-4 ml-1';
-    loadingDiv.innerHTML = `
-        <div class="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></div>
-        <div class="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style="animation-delay: 0.15s"></div>
-        <div class="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style="animation-delay: 0.3s"></div>
-    `;
-    document.getElementById('chatContainer').appendChild(loadingDiv);
-    document.getElementById('chatContainer').scrollTop = document.getElementById('chatContainer').scrollHeight;
-
-    try {
-        const endpoint = apiConfig.endpoint || 'https://api.openai.com/v1/chat/completions';
-        const modelVersion = apiConfig.version || 'gpt-3.5-turbo';
-
-        const systemPrompt = `You are an AI assistant. Your task is to generate clean, well-structured, and readable responses.
-Always follow these rules strictly:
-- No unnecessary extra spaces, blank lines, or gaps.
-- Sentences and paragraphs must be compact and clean.
-- If the question involves multiple points, steps, features, or is list-based, provide a point-wise (bullet/number format) answer.
-- If it is an explanation or descriptive, write concisely in a paragraph format.
-- Avoid unnecessarily long explanations or repetitions.
-- The answer must always be clear, structured, and easy to read. Use headings where necessary.
-- Formatting Rules: List type question -> Use points (• / 1,2,3). Normal explanation -> Use paragraph (no unnecessary line breaks).
-- Avoid: messy spacing, random line breaks, and cluttered text.
-Goal: Make every response Clean, Structured, Compact, and Easy to read.`;
-        
-        const response = await fetch(endpoint, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${apiConfig.key}`
-            },
-            body: JSON.stringify({
-                model: modelVersion,
-                messages:[
-                    { role: 'system', content: systemPrompt },
-                    { role: 'user', content: message }
-                ]
-            }),
-            signal: window.currentAbortController.signal 
-        });
-
-        if (window.stopTypingFlag) return; 
-
-        const data = await response.json();
-        const loader = document.getElementById(loadingId);
-        if(loader) loader.remove();
-        
-        if (response.ok && data.choices && data.choices.length > 0) {
-            const reply = data.choices[0].message.content;
-            appendMessage('assistant', reply, true); 
-        } else {
-            const errorMsg = data.error ? data.error.message : 'Unknown API Error';
-            appendMessage('assistant', `⚠️ API Error: ${errorMsg}`, false);
-            showToast('API রেসপন্স পেতে সমস্যা হয়েছে।', 'error');
-            window.resetSendButton();
-        }
-    } catch (error) {
-        if (error.name === 'AbortError') {
-            console.log('AI Generation Stopped By User');
-        } else {
-            const loader = document.getElementById(loadingId);
-            if(loader) loader.remove();
-            appendMessage('assistant', `⚠️ Network Error: ${error.message}`, false);
-            showToast('নেটওয়ার্ক বা API সমস্যা।', 'error');
-            window.resetSendButton();
-        }
-    }
+    audioIcon.classList.remove('hidden');
+    sendIcon.classList.add('hidden');
+    chatInput.focus();
 }
 
 document.getElementById('sendBtn').addEventListener('click', handleSendMessage);
-
-document.getElementById('chatInput').addEventListener('keydown', function(e) {
-    // মেসেজ ম্যানুয়ালি সেন্ড করার জন্য Enter বাটনের অটো-সেন্ড লজিক রিমুভ করা হয়েছে।
-    // এখন কীবোর্ডের Enter বাটন চাপলে শুধু নতুন লাইন (New Line) তৈরি হবে।
-});
 
 document.getElementById('chatInput').addEventListener('input', function() {
     const audioIcon = document.getElementById('audioIcon');
@@ -1286,28 +828,8 @@ document.getElementById('chatInput').addEventListener('input', function() {
     this.style.height = (this.scrollHeight) + 'px';
 });
 
-window.switchTab = function(tab) {
-    const slider = document.getElementById('active-slider');
-    const btnNotebook = document.getElementById('btn-notebook');
-    const btnMetaAi = document.getElementById('btn-meta-ai');
-    if (!slider || !btnNotebook || !btnMetaAi) return;
-
-    if (tab === 'notebook') {
-        // Notebook এ ক্লিক করলে সরাসরি নতুন পেজে রিডাইরেক্ট হবে
-        window.location.href = '/Modules/Notebook.html';
-    } else if (tab === 'meta-ai') {
-        // Meta Ai তে থাকলে यहीं থাকবে এবং Active state আপডেট করবে
-        slider.classList.add('right-active');
-        btnMetaAi.classList.add('active');
-        btnNotebook.classList.remove('active');
-        isNoteModeActive = false;
-        window.showToast('Switched to Meta AI Mode', 'success');
-    }
-};
-
 // Init
 window.addEventListener('DOMContentLoaded', () => {
-    startReverseTimer();
     if(chatSessions.length === 0) {
         createNewSession();
     } else if(!currentSessionId) {
@@ -1331,7 +853,6 @@ headerToggleBtn.addEventListener('change', function() {
         bottomNavElement.style.display = '';
     }
     
-    // Save state directly to current chat session
     if (currentSessionId) {
         let sessionIndex = chatSessions.findIndex(s => s.id === currentSessionId);
         if (sessionIndex !== -1) {
@@ -1341,7 +862,6 @@ headerToggleBtn.addEventListener('change', function() {
     }
 });
 
-// ইনপুট বক্সে ক্লিক (Focus) করলে নেভিগেশন হাইড করবে
 inputElements.forEach(input => {
     input.addEventListener('focus', () => {
         if (window.innerWidth <= 768) {
@@ -1349,11 +869,9 @@ inputElements.forEach(input => {
         }
     });
 
-    // ইনপুট বক্স থেকে বের হয়ে গেলে (Blur) নেভিগেশন আবার শো করবে
     input.addEventListener('blur', () => {
         if (window.innerWidth <= 768) {
             setTimeout(() => {
-                // Toggle On থাকলে যেন পুনরায় Show না হয়
                 if (!headerToggleBtn.checked) {
                     bottomNavElement.style.display = '';
                 }
@@ -1362,7 +880,6 @@ inputElements.forEach(input => {
     });
 });
 
-// ইউজার যদি ইনপুট থেকে ফোকাস না সরিয়ে ম্যানুয়ালি কীবোর্ড নামিয়ে দেয়, সেটা ফিক্স করার জন্য
 if (window.visualViewport) {
     let initialViewportHeight = window.visualViewport.height;
     window.visualViewport.addEventListener('resize', () => {
@@ -1371,7 +888,6 @@ if (window.visualViewport) {
         if (window.visualViewport.height < initialViewportHeight - 150) {
             bottomNavElement.style.display = 'none';
         } else {
-            // Toggle On থাকলে যেন পুনরায় Show না হয়
             if (!headerToggleBtn.checked) {
                 bottomNavElement.style.display = '';
             }
