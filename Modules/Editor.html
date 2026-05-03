@@ -225,7 +225,32 @@
         .item-color:has(+ * + *:hover) {
             transform: scale(1.15);
             z-index: 999;
-        } </style>
+        } /* ===== Tight Highlight / Marker Styling ===== */
+
+/* QA zone-এর highlight span — compact, line-hugging */
+#qa-content-inner span[data-qa-fmt="backColor"],
+#qa-content-inner span[style*="background-color"] {
+    display: inline;
+    padding: 0 1px;
+    margin: 0;
+    line-height: inherit;
+    -webkit-box-decoration-break: clone;
+    box-decoration-break: clone;
+    border-radius: 1px;
+}
+
+/* Inserted text element-এর highlight — compact */
+.inserted-element[style*="background-color"] {
+    padding-top: 0 !important;
+    padding-bottom: 0 !important;
+}
+
+/* QA zone-এর qa-entry-block এবং paragraph-এর line-height lock */
+#qa-content-inner .qa-entry-block p {
+    line-height: inherit;
+    padding: 0;
+    margin: 0;
+}       </style>
 </head>
 <body class="h-[100dvh] w-full flex flex-col font-sans overflow-hidden relative">
 
