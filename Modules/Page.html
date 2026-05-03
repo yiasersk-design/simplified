@@ -1522,14 +1522,88 @@
 
     const useToggleBtn = document.getElementById('useToggleBtn');
 
+    // =============================================
+    // প্রতিটি slide-এর template design config
+    // Index = slideId (1-based), index 0 = unused placeholder
+    // =============================================
+    const SLIDE_TEMPLATE_CONFIGS = [
+        null,
+        {
+            slideId: 1, bgColor: '#ffffff',
+            fontFamily: "'Tiro Bangla', serif", fontSize: '7.5px',
+            layout: 'single',
+            paddingTop: '2.5rem', paddingRight: '0.8rem', paddingBottom: '0.8rem', paddingLeft: '0.8rem',
+            gap: '4px', textAlign: 'justify', lineHeight: '1.25',
+            useSeparator: false
+        },
+        {
+            slideId: 2, bgColor: '#ffffff',
+            fontFamily: "'Tiro Bangla', serif", fontSize: '7.5px',
+            layout: 'single',
+            paddingTop: '2.5rem', paddingRight: '0.8rem', paddingBottom: '0.8rem', paddingLeft: '0.8rem',
+            gap: '4px', textAlign: 'justify', lineHeight: '1.25',
+            useSeparator: false
+        },
+        {
+            slideId: 3, bgColor: '#ffffff',
+            fontFamily: "'Tiro Bangla', serif", fontSize: '7.5px',
+            layout: 'single',
+            paddingTop: '2.5rem', paddingRight: '0.8rem', paddingBottom: '0.8rem', paddingLeft: '0.8rem',
+            gap: '4px', textAlign: 'justify', lineHeight: '1.25',
+            useSeparator: false
+        },
+        {
+            slideId: 4, bgColor: '#ffffff',
+            fontFamily: "'Tiro Bangla', serif", fontSize: '9.5px',
+            layout: 'single',
+            paddingTop: '1rem', paddingRight: '0.8rem', paddingBottom: '0.8rem', paddingLeft: '0.8rem',
+            gap: '2.4px', textAlign: 'justify', lineHeight: '1.25',
+            useSeparator: false
+        },
+        {
+            slideId: 5, bgColor: '#ffffff',
+            fontFamily: "'Tiro Bangla', serif", fontSize: '9.5px',
+            layout: 'double',
+            paddingTop: '1rem', paddingRight: '0.8rem', paddingBottom: '0.8rem', paddingLeft: '0.8rem',
+            gap: '2.4px', textAlign: 'justify', lineHeight: '1.25',
+            useSeparator: true, separatorStyle: 'wavy', useScale: false
+        },
+        {
+            slideId: 6, bgColor: '#ffffff',
+            fontFamily: "'Tiro Bangla', serif", fontSize: '9.5px',
+            layout: 'double',
+            paddingTop: '1rem', paddingRight: '0.8rem', paddingBottom: '0.8rem', paddingLeft: '0.8rem',
+            gap: '5.6px', textAlign: 'justify', lineHeight: '1.25',
+            useSeparator: true, separatorStyle: 'wavy', useScale: true
+        },
+        {
+            slideId: 7, bgColor: '#ffffff',
+            fontFamily: "'Tiro Bangla', serif", fontSize: '9.5px',
+            layout: 'double',
+            paddingTop: '1rem', paddingRight: '0.8rem', paddingBottom: '0.8rem', paddingLeft: '0.8rem',
+            gap: '2.4px', textAlign: 'justify', lineHeight: '1.25',
+            useSeparator: true, separatorStyle: 'curve', useScale: true
+        }
+    ];
+
     useToggleBtn.addEventListener('click', () => {
         const data = pagesLikeData[currentActiveIndex];
 
         if (data.isUsed) {
             data.isUsed = false;
+            // Template deactivate করা হলে localStorage clear করা
+            localStorage.removeItem('editor_template_config');
+            localStorage.setItem('editor_template_active', 'false');
         } else {
             pagesLikeData.forEach(page => page.isUsed = false);
             data.isUsed = true;
+            // Active slide-এর design config Editor-এ পাঠানো
+            const slideNumber = currentActiveIndex + 1; // 0-indexed → 1-indexed
+            const config = SLIDE_TEMPLATE_CONFIGS[slideNumber];
+            if (config) {
+                localStorage.setItem('editor_template_config', JSON.stringify(config));
+                localStorage.setItem('editor_template_active', 'true');
+            }
         }
 
         updateToggleUI();
