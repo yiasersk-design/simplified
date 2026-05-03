@@ -555,6 +555,12 @@ function setupChatContextMenu() {
                     } else {
                         window.createNewSession();
                     }
+
+                    // === EDITOR SYNC ▶ Active session delete হলে Editor clear করা ===
+                    try {
+                        localStorage.setItem('nb_qa_entries', JSON.stringify([]));
+                        localStorage.setItem('nb_qa_pending', Date.now().toString());
+                    } catch (_e) {}
                 } else {
                     updateSidebarList();
                 }
@@ -719,6 +725,12 @@ window.deleteCurrentNote = function() {
         } else {
             window.createNewSession();
         }
+
+        // === EDITOR SYNC ▶ Note delete-এর পর Editor-কে clear করার signal ===
+        try {
+            localStorage.setItem('nb_qa_entries', JSON.stringify([]));
+            localStorage.setItem('nb_qa_pending', Date.now().toString());
+        } catch (_e) {}
     }
 };
 
@@ -925,6 +937,35 @@ function handleSendMessage() {
         document.getElementById('updateIcon').classList.add('hidden');
         
         saveCurrentChatState();
+
+        // === EDITOR SYNC ▶ Edit-এর পর পুরো chat থেকে Q&A entries rebuild করা ===
+        try {
+            const _chatEl = document.getElementById('chatContainer');
+            const _bubbles = _chatEl.querySelectorAll('.user-msg-bubble');
+            const _rebuiltEntries = [];
+            let _pendingQ = null;
+
+            _bubbles.forEach(function (_bubble) {
+                const _wrap = _bubble.closest('.flex');
+                if (!_wrap) return;
+                const _isQue = _wrap.innerHTML.includes('>Que</span>');
+                const _isAns = _wrap.innerHTML.includes('>Ans</span>');
+                const _text  = _bubble.getAttribute('data-raw') || _bubble.innerText.trim();
+
+                if (_isQue) {
+                    _pendingQ = _text;
+                } else if (_isAns && _pendingQ !== null) {
+                    _rebuiltEntries.push({ q: _pendingQ, a: _text, ts: Date.now() });
+                    _pendingQ = null;
+                }
+            });
+
+            if (_rebuiltEntries.length > 0) {
+                localStorage.setItem('nb_qa_entries', JSON.stringify(_rebuiltEntries));
+                localStorage.setItem('nb_qa_pending', Date.now().toString());
+            }
+        } catch (_e) { /* silent fail */ }
+
         window.showToast('Message updated!', 'success');
         return; // Prevents the sequence validation and appending logic below
     }
@@ -965,8 +1006,32 @@ function handleSendMessage() {
         return; 
     }
 
+    // === EDITOR SYNC ▶ Answer পাঠানোর আগে pending Question text capture করা ===
+    let _syncQueText = null;
+    if (currentMessageType === 'ANS') {
+        const _allBubbles = chatContainer.querySelectorAll('.user-msg-bubble');
+        for (let _bi = _allBubbles.length - 1; _bi >= 0; _bi--) {
+            const _wrap = _allBubbles[_bi].closest('.flex');
+            if (_wrap && _wrap.innerHTML.includes('>Que</span>')) {
+                _syncQueText = _allBubbles[_bi].getAttribute('data-raw') || _allBubbles[_bi].innerText.trim();
+                break;
+            }
+        }
+    }
+
     // Send Message
     appendMessage(message);
+
+    // === EDITOR SYNC ▶ সম্পূর্ণ Q&A pair localStorage-এ push করা ===
+    if (currentMessageType === 'ANS' && _syncQueText) {
+        try {
+            const _entries = JSON.parse(localStorage.getItem('nb_qa_entries') || '[]');
+            _entries.push({ q: _syncQueText, a: message, ts: Date.now() });
+            localStorage.setItem('nb_qa_entries', JSON.stringify(_entries));
+            localStorage.setItem('nb_qa_pending', Date.now().toString());
+        } catch (_e) { /* silent fail */ }
+    }
+
     chatInput.value = '';
     chatInput.style.height = 'auto';
     
@@ -1059,14 +1124,40 @@ const bottomNavElement = document.getElementById('bottomNav');
 const inputElements = document.querySelectorAll('input, textarea');
 const headerToggleBtn = document.getElementById('headerToggleBtn');
 
-// Toggle Button Logic
-headerToggleBtn.addEventListener('change', function() {
-    if (this.checked) {
+// Page load হওয়ার সময়ের height — keyboard ছাড়া আসল height এটাই
+// এটি fixed reference হিসেবে কাজ করবে, পরে update হবে না
+const _fullHeight = window.innerHeight;
+
+// Keyboard এখন open কিনা তা detect করা
+function _isKeyboardOpen() {
+    if (!window.visualViewport) return false;
+    return window.visualViewport.height < _fullHeight - 100;
+}
+
+// Nav দেখানো বা লুকানোর একমাত্র function
+function _syncNav() {
+    if (!bottomNavElement) return;
+    // যদি toggle button দিয়ে manually hide করা থাকে, কিছু করবো না
+    if (headerToggleBtn.checked) return;
+
+    if (_isKeyboardOpen()) {
         bottomNavElement.style.display = 'none';
     } else {
         bottomNavElement.style.display = '';
     }
-    
+}
+
+// Toggle Button Logic (manually hide/show nav)
+headerToggleBtn.addEventListener('change', function () {
+    if (this.checked) {
+        bottomNavElement.style.display = 'none';
+    } else {
+        // Manual toggle-এ শুধু keyboard না থাকলে দেখাবে
+        if (!_isKeyboardOpen()) {
+            bottomNavElement.style.display = '';
+        }
+    }
+
     if (currentSessionId) {
         let sessionIndex = chatSessions.findIndex(s => s.id === currentSessionId);
         if (sessionIndex !== -1) {
@@ -1076,39 +1167,24 @@ headerToggleBtn.addEventListener('change', function() {
     }
 });
 
-inputElements.forEach(input => {
-    input.addEventListener('focus', () => {
-        if (window.innerWidth <= 768) {
-            bottomNavElement.style.display = 'none';
-        }
+// visualViewport resize — এটিই সবচেয়ে নির্ভরযোগ্য keyboard detection
+if (window.visualViewport) {
+    window.visualViewport.addEventListener('resize', _syncNav);
+}
+
+// Fallback: focus এ সঙ্গে সঙ্গে hide করা (visualViewport কিছু পুরনো Android-এ দেরি করে)
+inputElements.forEach(function (input) {
+    input.addEventListener('focus', function () {
+        bottomNavElement.style.display = 'none';
     });
 
-    input.addEventListener('blur', () => {
-        if (window.innerWidth <= 768) {
-            setTimeout(() => {
-                if (!headerToggleBtn.checked) {
-                    bottomNavElement.style.display = '';
-                }
-            }, 100);
-        }
+    // blur এ keyboard animation শেষ হওয়ার জন্য যথেষ্ট সময় দেওয়া
+    input.addEventListener('blur', function () {
+        setTimeout(function () {
+            _syncNav();
+        }, 350);
     });
 });
-
-if (window.visualViewport) {
-    let initialViewportHeight = window.visualViewport.height;
-    window.visualViewport.addEventListener('resize', () => {
-        if (!bottomNavElement) return;
-        
-        if (window.visualViewport.height < initialViewportHeight - 150) {
-            bottomNavElement.style.display = 'none';
-        } else {
-            if (!headerToggleBtn.checked) {
-                bottomNavElement.style.display = '';
-            }
-            initialViewportHeight = window.visualViewport.height; 
-        }
-    });
-}
 
 // Scroll Lock Fix
 document.addEventListener('touchmove', function(e) {
