@@ -88,6 +88,70 @@
             background-size: 20px 20px;
             background-image: linear-gradient(to right, rgba(0,0,0,0.05) 1px, transparent 1px),
                               linear-gradient(to bottom, rgba(0,0,0,0.05) 1px, transparent 1px);
+        } /* ===== Notebook→Editor Q&A Content Zone ===== */
+        #qa-content-zone {
+            position: absolute;
+            inset: 0;
+            z-index: 5;
+            overflow: hidden;
+            pointer-events: none;
+        }
+
+        #qa-content-inner {
+            width: 100%;
+            height: 100%;
+            box-sizing: border-box;
+            overflow: hidden;
+            color: #1f2937;
+        }
+
+        #qa-content-inner.layout-double {
+            column-count: 2;
+            column-gap: 0.8rem;
+            column-fill: auto;
+        }
+
+        .qa-entry-block {
+            break-inside: avoid;
+        }
+
+        .qa-entry-block p {
+            margin: 0;
+            padding: 0;
+        }
+
+        .qa-column-divider {
+            position: absolute;
+            top: 0;
+            bottom: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 2px;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='2' height='4' viewBox='0 0 2 4'%3E%3Cpath d='M1,0 Q2,1 1,2 T1,4' fill='none' stroke='%23000000' stroke-width='0.5'/%3E%3C/svg%3E");
+            background-repeat: repeat-y;
+            pointer-events: none;
+            z-index: 6;
+        }
+
+        #qa-empty-hint {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            pointer-events: none;
+            z-index: 4;
+        }
+
+        #qa-empty-hint span {
+            font-size: 11px;
+            color: #9ca3af;
+            font-family: 'Inter', sans-serif;
+            text-align: center;
+            padding: 0 16px;
+            line-height: 1.5;
         }
     /* ================= COLOR PICKER 3D STYLES (Inline) ================= */
         .color-picker-container {
@@ -212,7 +276,15 @@
     <!-- মূল ওয়ার্কস্পেস (ক্যানভাস এরিয়া) -->
     <main class="flex-1 w-full overflow-hidden flex justify-center items-center p-4 sm:p-8 pb-[calc(80px+env(safe-area-inset-bottom))] relative">
         <div id="design-canvas" class="bg-white shadow-[0_0_25px_rgba(0,0,0,0.15)] w-full max-w-[650px] aspect-[21/29] relative flex flex-col justify-center items-center overflow-hidden transition-all duration-300">
-            <img id="main-bg-image" src="https://placehold.co/840x1160/ffffff/ffffff?text=+" alt="Canvas Artwork" class="w-full h-full object-cover pointer-events-none">
+            <img id="main-bg-image" src="https://placehold.co/840x1160/ffffff/ffffff?text=+" alt="Canvas Artwork" class="w-full h-full object-cover pointer-events-none"> <!-- ===== Notebook→Editor Q&A Sync Zone ===== -->
+            <div id="qa-content-zone" style="display:none;">
+                <div id="qa-content-inner"></div>
+            </div>
+            <!-- Empty state hint (shown when no entries yet but template is active) -->
+            <div id="qa-empty-hint" style="display:none;">
+                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#d1d5db" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+                <span>Template applied.<br>Send a Q&amp;A from Notebook to see content here.</span>
+            </div>
         </div>
 
         <!-- Floating Formatting Toolbox (Visible only in Full Canvas Mode) -->
@@ -1572,6 +1644,252 @@
 
         });
     </script>
+
+<!-- ===== Notebook → Editor → Template: Cross-Module Sync Engine ===== -->
+<script>
+(function () {
+    'use strict';
+
+    // ─── DOM refs ────────────────────────────────────────────────────────────
+    const qZone    = document.getElementById('qa-content-zone');
+    const qInner   = document.getElementById('qa-content-inner');
+    const emptyHint = document.getElementById('qa-empty-hint');
+    const designCanvas = document.getElementById('design-canvas');
+
+    // ─── State ───────────────────────────────────────────────────────────────
+    let activeConfig = null;
+    let renderedCount = 0; // কতটি entry ইতিমধ্যে render হয়েছে
+
+    // ─── Default fallback config (কোনো template select না করলে) ────────────
+    const DEFAULT_CONFIG = {
+        slideId: 1,
+        bgColor: '#ffffff',
+        fontFamily: "'Tiro Bangla', serif",
+        fontSize: '7.5px',
+        layout: 'single',
+        paddingTop: '2.5rem', paddingRight: '0.8rem',
+        paddingBottom: '0.8rem', paddingLeft: '0.8rem',
+        gap: '4px', textAlign: 'justify', lineHeight: '1.25',
+        useSeparator: false
+    };
+
+    // ─── Template styles apply ────────────────────────────────────────────────
+    function applyTemplateStyles(config) {
+        if (!config || !qZone || !qInner) return;
+        activeConfig = config;
+
+        // Canvas background
+        if (designCanvas) {
+            designCanvas.style.backgroundColor = config.bgColor || '#ffffff';
+        }
+
+        // Content zone visible করা
+        qZone.style.display = 'block';
+
+        // Inner container styles
+        const s = qInner.style;
+        s.fontFamily    = config.fontFamily   || "'Tiro Bangla', serif";
+        s.fontSize      = config.fontSize     || '7.5px';
+        s.textAlign     = config.textAlign    || 'justify';
+        s.lineHeight    = config.lineHeight   || '1.25';
+        s.paddingTop    = config.paddingTop   || '2.5rem';
+        s.paddingRight  = config.paddingRight || '0.8rem';
+        s.paddingBottom = config.paddingBottom|| '0.8rem';
+        s.paddingLeft   = config.paddingLeft  || '0.8rem';
+        s.color         = '#1f2937';
+        s.boxSizing     = 'border-box';
+        s.width         = '100%';
+        s.height        = '100%';
+        s.overflow      = 'hidden';
+
+        if (config.layout === 'double') {
+            s.display      = 'block';
+            s.columnCount  = '2';
+            s.columnGap    = '0.8rem';
+            s.columnFill   = 'auto';
+            s.flexDirection = '';
+            s.gap           = '';
+        } else {
+            s.display       = 'flex';
+            s.flexDirection = 'column';
+            s.gap           = config.gap || '4px';
+            s.columnCount   = '';
+            s.columnGap     = '';
+        }
+
+        // Column divider (wavy/curve line)
+        const existingDivider = qZone.querySelector('.qa-column-divider');
+        if (existingDivider) existingDivider.remove();
+
+        if (config.useSeparator && config.layout === 'double') {
+            const divEl = document.createElement('div');
+            divEl.className = 'qa-column-divider';
+            qZone.appendChild(divEl);
+        }
+
+        // Empty hint দেখানো যদি কোনো entry না থাকে
+        updateEmptyHint();
+    }
+
+    // ─── একটি Q&A entry-র DOM element তৈরি করা ──────────────────────────────
+    function createQaBlock(item, cfg) {
+        const c = cfg || activeConfig || DEFAULT_CONFIG;
+        const block = document.createElement('div');
+        block.className = 'qa-entry-block';
+        block.style.breakInside  = 'avoid';
+        block.style.marginBottom = c.gap || '4px';
+
+        // Question paragraph
+        const qEl = document.createElement('p');
+        qEl.style.fontWeight = 'bold';
+        qEl.style.margin = '0';
+        qEl.textContent = item.q;
+
+        // Answer paragraph
+        const aEl = document.createElement('p');
+        aEl.style.marginTop = '1px';
+        aEl.style.margin    = '1px 0 0 0';
+        const labelSpan = document.createElement('span');
+        labelSpan.style.fontWeight = 'bold';
+        labelSpan.textContent = 'উত্তর: ';
+        aEl.appendChild(labelSpan);
+        aEl.appendChild(document.createTextNode(item.a));
+
+        block.appendChild(qEl);
+        block.appendChild(aEl);
+        return block;
+    }
+
+    // ─── সব entry re-render করা ───────────────────────────────────────────────
+    function renderAllEntries(entries, config) {
+        if (!qInner) return;
+        // শুধু Q&A block গুলি clear করা
+        Array.from(qInner.querySelectorAll('.qa-entry-block')).forEach(el => el.remove());
+        renderedCount = 0;
+
+        if (!entries || entries.length === 0) {
+            updateEmptyHint();
+            return;
+        }
+
+        const fragment = document.createDocumentFragment();
+        entries.forEach(item => {
+            fragment.appendChild(createQaBlock(item, config));
+            renderedCount++;
+        });
+        qInner.appendChild(fragment);
+        updateEmptyHint();
+    }
+
+    // ─── শুধু নতুন entry append করা (re-render ছাড়া) ────────────────────────
+    function appendNewEntry(item) {
+        if (!qInner) return;
+        if (!activeConfig) {
+            const cfgJson = localStorage.getItem('editor_template_config');
+            let cfg = DEFAULT_CONFIG;
+            if (cfgJson) { try { cfg = JSON.parse(cfgJson); } catch (_) {} }
+            applyTemplateStyles(cfg);
+        }
+        qInner.appendChild(createQaBlock(item));
+        renderedCount++;
+        updateEmptyHint();
+    }
+
+    // ─── Empty hint toggle ────────────────────────────────────────────────────
+    function updateEmptyHint() {
+        if (!emptyHint) return;
+        emptyHint.style.display = (renderedCount === 0 && activeConfig) ? 'flex' : 'none';
+    }
+
+    // ─── localStorage থেকে entries পড়া ──────────────────────────────────────
+    function getStoredEntries() {
+        try {
+            return JSON.parse(localStorage.getItem('nb_qa_entries') || '[]');
+        } catch (_) { return []; }
+    }
+
+    function getStoredConfig() {
+        try {
+            const raw = localStorage.getItem('editor_template_config');
+            return raw ? JSON.parse(raw) : null;
+        } catch (_) { return null; }
+    }
+
+    // ─── Init: page load-এ সব কিছু initialize করা ───────────────────────────
+    function init() {
+        const templateActive = localStorage.getItem('editor_template_active');
+        const config  = getStoredConfig();
+        const entries = getStoredEntries();
+
+        if (entries.length > 0) {
+            // Entries আছে — template থাকলে তা apply করো, না থাকলে default use করো
+            const cfg = config || DEFAULT_CONFIG;
+            applyTemplateStyles(cfg);
+            renderAllEntries(entries, cfg);
+        } else if (config && templateActive === 'true') {
+            // Template select আছে কিন্তু entry নেই — empty hint দেখানো
+            applyTemplateStyles(config);
+        }
+    }
+
+    // ─── Storage event: multi-tab sync (Notebook-এ পরিবর্তন হলে Editor update) ─
+    window.addEventListener('storage', function (e) {
+
+        // nb_qa_pending update হলে — নতুন entry অথবা সব cleared
+        if (e.key === 'nb_qa_pending') {
+            const entries = getStoredEntries();
+
+            if (entries.length === 0) {
+                // সব entry মুছে গেছে — canvas থেকে সব Q&A block সরানো
+                if (qInner) {
+                    Array.from(qInner.querySelectorAll('.qa-entry-block')).forEach(function (el) {
+                        el.remove();
+                    });
+                }
+                renderedCount = 0;
+                updateEmptyHint();
+                return;
+            }
+
+            if (renderedCount < entries.length) {
+                // নতুন entry এসেছে — শুধু সেটি append করো
+                appendNewEntry(entries[entries.length - 1]);
+            } else if (renderedCount > entries.length) {
+                // Edit-এর কারণে entry সংখ্যা কমেছে — পুরো re-render করো
+                renderAllEntries(entries, activeConfig);
+            }
+        }
+
+        // Template পরিবর্তন হলো Page.html থেকে
+        if (e.key === 'editor_template_config' && e.newValue) {
+            let cfg = null;
+            try { cfg = JSON.parse(e.newValue); } catch (_) {}
+            if (!cfg) return;
+            const entries = getStoredEntries();
+            applyTemplateStyles(cfg);
+            renderAllEntries(entries, cfg);
+        }
+
+        // Template বন্ধ করা হলো
+        if (e.key === 'editor_template_active' && e.newValue === 'false') {
+            if (qZone) qZone.style.display = 'none';
+            if (emptyHint) emptyHint.style.display = 'none';
+            if (designCanvas) designCanvas.style.backgroundColor = '';
+            activeConfig = null;
+            renderedCount = 0;
+        }
+    });
+
+    // ─── Run ─────────────────────────────────────────────────────────────────
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', init);
+    } else {
+        init();
+    }
+
+})();
+</script>
+
 <!-- ================= MARGIN SLIDE-UP PANEL ================= -->
     <div id="margin-panel" class="fixed inset-0 z-[100] pointer-events-none flex flex-col justify-end">
         <!-- Backdrop -->
