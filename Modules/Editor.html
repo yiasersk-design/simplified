@@ -613,6 +613,23 @@
                 history.push(currentState);
                 historyIndex++;
                 updateHeaderButtons();
+
+                // ── Persist to localStorage ──────────────────────────────────
+                // Canvas-এর full HTML (images, classes, inserted elements) save
+                try {
+                    localStorage.setItem('editor_canvas_html', currentState);
+                } catch (e) {
+                    // localStorage full হলে silently ignore
+                }
+
+                // QA zone-এর formatted HTML আলাদাভাবে save করা
+                // (span, bold, italic, highlight — সব preserved থাকবে)
+                const qInnerEl = document.getElementById('qa-content-inner');
+                if (qInnerEl && qInnerEl.innerHTML.trim()) {
+                    try {
+                        localStorage.setItem('editor_qa_formatted_html', qInnerEl.innerHTML);
+                    } catch (e) {}
+                }
                 
                 // Reselect the element after saving
                 if(previouslyActive) setActive(previouslyActive);
@@ -643,7 +660,18 @@
                 }
             }
 
-            // Save Initial State
+            // ── Page Load: localStorage থেকে canvas state restore করা ──────────
+            (function restoreCanvasFromStorage() {
+                const savedHtml = localStorage.getItem('editor_canvas_html');
+                if (savedHtml) {
+                    canvasContainer.innerHTML = savedHtml;
+                    // Restored inserted elements-কে interactive করা
+                    const elements = canvasContainer.querySelectorAll('.inserted-element');
+                    elements.forEach(el => makeInteractive(el));
+                }
+            })();
+
+            // Save Initial State (localStorage restore-এর পরে)
             saveState();
 
             document.getElementById('btn-undo').addEventListener('click', () => {
@@ -667,6 +695,19 @@
                 const elements = canvasContainer.querySelectorAll('.inserted-element');
                 elements.forEach(el => makeInteractive(el));
                 updateHeaderButtons();
+
+                // ── Undo/Redo করলে localStorage-ও update হবে ────────────────
+                try {
+                    localStorage.setItem('editor_canvas_html', content);
+                } catch (e) {}
+
+                // QA zone undo/redo-তে formatted HTML sync করা
+                const qInnerEl = document.getElementById('qa-content-inner');
+                if (qInnerEl && qInnerEl.innerHTML.trim()) {
+                    try {
+                        localStorage.setItem('editor_qa_formatted_html', qInnerEl.innerHTML);
+                    } catch (e) {}
+                }
             }
 
             // ==========================================
@@ -1969,9 +2010,26 @@ alignBtns.forEach(btn => {
     }
 
     // ─── সব entry re-render করা ───────────────────────────────────────────────
-    function renderAllEntries(entries, config) {
+    function renderAllEntries(entries, config, forceRaw) {
         if (!qInner) return;
-        // শুধু Q&A block গুলি clear করা
+
+        // ── Formatted HTML restore check ─────────────────────────────────────
+        // forceRaw = true হলে সবসময় raw re-render (Notebook থেকে নতুন entry এলে)
+        // forceRaw = false/undefined হলে saved formatted HTML দিয়ে restore করো
+        if (!forceRaw) {
+            const savedFormatted = localStorage.getItem('editor_qa_formatted_html');
+            if (savedFormatted && savedFormatted.trim()) {
+                // Formatted HTML restore করো — কোনো styling হারাবে না
+                Array.from(qInner.querySelectorAll('.qa-entry-block')).forEach(el => el.remove());
+                qInner.insertAdjacentHTML('beforeend', savedFormatted);
+                // renderedCount set করো entries-এর সংখ্যা অনুযায়ী
+                renderedCount = qInner.querySelectorAll('.qa-entry-block').length;
+                updateEmptyHint();
+                return;
+            }
+        }
+
+        // ── Raw re-render (formatted HTML নেই অথবা forceRaw = true) ──────────
         Array.from(qInner.querySelectorAll('.qa-entry-block')).forEach(el => el.remove());
         renderedCount = 0;
 
@@ -2001,6 +2059,12 @@ alignBtns.forEach(btn => {
         qInner.appendChild(createQaBlock(item));
         renderedCount++;
         updateEmptyHint();
+
+        // নতুন entry append-এর পর current HTML save করো
+        // (এখন পর্যন্ত যা formatting ছিল তা preserved থাকবে)
+        try {
+            localStorage.setItem('editor_qa_formatted_html', qInner.innerHTML);
+        } catch (e) {}
     }
 
     // ─── Empty hint toggle ────────────────────────────────────────────────────
@@ -2055,16 +2119,21 @@ alignBtns.forEach(btn => {
                     });
                 }
                 renderedCount = 0;
+                // Formatted HTML-ও clear করো কারণ entries মুছে গেছে
+                localStorage.removeItem('editor_qa_formatted_html');
                 updateEmptyHint();
                 return;
             }
 
             if (renderedCount < entries.length) {
-                // নতুন entry এসেছে — শুধু সেটি append করো
+                // নতুন entry এসেছে — append করো এবং formatted HTML clear করো
+                // (নতুন content এলে পুরনো format invalid হয়)
+                localStorage.removeItem('editor_qa_formatted_html');
                 appendNewEntry(entries[entries.length - 1]);
             } else if (renderedCount > entries.length) {
-                // Edit-এর কারণে entry সংখ্যা কমেছে — পুরো re-render করো
-                renderAllEntries(entries, activeConfig);
+                // Edit-এর কারণে entry সংখ্যা কমেছে — forceRaw দিয়ে re-render
+                localStorage.removeItem('editor_qa_formatted_html');
+                renderAllEntries(entries, activeConfig, true);
             }
         }
 
@@ -2075,7 +2144,9 @@ alignBtns.forEach(btn => {
             if (!cfg) return;
             const entries = getStoredEntries();
             applyTemplateStyles(cfg);
-            renderAllEntries(entries, cfg);
+            // Template বদলালে formatting clear করো — নতুন template-এ fresh start
+            localStorage.removeItem('editor_qa_formatted_html');
+            renderAllEntries(entries, cfg, true);
         }
 
         // Template বন্ধ করা হলো
@@ -2085,6 +2156,8 @@ alignBtns.forEach(btn => {
             if (designCanvas) designCanvas.style.backgroundColor = '';
             activeConfig = null;
             renderedCount = 0;
+            // Template বন্ধ হলে formatted HTML clear করো
+            localStorage.removeItem('editor_qa_formatted_html');
         }
     });
 
