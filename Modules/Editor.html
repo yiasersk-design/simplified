@@ -89,21 +89,25 @@
             background-image: linear-gradient(to right, rgba(0,0,0,0.05) 1px, transparent 1px),
                               linear-gradient(to bottom, rgba(0,0,0,0.05) 1px, transparent 1px);
         } /* ===== Notebook→Editor Q&A Content Zone ===== */
-        #qa-content-zone {
-            position: absolute;
-            inset: 0;
-            z-index: 5;
-            overflow: hidden;
-            pointer-events: none;
-        }
+#qa-content-zone {
+    position: absolute;
+    inset: 0;
+    z-index: 5;
+    overflow: hidden;
+    pointer-events: auto;  /* ← none থেকে auto করা হলো */
+}
 
-        #qa-content-inner {
-            width: 100%;
-            height: 100%;
-            box-sizing: border-box;
-            overflow: hidden;
-            color: #1f2937;
-        }
+#qa-content-inner {
+    width: 100%;
+    height: 100%;
+    box-sizing: border-box;
+    overflow: hidden;
+    color: #1f2937;
+    outline: none;
+    cursor: default;
+    -webkit-user-select: text;
+    user-select: text;
+}
 
         #qa-content-inner.layout-double {
             column-count: 2;
@@ -112,13 +116,18 @@
         }
 
         .qa-entry-block {
-            break-inside: avoid;
-        }
+    break-inside: avoid;
+    user-select: text;       /* ← text select করা যাবে */
+    -webkit-user-select: text;
+}
 
         .qa-entry-block p {
-            margin: 0;
-            padding: 0;
-        }
+    margin: 0;
+    padding: 0;
+    -webkit-user-select: text;
+    user-select: text;
+    pointer-events: auto;
+}
 
         .qa-column-divider {
             position: absolute;
@@ -218,7 +227,7 @@
             z-index: 999;
         } </style>
 </head>
-<body class="h-[100dvh] w-full flex flex-col font-sans overflow-hidden select-none relative">
+<body class="h-[100dvh] w-full flex flex-col font-sans overflow-hidden relative">
 
     <!-- উপরের হেডার বার -->
     <header class="h-[56px] w-full header-gradient px-4 shrink-0 text-gray-800 z-10 shadow-sm border-b border-gray-200">
@@ -1165,9 +1174,20 @@
             // --- Toolbox Formatting Actions ---
             toolboxBtns.forEach(btn => {
                 btn.addEventListener('click', () => {
+                    const tool = btn.getAttribute('data-tool');
+
+                    // QA Zone-এ selection থাকলে span-wrap দিয়ে apply করো
+                    if (hasQaSelection()) {
+                        if (tool === 'bold')      applyCommandToQaZone('bold');
+                        else if (tool === 'italic')    applyCommandToQaZone('italic');
+                        else if (tool === 'underline') applyCommandToQaZone('underline');
+                        else if (tool === 'strike')    applyCommandToQaZone('strikeThrough');
+                        else if (tool === 'marker')    applyCommandToQaZone('backColor', 'rgba(253, 224, 71, 0.7)');
+                        return;
+                    }
+
+                    // Inserted element selected থাকলে সেখানে apply করো
                     if (activeElement && activeElement.tagName === 'DIV' && activeElement.id !== 'canvas-watermark') {
-                        const tool = btn.getAttribute('data-tool');
-                        
                         if (tool === 'bold') {
                             let weight = window.getComputedStyle(activeElement).fontWeight;
                             activeElement.style.fontWeight = (weight === '700' || weight === 'bold') ? 'normal' : 'bold';
@@ -1192,12 +1212,11 @@
                             }
                         }
                         else if (tool === 'marker') {
-                            activeElement.style.backgroundColor = activeElement.style.backgroundColor ? '' : 'rgba(253, 224, 71, 0.7)'; 
+                            activeElement.style.backgroundColor = activeElement.style.backgroundColor ? '' : 'rgba(253, 224, 71, 0.7)';
                         }
-                        
-                        saveState(); // Record change for undo/redo
+                        saveState();
                     } else {
-                        alert("Please select a text element first to apply formatting.");
+                        alert("Please select text from notebook content, or tap a text element first.");
                     }
                 });
             });
@@ -1394,16 +1413,17 @@
             }
             
             // Bind click event to "Colour" button in Text Style submenu (for Text)
-            if (btnTextColor) {
-                btnTextColor.addEventListener('click', (e) => {
-                    // Check if a text element is actively selected first
-                    if (activeElement && activeElement.tagName === 'DIV' && activeElement.id !== 'canvas-watermark') {
-                        toggleFloatingPicker(e, 'text');
-                    } else {
-                        alert("Please insert and select a text first.");
-                    }
-                });
-            }
+if (btnTextColor) {
+    btnTextColor.addEventListener('click', (e) => {
+        const hasInsertedEl = activeElement && activeElement.tagName === 'DIV' && activeElement.id !== 'canvas-watermark';
+        // QA zone-এ selection অথবা inserted element — উভয়ের জন্য color picker দেখাও
+        if (hasInsertedEl || hasQaSelection() || isQaZoneActive()) {
+            toggleFloatingPicker(e, 'text');
+        } else {
+            alert("Please select text from notebook content or a text element first.");
+        }
+    });
+}
 
             // Applying the selected Color dynamically to Border or Text
             colorItems.forEach(item => {
@@ -1416,11 +1436,18 @@
                         // Apply new color directly to Border
                         canvasContainer.style.borderColor = selectedColor;
                     } else if (colorPickerTarget === 'text') {
-                        // Apply new color to the active Text Element
-                        if (activeElement) {
-                            activeElement.style.color = selectedColor;
-                        }
-                    }
+    if (hasQaSelection()) {
+        // QA zone-এ selected text-এ color apply করো
+        const qInner = document.getElementById('qa-content-inner');
+        if (qInner) {
+            qInner.focus();
+            document.execCommand('foreColor', false, selectedColor);
+        }
+    } else if (activeElement) {
+        // Inserted element-এ color apply করো
+        activeElement.style.color = selectedColor;
+    }
+}
                     
                     saveState(); // Save to undo/redo history
                     
@@ -1488,66 +1515,194 @@
             // ==========================================
             const textStyleBtns = document.querySelectorAll('#submenu-textstyle .submenu-item');
             
+            // ── Read-only Preview Mode: QA Zone Selection Helpers ──────────────
+            // contentEditable নেই, তাই শুধু native browser selection ব্যবহার হবে
+
+            function isQaZoneActive() {
+                const sel = window.getSelection();
+                if (!sel || sel.rangeCount === 0) return false;
+                const qInner = document.getElementById('qa-content-inner');
+                return qInner && qInner.contains(sel.anchorNode);
+            }
+
+            function hasQaSelection() {
+                const sel = window.getSelection();
+                return sel && sel.rangeCount > 0 && !sel.isCollapsed && isQaZoneActive();
+            }
+
             function styleText(callback) {
-                if (activeElement && activeElement.tagName === 'DIV' && activeElement.id !== 'canvas-watermark') {
+                const hasInsertedEl = activeElement && activeElement.tagName === 'DIV' && activeElement.id !== 'canvas-watermark';
+                if (hasInsertedEl) {
                     callback();
                     saveState();
                 } else {
-                    alert("Please insert and select a text first.");
+                    alert("Please tap a text element to apply formatting.");
                 }
             }
 
-            textStyleBtns[0].addEventListener('click', () => styleText(() => { 
-                let currentSize = window.getComputedStyle(activeElement).fontSize;
-                let sizeNum = parseFloat(currentSize);
-                activeElement.style.fontSize = (sizeNum >= 64 ? 16 : sizeNum + 8) + 'px';
-            }));
-            
-             
-            
-            textStyleBtns[2].addEventListener('click', () => styleText(() => { 
-                let weight = window.getComputedStyle(activeElement).fontWeight;
-                activeElement.style.fontWeight = (weight === '700' || weight === 'bold') ? 'normal' : 'bold';
-            }));
-            
-            textStyleBtns[3].addEventListener('click', () => styleText(() => { 
-                activeElement.style.fontStyle = activeElement.style.fontStyle === 'italic' ? 'normal' : 'italic';
-            }));
-            
-            textStyleBtns[4].addEventListener('click', () => styleText(() => { 
-                let dec = activeElement.style.textDecorationLine || '';
-                if (dec.includes('underline')) {
-                    activeElement.style.textDecorationLine = dec.replace('underline', '').trim() || 'none';
-                } else {
-                    activeElement.style.textDecorationLine = dec === 'none' ? 'underline' : dec + ' underline';
+            // Read-only mode-এ QA zone-এ span-wrap দিয়ে styling apply করা
+            // contentEditable ছাড়াও কাজ করে — keyboard open হয় না
+            function applyCommandToQaZone(command, value) {
+                const sel = window.getSelection();
+                if (!sel || sel.rangeCount === 0 || sel.isCollapsed) return;
+
+                const range = sel.getRangeAt(0);
+                const selectedText = range.toString();
+                if (!selectedText) return;
+
+                // Styling span তৈরি করা
+                const span = document.createElement('span');
+                span.setAttribute('data-qa-fmt', command); // identify করার জন্য
+
+                if (command === 'bold') {
+                    span.style.fontWeight = 'bold';
+                } else if (command === 'italic') {
+                    span.style.fontStyle = 'italic';
+                } else if (command === 'underline') {
+                    span.style.textDecoration = 'underline';
+                } else if (command === 'strikeThrough') {
+                    span.style.textDecoration = 'line-through';
+                } else if (command === 'backColor') {
+                    span.style.backgroundColor = value || 'rgba(253, 224, 71, 0.7)';
+                } else if (command === 'foreColor') {
+                    span.style.color = value;
                 }
-            }));
-            
-            textStyleBtns[5].addEventListener('click', () => styleText(() => { 
-                let dec = activeElement.style.textDecorationLine || '';
-                if (dec.includes('line-through')) {
-                    activeElement.style.textDecorationLine = dec.replace('line-through', '').trim() || 'none';
-                } else {
-                    activeElement.style.textDecorationLine = dec === 'none' ? 'line-through' : dec + ' line-through';
+
+                // Toggle check: selection-এর parent span-এ same style আছে কিনা
+                const parentEl = range.commonAncestorContainer.nodeType === 3
+                    ? range.commonAncestorContainer.parentElement
+                    : range.commonAncestorContainer;
+
+                if (parentEl && parentEl.tagName === 'SPAN' && parentEl.getAttribute('data-qa-fmt') === command) {
+                    // Unwrap — style remove করো
+                    const parent = parentEl.parentNode;
+                    while (parentEl.firstChild) {
+                        parent.insertBefore(parentEl.firstChild, parentEl);
+                    }
+                    parent.removeChild(parentEl);
+                    sel.removeAllRanges();
+                    saveState();
+                    return;
                 }
-            }));
+
+                // Wrap selection with styled span
+                try {
+                    range.surroundContents(span);
+                } catch (e) {
+                    // Cross-element selection-এর জন্য fallback
+                    const fragment = range.extractContents();
+                    span.appendChild(fragment);
+                    range.insertNode(span);
+                }
+
+                // Selection clear করো — keyboard open হবে না
+                sel.removeAllRanges();
+                saveState();
+            }
+
+            textStyleBtns[0].addEventListener('click', () => {
+                if (hasQaSelection()) {
+                    // Read-only mode-এ selected text-এ font size বড় করা — span wrap দিয়ে
+                    const sel = window.getSelection();
+                    if (sel && sel.rangeCount > 0 && !sel.isCollapsed) {
+                        const range = sel.getRangeAt(0);
+                        const span = document.createElement('span');
+                        span.style.fontSize = '1.3em';
+                        span.setAttribute('data-qa-fmt', 'fontSize');
+                        try {
+                            range.surroundContents(span);
+                        } catch (e) {
+                            const frag = range.extractContents();
+                            span.appendChild(frag);
+                            range.insertNode(span);
+                        }
+                        sel.removeAllRanges();
+                        saveState();
+                    }
+                } else {
+                    styleText(() => { 
+                        let currentSize = window.getComputedStyle(activeElement).fontSize;
+                        let sizeNum = parseFloat(currentSize);
+                        activeElement.style.fontSize = (sizeNum >= 64 ? 16 : sizeNum + 8) + 'px';
+                    });
+                }
+            });
+
+textStyleBtns[2].addEventListener('click', () => {
+    if (hasQaSelection()) {
+        applyCommandToQaZone('bold');
+    } else {
+        styleText(() => { 
+            let weight = window.getComputedStyle(activeElement).fontWeight;
+            activeElement.style.fontWeight = (weight === '700' || weight === 'bold') ? 'normal' : 'bold';
+        });
+    }
+});
+
+textStyleBtns[3].addEventListener('click', () => {
+    if (hasQaSelection()) {
+        applyCommandToQaZone('italic');
+    } else {
+        styleText(() => { 
+            activeElement.style.fontStyle = activeElement.style.fontStyle === 'italic' ? 'normal' : 'italic';
+        });
+    }
+});
+
+textStyleBtns[4].addEventListener('click', () => {
+    if (hasQaSelection()) {
+        applyCommandToQaZone('underline');
+    } else {
+        styleText(() => { 
+            let dec = activeElement.style.textDecorationLine || '';
+            if (dec.includes('underline')) {
+                activeElement.style.textDecorationLine = dec.replace('underline', '').trim() || 'none';
+            } else {
+                activeElement.style.textDecorationLine = dec === 'none' ? 'underline' : dec + ' underline';
+            }
+        });
+    }
+});
+
+textStyleBtns[5].addEventListener('click', () => {
+    if (hasQaSelection()) {
+        applyCommandToQaZone('strikeThrough');
+    } else {
+        styleText(() => { 
+            let dec = activeElement.style.textDecorationLine || '';
+            if (dec.includes('line-through')) {
+                activeElement.style.textDecorationLine = dec.replace('line-through', '').trim() || 'none';
+            } else {
+                activeElement.style.textDecorationLine = dec === 'none' ? 'line-through' : dec + ' line-through';
+            }
+        });
+    }
+});
 
             // ==========================================
             // Alignment Submenu Functionalities
             // ==========================================
             const alignBtns = document.querySelectorAll('.align-btn');
-            alignBtns.forEach(btn => {
-                btn.addEventListener('click', () => {
-                    styleText(() => {
-                        const alignment = btn.getAttribute('data-align');
-                        activeElement.style.textAlign = alignment;
-                        // Text Alignment যাতে ঠিকমতো দেখা যায় তার জন্য Width Adjust করা
-                        if (!activeElement.style.width || activeElement.style.width === 'fit-content') {
-                            activeElement.style.minWidth = '150px'; 
-                        }
-                    });
-                });
+alignBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+        const alignment = btn.getAttribute('data-align');
+        if (hasQaSelection() || isQaZoneActive()) {
+            // QA zone-এর পুরো inner container-এর alignment পরিবর্তন
+            const qInner = document.getElementById('qa-content-inner');
+            if (qInner) {
+                qInner.style.textAlign = alignment;
+                saveState();
+            }
+        } else {
+            styleText(() => {
+                activeElement.style.textAlign = alignment;
+                if (!activeElement.style.width || activeElement.style.width === 'fit-content') {
+                    activeElement.style.minWidth = '150px'; 
+                }
             });
+        }
+    });
+});
 
             // ==========================================
             // 8. Insert Submenu Functionalities
@@ -1598,13 +1753,16 @@
             const effectBtns = document.querySelectorAll('#submenu-effects .submenu-item');
             
             effectBtns[0].addEventListener('click', () => { 
-                if (activeElement && activeElement.tagName === 'DIV' && activeElement.id !== 'canvas-watermark') {
-                    activeElement.style.backgroundColor = activeElement.style.backgroundColor ? '' : 'rgba(253, 224, 71, 0.7)'; 
-                    saveState();
-                } else {
-                    alert("Please select a text element first.");
-                }
-            });
+    if (hasQaSelection()) {
+        // Selected text-এ highlight apply করা
+        applyCommandToQaZone('backColor', 'rgba(253, 224, 71, 0.7)');
+    } else if (activeElement && activeElement.tagName === 'DIV' && activeElement.id !== 'canvas-watermark') {
+        activeElement.style.backgroundColor = activeElement.style.backgroundColor ? '' : 'rgba(253, 224, 71, 0.7)'; 
+        saveState();
+    } else {
+        alert("Please select text from notebook content or a text element.");
+    }
+});
             
             effectBtns[1].addEventListener('click', () => { 
                 const existing = document.getElementById('canvas-watermark');
@@ -1619,6 +1777,53 @@
                 }
                 saveState();
             });
+
+        // ── Read-only Preview: Mobile Keyboard & Focus Block ────────────────
+            // QA zone-এ click বা touch করলে keyboard open হবে না
+            // কিন্তু long-press বা drag দিয়ে text select করা যাবে
+
+            const qaZoneEl = document.getElementById('qa-content-zone');
+            if (qaZoneEl) {
+
+                // Mouse click-এ focus যাবে না — keyboard block (desktop)
+                qaZoneEl.addEventListener('mousedown', (e) => {
+                    // toolbar, footer বা floating toolbox touch হলে বাদ দাও
+                    if (e.target.closest('footer') || e.target.closest('#floating-toolbox')) return;
+                    // preventDefault focus block করে কিন্তু mouse drag selection চলে
+                    e.preventDefault();
+                }, { passive: false });
+
+                // Touch tap-এ keyboard open হবে না
+                // কিন্তু touchmove (drag) এ browser native selection চলবে
+                qaZoneEl.addEventListener('touchstart', (e) => {
+                    if (e.target.closest('footer') || e.target.closest('#floating-toolbox')) return;
+                    // Single tap এ default prevent করি
+                    // Long press ও drag-এ browser নিজেই selection করবে
+                    if (e.touches.length === 1) {
+                        // Prevent focus/keyboard only — selection চলবে
+                        const target = e.target;
+                        if (target.tagName !== 'INPUT' && target.tagName !== 'TEXTAREA') {
+                            // blur any active input যাতে keyboard বন্ধ হয়
+                            if (document.activeElement && document.activeElement !== document.body) {
+                                document.activeElement.blur();
+                            }
+                        }
+                    }
+                }, { passive: true });
+
+                // যদি কোনোভাবে focus চলে আসে, সাথে সাথে blur করো
+                qaZoneEl.addEventListener('focus', (e) => {
+                    e.target.blur();
+                }, true); // capture phase-এ handle করা
+            }
+
+            // QA inner-এ directly focus আসলেও block করা
+            const qaInnerEl = document.getElementById('qa-content-inner');
+            if (qaInnerEl) {
+                qaInnerEl.addEventListener('focus', (e) => {
+                    e.target.blur();
+                }, true);
+            }
 
         });
     </script>
@@ -1664,7 +1869,7 @@
         // Content zone visible করা
         qZone.style.display = 'block';
 
-        // Inner container styles
+        // Inner container styles (contentEditable নেই — read-only preview mode)
         const s = qInner.style;
         s.fontFamily    = config.fontFamily   || "'Tiro Bangla', serif";
         s.fontSize      = config.fontSize     || '7.5px';
