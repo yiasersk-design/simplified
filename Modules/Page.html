@@ -1338,6 +1338,24 @@
         isUsed: false 
     }));
 
+    // === NEW: Restore template selection state from localStorage ===
+    try {
+        const isActive = localStorage.getItem('editor_template_active');
+        if (isActive === 'true') {
+            const configStr = localStorage.getItem('editor_template_config');
+            if (configStr) {
+                const config = JSON.parse(configStr);
+                const savedSlideIndex = config.slideId - 1; // slideId is 1-indexed, array is 0-indexed
+                if (savedSlideIndex >= 0 && savedSlideIndex < totalPages) {
+                    pagesLikeData[savedSlideIndex].isUsed = true;
+                }
+            }
+        }
+    } catch (error) {
+        console.error("Error restoring template state from localStorage:", error);
+    }
+    // ===============================================================
+
     function formatNumber(num) {
         if (num >= 1000) {
             return (num / 1000).toFixed(1).replace('.0', '') + 'k';
