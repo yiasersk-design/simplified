@@ -461,13 +461,18 @@
             </div>
 
             <!-- 3. Insert Submenu -->
-            <div id="submenu-insert" class="menu-panel submenu-panel overflow-x-auto hide-scrollbar px-2 gap-1">
-                <button class="back-btn shrink-0 flex flex-col items-center justify-center h-[56px] w-[36px] outline-none">
-                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"><path d="m15.583 4l-6.587 6.587a2.013 2.013 0 0 0 0 2.826L15.583 20"/></svg>
-                </button>
-                <div class="w-px h-8 bg-gray-300 mx-1 shrink-0"></div>
-                <button class="submenu-item min-w-[72px] shrink-0 flex flex-col items-center justify-center h-[56px] outline-none"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg><span class="toolbar-text">Image</span></button>
-            </div>
+<div id="submenu-insert" class="menu-panel submenu-panel overflow-x-auto hide-scrollbar px-2 gap-1">
+    <button class="back-btn shrink-0 flex flex-col items-center justify-center h-[56px] w-[36px] outline-none">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"><path d="m15.583 4l-6.587 6.587a2.013 2.013 0 0 0 0 2.826L15.583 20"/></svg>
+    </button>
+    <div class="w-px h-8 bg-gray-300 mx-1 shrink-0"></div>
+    <button class="submenu-item min-w-[72px] shrink-0 flex flex-col items-center justify-center h-[56px] outline-none"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg><span class="toolbar-text">Image</span></button>
+    <!-- New: Delete Image button -->
+    <button id="btn-delete-img" class="submenu-item min-w-[72px] shrink-0 flex flex-col items-center justify-center h-[56px] outline-none text-red-400 hover:text-red-600">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+        <span class="toolbar-text text-inherit">Delete</span>
+    </button>
+</div>
 
             <!-- 4. Effects Submenu -->
             <div id="submenu-effects" class="menu-panel submenu-panel overflow-x-auto hide-scrollbar px-2 gap-1">
@@ -1324,15 +1329,80 @@
                 bgImage.onload = () => saveState();
             });
 
-            // Reset Workspace
-            document.getElementById('btn-reset').addEventListener('click', () => {
-                if(confirm("Are you sure you want to completely reset your workspace?")) {
-                    canvasContainer.className = 'bg-white shadow-[0_0_25px_rgba(0,0,0,0.15)] w-full max-w-[650px] aspect-[21/29] relative flex flex-col justify-center items-center overflow-hidden transition-all duration-300';
-                    canvasContainer.innerHTML = '<img id="main-bg-image" src="https://placehold.co/840x1160/ffffff/ffffff?text=+" alt="Canvas Artwork" class="w-full h-full object-cover pointer-events-none">';
-                    setActive(null);
-                    saveState();
-                }
-            });
+            // Reset — Smart Toggle: formatting remove ↔ restore
+let _resetFormattingSnapshot = null; // formatted state store করার জন্য
+let _isFormattingRemoved = false;    // toggle state
+
+document.getElementById('btn-reset').addEventListener('click', () => {
+    const qInner = document.getElementById('qa-content-inner');
+
+    if (!_isFormattingRemoved) {
+        // ── First click: formatting snapshot নেও এবং plain করো ──
+        if (qInner) {
+            // সম্পূর্ণ inner HTML (formatting সহ) store করো
+            _resetFormattingSnapshot = {
+                qaHtml: qInner.innerHTML,
+                qaTextAlign: qInner.style.textAlign || ''
+            };
+
+            // সব span-এর inline style সরিয়ে plain text রাখো
+            // প্রতিটি formatted span unwrap করে শুধু text রাখা হবে
+            function stripFormattingNodes(el) {
+                const spans = el.querySelectorAll('span[data-qa-fmt], span[style]');
+                spans.forEach(span => {
+                    const parent = span.parentNode;
+                    while (span.firstChild) parent.insertBefore(span.firstChild, span);
+                    parent.removeChild(span);
+                });
+                // inline style-এ থাকা bold, italic, color, background সরানো
+                const allEls = el.querySelectorAll('*');
+                allEls.forEach(node => {
+                    node.style.fontWeight = '';
+                    node.style.fontStyle = '';
+                    node.style.textDecoration = '';
+                    node.style.textDecorationLine = '';
+                    node.style.color = '';
+                    node.style.backgroundColor = '';
+                    node.style.fontSize = '';
+                });
+                // container-এর alignment ও সরাও
+                el.style.textAlign = '';
+            }
+
+            stripFormattingNodes(qInner);
+        }
+
+        _isFormattingRemoved = true;
+
+        // Reset button-কে "restore" indicator দাও (optional visual feedback)
+        const resetBtn = document.getElementById('btn-reset');
+        const resetLabel = resetBtn.querySelector('.toolbar-text');
+        if (resetLabel) resetLabel.textContent = 'Restore';
+        resetBtn.classList.remove('text-red-500', 'hover:text-red-700');
+        resetBtn.classList.add('text-green-600', 'hover:text-green-800');
+
+        saveState();
+
+    } else {
+        // ── Second click: stored snapshot থেকে formatting restore করো ──
+        if (qInner && _resetFormattingSnapshot) {
+            qInner.innerHTML = _resetFormattingSnapshot.qaHtml;
+            qInner.style.textAlign = _resetFormattingSnapshot.qaTextAlign;
+            _resetFormattingSnapshot = null;
+        }
+
+        _isFormattingRemoved = false;
+
+        // Button আবার "Reset" state-এ ফিরিয়ে দাও
+        const resetBtn = document.getElementById('btn-reset');
+        const resetLabel = resetBtn.querySelector('.toolbar-text');
+        if (resetLabel) resetLabel.textContent = 'Reset';
+        resetBtn.classList.add('text-red-500', 'hover:text-red-700');
+        resetBtn.classList.remove('text-green-600', 'hover:text-green-800');
+
+        saveState();
+    }
+});
 
             // ==========================================
             // 6. Layout Submenu Functionalities
@@ -1752,20 +1822,35 @@ textStyleBtns[5].addEventListener('click', () => {
 alignBtns.forEach(btn => {
     btn.addEventListener('click', () => {
         const alignment = btn.getAttribute('data-align');
-        if (hasQaSelection() || isQaZoneActive()) {
-            // QA zone-এর পুরো inner container-এর alignment পরিবর্তন
-            const qInner = document.getElementById('qa-content-inner');
+        const qInner = document.getElementById('qa-content-inner');
+        const qZone = document.getElementById('qa-content-zone');
+        const qaIsVisible = qZone && qZone.style.display !== 'none';
+
+        // যদি QA zone visible থাকে (content import করা আছে) — সেখানে apply করো
+        // selection থাকুক বা না থাকুক, alignment সবসময় QA content-এ reflect হবে
+        if (qaIsVisible && qInner) {
+            qInner.style.textAlign = alignment;
+
+            // প্রতিটি paragraph এবং qa-entry-block-এও alignment enforce করো
+            const allParas = qInner.querySelectorAll('p, .qa-entry-block');
+            allParas.forEach(p => {
+                p.style.textAlign = alignment;
+            });
+
+            saveState();
+        } else if (activeElement && activeElement.tagName === 'DIV' && activeElement.id !== 'canvas-watermark') {
+            // Inserted text element selected থাকলে সেখানে apply করো
+            activeElement.style.textAlign = alignment;
+            if (!activeElement.style.width || activeElement.style.width === 'fit-content') {
+                activeElement.style.minWidth = '150px'; 
+            }
+            saveState();
+        } else {
+            // কিছুই না থাকলে QA inner-এ default apply করো যদি exist করে
             if (qInner) {
                 qInner.style.textAlign = alignment;
                 saveState();
             }
-        } else {
-            styleText(() => {
-                activeElement.style.textAlign = alignment;
-                if (!activeElement.style.width || activeElement.style.width === 'fit-content') {
-                    activeElement.style.minWidth = '150px'; 
-                }
-            });
         }
     });
 });
@@ -1808,11 +1893,29 @@ alignBtns.forEach(btn => {
                 fileInput.click(); // Trigger the file picker dialog
             }
             
-            // Because Text and Heading were removed, Image is now the first item [0]
-            if (insertBtns.length > 0) {
-                insertBtns[0].addEventListener('click', insertImageElement);
-            }
+            // Image insert — first item [0]
+if (insertBtns.length > 0) {
+    insertBtns[0].addEventListener('click', insertImageElement);
+}
 
+// Delete selected image
+const btnDeleteImg = document.getElementById('btn-delete-img');
+if (btnDeleteImg) {
+    btnDeleteImg.addEventListener('click', () => {
+        // শুধু selected IMG element delete করো
+        if (activeElement && activeElement.tagName === 'IMG') {
+            // resize handle সরাও আগে
+            const handle = document.getElementById('resize-handle');
+            if (handle) handle.remove();
+            activeElement.remove();
+            activeElement = null;
+            saveState();
+        } else {
+            // কোনো image select না থাকলে user-কে জানাও
+            alert("Please tap an image on the canvas to select it first, then tap Delete.");
+        }
+    });
+}
             // ==========================================
             // 9. Effects Submenu Functionalities
             // ==========================================
