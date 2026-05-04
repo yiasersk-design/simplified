@@ -793,22 +793,33 @@ function showToast(message, type = 'info', duration = 3000) {
             }
 
             // ── Page Load: localStorage থেকে canvas state restore করা ──────────
-            (function restoreCanvasFromStorage() {
-                const sessionId = localStorage.getItem('aiNoteMaker_currentId');
-                const canvasKey = sessionId ? 'editor_canvas_html_' + sessionId : 'editor_canvas_html';
-                const savedHtml = localStorage.getItem(canvasKey);
-                
-                if (savedHtml) {
-                    canvasContainer.innerHTML = savedHtml;
-                    // Restored inserted elements-কে interactive করা
-                    const elements = canvasContainer.querySelectorAll('.inserted-element');
-                    elements.forEach(el => makeInteractive(el));
-                }
-            })();
+(function restoreCanvasFromStorage() {
+    const sessionId = localStorage.getItem('aiNoteMaker_currentId');
+    const canvasKey = sessionId ? 'editor_canvas_html_' + sessionId : 'editor_canvas_html';
+    const savedHtml = localStorage.getItem(canvasKey);
+    
+    if (savedHtml) {
+        canvasContainer.innerHTML = savedHtml;
+        // Restored inserted elements-কে interactive করা
+        const elements = canvasContainer.querySelectorAll('.inserted-element');
+        elements.forEach(el => makeInteractive(el));
+    }
 
-            // Save Initial State (localStorage restore-এর পরে)
-            saveState();
+    // ── Background image restore করো (persistent image system) ──
+    try {
+        const bgKey = sessionId ? 'editor_bg_image_' + sessionId : 'editor_bg_image';
+        const savedBg = localStorage.getItem(bgKey);
+        if (savedBg) {
+            const bgImage = document.getElementById('main-bg-image');
+            if (bgImage) {
+                bgImage.src = savedBg;
+            }
+        }
+    } catch (e) {}
+})();
 
+// Save Initial State (localStorage restore-এর পরে)
+saveState();
             document.getElementById('btn-undo').addEventListener('click', () => {
                 if (historyIndex > 0) {
                     historyIndex--;
@@ -1506,15 +1517,46 @@ document.getElementById('btn-template-online').addEventListener('click', () => {
 
     const tempImg = new Image();
     tempImg.onload = () => {
-        bgImage.src = newSrc;
+        // ── Image টিকে base64-এ convert করে localStorage-এ save করো ──
+        const canvas = document.createElement('canvas');
+        canvas.width = tempImg.naturalWidth || 840;
+        canvas.height = tempImg.naturalHeight || 1160;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(tempImg, 0, 0);
+        let base64Data;
+        try {
+            base64Data = canvas.toDataURL('image/jpeg', 0.85);
+        } catch (e) {
+            // CORS বা অন্য কারণে toDataURL fail করলে URL-ই save করো
+            base64Data = newSrc;
+        }
+
+        bgImage.src = base64Data;
         bgImage.style.opacity = '1';
         bgImage.style.display = '';
+
+        // ── localStorage-এ persist করো ──
+        try {
+            const sessionId = localStorage.getItem('aiNoteMaker_currentId');
+            const bgKey = sessionId ? 'editor_bg_image_' + sessionId : 'editor_bg_image';
+            localStorage.setItem(bgKey, base64Data);
+        } catch (e) {
+            // localStorage full হলে (quota exceeded) URL দিয়ে চেষ্টা করো
+            try {
+                const sessionId = localStorage.getItem('aiNoteMaker_currentId');
+                const bgKey = sessionId ? 'editor_bg_image_' + sessionId : 'editor_bg_image';
+                localStorage.setItem(bgKey, newSrc);
+                bgImage.src = newSrc;
+            } catch (e2) {}
+        }
+
         saveState();
     };
     tempImg.onerror = () => {
         bgImage.style.opacity = '1';
         showToast("Image load করা যায়নি। Internet connection check করুন।", 'error');
     };
+    tempImg.crossOrigin = 'anonymous'; // base64 conversion-এর জন্য CORS header চাই
     tempImg.src = newSrc;
 
     // ✅ Auto-close সরানো হয়েছে — submenu open থাকবে
@@ -1530,6 +1572,13 @@ document.getElementById('btn-template-none').addEventListener('click', () => {
     bgImage.src = 'https://placehold.co/840x1160/ffffff/ffffff?text=+';
     bgImage.style.opacity = '1';
     bgImage.style.display = '';
+
+    // ── localStorage থেকে saved image মুছে দাও ──
+    try {
+        const sessionId = localStorage.getItem('aiNoteMaker_currentId');
+        const bgKey = sessionId ? 'editor_bg_image_' + sessionId : 'editor_bg_image';
+        localStorage.removeItem(bgKey);
+    } catch (e) {}
 
     saveState();
 
