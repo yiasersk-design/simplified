@@ -637,20 +637,20 @@
                 historyIndex++;
                 updateHeaderButtons();
 
-                // ── Persist to localStorage ──────────────────────────────────
-                // Canvas-এর full HTML (images, classes, inserted elements) save
+                // ── Persist to localStorage (Session Specific) ────────────────
                 try {
-                    localStorage.setItem('editor_canvas_html', currentState);
-                } catch (e) {
-                    // localStorage full হলে silently ignore
-                }
+                    const sessionId = localStorage.getItem('aiNoteMaker_currentId');
+                    const canvasKey = sessionId ? 'editor_canvas_html_' + sessionId : 'editor_canvas_html';
+                    localStorage.setItem(canvasKey, currentState);
+                } catch (e) {}
 
-                // QA zone-এর formatted HTML আলাদাভাবে save করা
-                // (span, bold, italic, highlight — সব preserved থাকবে)
+                // QA zone-এর formatted HTML current session ID অনুযায়ী save করা
                 const qInnerEl = document.getElementById('qa-content-inner');
                 if (qInnerEl && qInnerEl.innerHTML.trim()) {
                     try {
-                        localStorage.setItem('editor_qa_formatted_html', qInnerEl.innerHTML);
+                        const sessionId = localStorage.getItem('aiNoteMaker_currentId');
+                        const key = sessionId ? 'editor_qa_formatted_html_' + sessionId : 'editor_qa_formatted_html';
+                        localStorage.setItem(key, qInnerEl.innerHTML);
                     } catch (e) {}
                 }
                 
@@ -685,7 +685,10 @@
 
             // ── Page Load: localStorage থেকে canvas state restore করা ──────────
             (function restoreCanvasFromStorage() {
-                const savedHtml = localStorage.getItem('editor_canvas_html');
+                const sessionId = localStorage.getItem('aiNoteMaker_currentId');
+                const canvasKey = sessionId ? 'editor_canvas_html_' + sessionId : 'editor_canvas_html';
+                const savedHtml = localStorage.getItem(canvasKey);
+                
                 if (savedHtml) {
                     canvasContainer.innerHTML = savedHtml;
                     // Restored inserted elements-কে interactive করা
@@ -719,16 +722,20 @@
                 elements.forEach(el => makeInteractive(el));
                 updateHeaderButtons();
 
-                // ── Undo/Redo করলে localStorage-ও update হবে ────────────────
+                // ── Undo/Redo করলে localStorage-ও update হবে (Session Specific) ──
                 try {
-                    localStorage.setItem('editor_canvas_html', content);
+                    const sessionId = localStorage.getItem('aiNoteMaker_currentId');
+                    const canvasKey = sessionId ? 'editor_canvas_html_' + sessionId : 'editor_canvas_html';
+                    localStorage.setItem(canvasKey, content);
                 } catch (e) {}
 
-                // QA zone undo/redo-তে formatted HTML sync করা
+                // QA zone undo/redo-তে current session ID অনুযায়ী formatted HTML sync করা
                 const qInnerEl = document.getElementById('qa-content-inner');
                 if (qInnerEl && qInnerEl.innerHTML.trim()) {
                     try {
-                        localStorage.setItem('editor_qa_formatted_html', qInnerEl.innerHTML);
+                        const sessionId = localStorage.getItem('aiNoteMaker_currentId');
+                        const key = sessionId ? 'editor_qa_formatted_html_' + sessionId : 'editor_qa_formatted_html';
+                        localStorage.setItem(key, qInnerEl.innerHTML);
                     } catch (e) {}
                 }
             }
@@ -2122,15 +2129,9 @@ effectBtns[1].addEventListener('click', () => {
 (function () {
     'use strict';
 
-    // ─── DOM refs ────────────────────────────────────────────────────────────
-    const qZone    = document.getElementById('qa-content-zone');
-    const qInner   = document.getElementById('qa-content-inner');
-    const emptyHint = document.getElementById('qa-empty-hint');
-    const designCanvas = document.getElementById('design-canvas');
-
     // ─── State ───────────────────────────────────────────────────────────────
     let activeConfig = null;
-    let renderedCount = 0; // কতটি entry ইতিমধ্যে render হয়েছে
+    let renderedCount = 0;
 
     // ─── Default fallback config (কোনো template select না করলে) ────────────
     const DEFAULT_CONFIG = {
@@ -2145,20 +2146,36 @@ effectBtns[1].addEventListener('click', () => {
         useSeparator: false
     };
 
+    function getFormattedHtmlKey() {
+        const sessionId = localStorage.getItem('aiNoteMaker_currentId');
+        return sessionId ? 'editor_qa_formatted_html_' + sessionId : 'editor_qa_formatted_html';
+    }
+
+    function getStoredEntries() {
+        try {
+            const sessionId = localStorage.getItem('aiNoteMaker_currentId');
+            if (sessionId) {
+                return JSON.parse(localStorage.getItem('nb_qa_entries_' + sessionId) || '[]');
+            }
+            return [];
+        } catch (_) { return[]; }
+    }
+
     // ─── Template styles apply ────────────────────────────────────────────────
     function applyTemplateStyles(config) {
+        const qZone = document.getElementById('qa-content-zone');
+        const qInner = document.getElementById('qa-content-inner');
+        const designCanvas = document.getElementById('design-canvas');
+
         if (!config || !qZone || !qInner) return;
         activeConfig = config;
 
-        // Canvas background
         if (designCanvas) {
             designCanvas.style.backgroundColor = config.bgColor || '#ffffff';
         }
 
-        // Content zone visible করা
         qZone.style.display = 'block';
 
-        // Inner container styles (contentEditable নেই — read-only preview mode)
         const s = qInner.style;
         s.fontFamily    = config.fontFamily   || "'Tiro Bangla', serif";
         s.fontSize      = config.fontSize     || '7.5px';
@@ -2189,7 +2206,6 @@ effectBtns[1].addEventListener('click', () => {
             s.columnGap     = '';
         }
 
-        // Column divider (wavy/curve line)
         const existingDivider = qZone.querySelector('.qa-column-divider');
         if (existingDivider) existingDivider.remove();
 
@@ -2199,7 +2215,6 @@ effectBtns[1].addEventListener('click', () => {
             qZone.appendChild(divEl);
         }
 
-        // Empty hint দেখানো যদি কোনো entry না থাকে
         updateEmptyHint();
     }
 
@@ -2211,13 +2226,11 @@ effectBtns[1].addEventListener('click', () => {
         block.style.breakInside  = 'avoid';
         block.style.marginBottom = c.gap || '4px';
 
-        // Question paragraph
         const qEl = document.createElement('p');
         qEl.style.fontWeight = 'bold';
         qEl.style.margin = '0';
         qEl.textContent = item.q;
 
-        // Answer paragraph
         const aEl = document.createElement('p');
         aEl.style.marginTop = '1px';
         aEl.style.margin    = '1px 0 0 0';
@@ -2234,32 +2247,30 @@ effectBtns[1].addEventListener('click', () => {
 
     // ─── সব entry re-render করা ───────────────────────────────────────────────
     function renderAllEntries(entries, config, forceRaw) {
+        const qInner = document.getElementById('qa-content-inner');
         if (!qInner) return;
 
-        // ── Formatted HTML restore check ─────────────────────────────────────
-        // forceRaw = true হলে সবসময় raw re-render (Notebook থেকে নতুন entry এলে)
-        // forceRaw = false/undefined হলে saved formatted HTML দিয়ে restore করো
+        if (!entries || entries.length === 0) {
+            qInner.innerHTML = '';
+            renderedCount = 0;
+            localStorage.removeItem(getFormattedHtmlKey());
+            updateEmptyHint();
+            return;
+        }
+
         if (!forceRaw) {
-            const savedFormatted = localStorage.getItem('editor_qa_formatted_html');
+            const savedFormatted = localStorage.getItem(getFormattedHtmlKey());
             if (savedFormatted && savedFormatted.trim()) {
-                // Formatted HTML restore করো — কোনো styling হারাবে না
-                Array.from(qInner.querySelectorAll('.qa-entry-block')).forEach(el => el.remove());
+                qInner.innerHTML = ''; 
                 qInner.insertAdjacentHTML('beforeend', savedFormatted);
-                // renderedCount set করো entries-এর সংখ্যা অনুযায়ী
                 renderedCount = qInner.querySelectorAll('.qa-entry-block').length;
                 updateEmptyHint();
                 return;
             }
         }
 
-        // ── Raw re-render (formatted HTML নেই অথবা forceRaw = true) ──────────
-        Array.from(qInner.querySelectorAll('.qa-entry-block')).forEach(el => el.remove());
+        qInner.innerHTML = ''; 
         renderedCount = 0;
-
-        if (!entries || entries.length === 0) {
-            updateEmptyHint();
-            return;
-        }
 
         const fragment = document.createDocumentFragment();
         entries.forEach(item => {
@@ -2272,6 +2283,7 @@ effectBtns[1].addEventListener('click', () => {
 
     // ─── শুধু নতুন entry append করা (re-render ছাড়া) ────────────────────────
     function appendNewEntry(item) {
+        const qInner = document.getElementById('qa-content-inner');
         if (!qInner) return;
         if (!activeConfig) {
             const cfgJson = localStorage.getItem('editor_template_config');
@@ -2283,24 +2295,15 @@ effectBtns[1].addEventListener('click', () => {
         renderedCount++;
         updateEmptyHint();
 
-        // নতুন entry append-এর পর current HTML save করো
-        // (এখন পর্যন্ত যা formatting ছিল তা preserved থাকবে)
         try {
-            localStorage.setItem('editor_qa_formatted_html', qInner.innerHTML);
+            localStorage.setItem(getFormattedHtmlKey(), qInner.innerHTML);
         } catch (e) {}
     }
 
-    // ─── Empty hint toggle ────────────────────────────────────────────────────
     function updateEmptyHint() {
+        const emptyHint = document.getElementById('qa-empty-hint');
         if (!emptyHint) return;
         emptyHint.style.display = (renderedCount === 0 && activeConfig) ? 'flex' : 'none';
-    }
-
-    // ─── localStorage থেকে entries পড়া ──────────────────────────────────────
-    function getStoredEntries() {
-        try {
-            return JSON.parse(localStorage.getItem('nb_qa_entries') || '[]');
-        } catch (_) { return []; }
     }
 
     function getStoredConfig() {
@@ -2312,50 +2315,63 @@ effectBtns[1].addEventListener('click', () => {
 
     // ─── Init: page load-এ সব কিছু initialize করা ───────────────────────────
     function init() {
+        const qInner = document.getElementById('qa-content-inner');
         const templateActive = localStorage.getItem('editor_template_active');
         const config  = getStoredConfig();
         const entries = getStoredEntries();
 
+        if (!entries || entries.length === 0) {
+            if (qInner) qInner.innerHTML = ''; 
+            renderedCount = 0;
+            localStorage.removeItem(getFormattedHtmlKey());
+            updateEmptyHint();
+        }
+
         if (entries.length > 0) {
-            // Entries আছে — template থাকলে তা apply করো, না থাকলে default use করো
             const cfg = config || DEFAULT_CONFIG;
             applyTemplateStyles(cfg);
-            renderAllEntries(entries, cfg);
+            renderAllEntries(entries, cfg, false);
         } else if (config && templateActive === 'true') {
-            // Template select আছে কিন্তু entry নেই — empty hint দেখানো
             applyTemplateStyles(config);
         }
     }
 
-    // ─── Storage event: multi-tab sync (Notebook-এ পরিবর্তন হলে Editor update) ─
+    // ─── Storage event: multi-tab sync ─────────────────────────────────────────
     window.addEventListener('storage', function (e) {
+        const qInner = document.getElementById('qa-content-inner');
+        const qZone = document.getElementById('qa-content-zone');
+        const emptyHint = document.getElementById('qa-empty-hint');
+        const designCanvas = document.getElementById('design-canvas');
+
+        // ── Multi-chat Isolation: Session switch ──
+        if (e.key === 'nb_session_switched') {
+            // চ্যাট পরিবর্তন বা নতুন চ্যাট তৈরি হলে Editor পেজটি সম্পূর্ণ রিলোড হবে, 
+            // যাতে আগের চ্যাটের কোনো cached Canvas বা HTML DOM স্ক্রিনে আটকে থাকতে না পারে!
+            window.location.reload();
+            return;
+        }
 
         // nb_qa_pending update হলে — নতুন entry অথবা সব cleared
         if (e.key === 'nb_qa_pending') {
             const entries = getStoredEntries();
 
             if (entries.length === 0) {
-                // সব entry মুছে গেছে — canvas থেকে সব Q&A block সরানো
-                if (qInner) {
-                    Array.from(qInner.querySelectorAll('.qa-entry-block')).forEach(function (el) {
-                        el.remove();
-                    });
-                }
+                if (qInner) qInner.innerHTML = '';
                 renderedCount = 0;
-                // Formatted HTML-ও clear করো কারণ entries মুছে গেছে
-                localStorage.removeItem('editor_qa_formatted_html');
+                localStorage.removeItem(getFormattedHtmlKey());
                 updateEmptyHint();
                 return;
             }
 
             if (renderedCount < entries.length) {
-                // নতুন entry এসেছে — append করো এবং formatted HTML clear করো
-                // (নতুন content এলে পুরনো format invalid হয়)
-                localStorage.removeItem('editor_qa_formatted_html');
-                appendNewEntry(entries[entries.length - 1]);
+                localStorage.removeItem(getFormattedHtmlKey());
+                if (entries.length - renderedCount === 1) {
+                    appendNewEntry(entries[entries.length - 1]);
+                } else {
+                    renderAllEntries(entries, activeConfig, true);
+                }
             } else if (renderedCount > entries.length) {
-                // Edit-এর কারণে entry সংখ্যা কমেছে — forceRaw দিয়ে re-render
-                localStorage.removeItem('editor_qa_formatted_html');
+                localStorage.removeItem(getFormattedHtmlKey());
                 renderAllEntries(entries, activeConfig, true);
             }
         }
@@ -2367,8 +2383,7 @@ effectBtns[1].addEventListener('click', () => {
             if (!cfg) return;
             const entries = getStoredEntries();
             applyTemplateStyles(cfg);
-            // Template বদলালে formatting clear করো — নতুন template-এ fresh start
-            localStorage.removeItem('editor_qa_formatted_html');
+            localStorage.removeItem(getFormattedHtmlKey());
             renderAllEntries(entries, cfg, true);
         }
 
@@ -2379,12 +2394,10 @@ effectBtns[1].addEventListener('click', () => {
             if (designCanvas) designCanvas.style.backgroundColor = '';
             activeConfig = null;
             renderedCount = 0;
-            // Template বন্ধ হলে formatted HTML clear করো
-            localStorage.removeItem('editor_qa_formatted_html');
+            localStorage.removeItem(getFormattedHtmlKey());
         }
     });
 
-    // ─── Run ─────────────────────────────────────────────────────────────────
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', init);
     } else {
