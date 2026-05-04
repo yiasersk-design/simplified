@@ -719,108 +719,147 @@
             // 3. Selection, Drag/Drop & Resize Logic
             // ==========================================
             function createResizeHandle() {
-                let handle = document.createElement('div');
-                handle.id = 'resize-handle';
-                // একটি সুন্দর নীল রঙের গোলাকার বাটন (Resize dot)
-                handle.className = 'absolute w-6 h-6 bg-blue-600 border-[3px] border-white rounded-full shadow-md z-[60] cursor-se-resize touch-none flex justify-center items-center';
-                handle.innerHTML = '<div class="w-1.5 h-1.5 bg-white rounded-full pointer-events-none"></div>';
-                
-                let isResizing = false;
-                let startX, startY, startWidth, startHeight, startLeft, startTop;
+    // ── Resize Handle (নিচে-ডানে কোণায়) ──
+    let handle = document.createElement('div');
+    handle.id = 'resize-handle';
+    handle.className = 'absolute w-7 h-7 bg-white border border-gray-300 rounded-md shadow-md z-[60] cursor-se-resize touch-none flex justify-center items-center';
+    handle.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 14 14" fill="none"><path fill="none" stroke="#000000" stroke-linecap="round" stroke-linejoin="round" d="m13.5 13.5l-5-5m4 0h-4v4M.5.5l5 5m-4 0h4v-4"/></svg>';
 
-                function initResize(e) {
-                    e.stopPropagation();
-                    e.preventDefault();
-                    if (!activeElement) return;
-                    isResizing = true;
-                    
-                    let evt = e.type.includes('touch') ? e.touches[0] : e;
-                    startX = evt.clientX;
-                    startY = evt.clientY;
-                    startWidth = activeElement.offsetWidth;
-                    startHeight = activeElement.offsetHeight;
-                    startLeft = activeElement.offsetLeft;
-                    startTop = activeElement.offsetTop;
+    let isResizing = false;
+    let startX, startY, startWidth, startHeight, startLeft, startTop;
 
-                    document.addEventListener('mousemove', resizeElement);
-                    document.addEventListener('touchmove', resizeElement, { passive: false });
-                    document.addEventListener('mouseup', stopResize);
-                    document.addEventListener('touchend', stopResize);
-                }
+    function initResize(e) {
+        e.stopPropagation();
+        e.preventDefault();
+        if (!activeElement) return;
+        isResizing = true;
+        
+        let evt = e.type.includes('touch') ? e.touches[0] : e;
+        startX = evt.clientX;
+        startY = evt.clientY;
+        startWidth = activeElement.offsetWidth;
+        startHeight = activeElement.offsetHeight;
+        startLeft = activeElement.offsetLeft;
+        startTop = activeElement.offsetTop;
 
-                function resizeElement(e) {
-                    if (!isResizing || !activeElement) return;
-                    e.preventDefault();
+        document.addEventListener('mousemove', resizeElement);
+        document.addEventListener('touchmove', resizeElement, { passive: false });
+        document.addEventListener('mouseup', stopResize);
+        document.addEventListener('touchend', stopResize);
+    }
 
-                    // ক্যানভাস জুম অবস্থায় থাকলে তার পারফেক্ট ক্যালকুলেশন
-                    let scale = typeof currentScale !== 'undefined' ? currentScale : 1;
-                    
-                    let evt = e.type.includes('touch') ? e.touches[0] : e;
-                    let dx = (evt.clientX - startX) / scale;
-                    let dy = (evt.clientY - startY) / scale;
+    function resizeElement(e) {
+        if (!isResizing || !activeElement) return;
+        e.preventDefault();
 
-                    if (activeElement.tagName === 'IMG') {
-                        // ছবির Aspect Ratio (মৌলিক আকার) ঠিক রাখার লজিক
-                        let ratio = startWidth / startHeight;
-                        let newWidth = Math.max(40, startWidth + dx); // কমপক্ষে 40px হতে হবে
-                        let newHeight = newWidth / ratio;
-                        activeElement.style.width = newWidth + 'px';
-                        activeElement.style.height = newHeight + 'px';
-                    } else {
-                        // টেক্সট বা অন্যান্য বক্সের জন্য ফ্রি-রিসাইজ
-                        activeElement.style.width = Math.max(40, startWidth + dx) + 'px';
-                        activeElement.style.height = Math.max(40, startHeight + dy) + 'px';
-                    }
+        // ক্যানভাস জুম অবস্থায় থাকলে তার পারফেক্ট ক্যালকুলেশন
+        let scale = typeof currentScale !== 'undefined' ? currentScale : 1;
+        
+        let evt = e.type.includes('touch') ? e.touches[0] : e;
+        let dx = (evt.clientX - startX) / scale;
+        let dy = (evt.clientY - startY) / scale;
 
-                    updateResizeHandlePosition();
-                }
+        if (activeElement.tagName === 'IMG') {
+            // ছবির Aspect Ratio (মৌলিক আকার) ঠিক রাখার লজিক
+            let ratio = startWidth / startHeight;
+            let newWidth = Math.max(40, startWidth + dx); // কমপক্ষে 40px হতে হবে
+            let newHeight = newWidth / ratio;
+            activeElement.style.width = newWidth + 'px';
+            activeElement.style.height = newHeight + 'px';
+        } else {
+            // টেক্সট বা অন্যান্য বক্সের জন্য ফ্রি-রিসাইজ
+            activeElement.style.width = Math.max(40, startWidth + dx) + 'px';
+            activeElement.style.height = Math.max(40, startHeight + dy) + 'px';
+        }
 
-                function stopResize() {
-                    isResizing = false;
-                    document.removeEventListener('mousemove', resizeElement);
-                    document.removeEventListener('touchmove', resizeElement);
-                    document.removeEventListener('mouseup', stopResize);
-                    document.removeEventListener('touchend', stopResize);
-                    saveState(); // নতুন সাইজ সেভ হবে
-                }
+        updateResizeHandlePosition();
+    }
 
-                handle.addEventListener('mousedown', initResize);
-                handle.addEventListener('touchstart', initResize, { passive: false });
+    function stopResize() {
+        isResizing = false;
+        document.removeEventListener('mousemove', resizeElement);
+        document.removeEventListener('touchmove', resizeElement);
+        document.removeEventListener('mouseup', stopResize);
+        document.removeEventListener('touchend', stopResize);
+        saveState(); // নতুন সাইজ সেভ হবে
+    }
 
-                canvasContainer.appendChild(handle);
-            }
+    handle.addEventListener('mousedown', initResize);
+    handle.addEventListener('touchstart', initResize, { passive: false });
+
+    canvasContainer.appendChild(handle);
+
+    // ── Delete Handle (উপরে-বামে কোণায় — resize-এর বিপরীতে) ──
+    let deleteHandle = document.createElement('div');
+    deleteHandle.id = 'delete-handle';
+    deleteHandle.className = 'absolute w-7 h-7 bg-white border border-gray-300 rounded-md shadow-md z-[60] cursor-pointer touch-none flex justify-center items-center';
+    deleteHandle.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none"><path fill="none" stroke="#000000" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M6 18L18 6M6 6l12 12"/></svg>';
+
+    deleteHandle.addEventListener('mousedown', (e) => { e.stopPropagation(); e.preventDefault(); });
+    deleteHandle.addEventListener('touchstart', (e) => { e.stopPropagation(); e.preventDefault(); }, { passive: false });
+
+    deleteHandle.addEventListener('click', (e) => {
+        e.stopPropagation();
+        if (activeElement) {
+            const toRemove = activeElement;
+            setActive(null);
+            toRemove.remove();
+            saveState();
+        }
+    });
+
+    deleteHandle.addEventListener('touchend', (e) => {
+        e.stopPropagation();
+        e.preventDefault();
+        if (activeElement) {
+            const toRemove = activeElement;
+            setActive(null);
+            toRemove.remove();
+            saveState();
+        }
+    });
+
+    canvasContainer.appendChild(deleteHandle);
+}
 
             function updateResizeHandlePosition() {
-                let handle = document.getElementById('resize-handle');
-                if (activeElement && handle) {
-                    // ডটের পজিশন ছবির ঠিক ডানদিকের নিচে কোণায় সেট হবে
-                    handle.style.left = (activeElement.offsetLeft + activeElement.offsetWidth - 12) + 'px';
-                    handle.style.top = (activeElement.offsetTop + activeElement.offsetHeight - 12) + 'px';
-                }
-            }
+    let handle = document.getElementById('resize-handle');
+    let deleteHandle = document.getElementById('delete-handle');
+    if (activeElement && handle) {
+        // Resize handle — নিচে-ডানে কোণায় (অর্ধেক বাইরে যাবে, তাই -14px)
+        handle.style.left = (activeElement.offsetLeft + activeElement.offsetWidth - 14) + 'px';
+        handle.style.top = (activeElement.offsetTop + activeElement.offsetHeight - 14) + 'px';
+    }
+    if (activeElement && deleteHandle) {
+        // Delete handle — উপরে-বামে কোণায় (resize-এর বিপরীতে)
+        deleteHandle.style.left = (activeElement.offsetLeft - 14) + 'px';
+        deleteHandle.style.top = (activeElement.offsetTop - 14) + 'px';
+    }
+}
 
             function setActive(el) {
-                if (activeElement) {
-                    activeElement.style.outline = 'none';
-                    activeElement.style.boxShadow = 'none';
-                }
-                
-                // নতুন কিছু সিলেক্ট করার আগে আগের ডট মুছে ফেলা
-                let handle = document.getElementById('resize-handle');
-                if (handle) handle.remove(); 
-                
-                activeElement = el;
-                
-                if (activeElement) {
-                    activeElement.style.outline = '2px dashed #3b82f6';
-                    activeElement.style.outlineOffset = '4px';
-                    
-                    // নতুন সিলেক্টেড ইলিমেন্টের সাথে ডট যুক্ত করা
-                    createResizeHandle();
-                    updateResizeHandlePosition();
-                }
-            }
-
+    if (activeElement) {
+        activeElement.style.outline = 'none';
+        activeElement.style.boxShadow = 'none';
+    }
+    
+    // নতুন কিছু সিলেক্ট করার আগে আগের resize ও delete handle মুছে ফেলা
+    let handle = document.getElementById('resize-handle');
+    if (handle) handle.remove();
+    let deleteHandle = document.getElementById('delete-handle');
+    if (deleteHandle) deleteHandle.remove();
+    
+    activeElement = el;
+    
+    if (activeElement) {
+        activeElement.style.outline = '2px dashed #3b82f6';
+        activeElement.style.outlineOffset = '4px';
+        
+        // নতুন সিলেক্টেড ইলিমেন্টের সাথে resize ও delete handle যুক্ত করা
+        createResizeHandle();
+        updateResizeHandlePosition();
+    }
+}
             // ক্যানভাসের ফাঁকা জায়গায় ক্লিক করলে সিলেকশন বাতিল হবে
             canvasContainer.addEventListener('click', (e) => {
                 if (e.target === canvasContainer || e.target.id === 'main-bg-image' || e.target.id === 'canvas-watermark') {
