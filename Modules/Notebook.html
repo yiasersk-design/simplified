@@ -544,23 +544,25 @@ function setupChatContextMenu() {
             }
             const sessionIndex = chatSessions.findIndex(s => s.id === contextActiveSessionId);
             if (sessionIndex !== -1) {
+                let deletedId = contextActiveSessionId;
                 chatSessions.splice(sessionIndex, 1);
                 localStorage.setItem('metaAINotes_sessions', JSON.stringify(chatSessions));
                 window.showToast('Note deleted successfully', 'error');
                 
-                if (contextActiveSessionId === currentSessionId) {
+                // === EDITOR SYNC ▶ Delete হওয়া session এর ডাটা মুছে ফেলা ===
+                try {
+                    localStorage.removeItem('nb_qa_entries_' + deletedId);
+                    localStorage.removeItem('editor_qa_formatted_html_' + deletedId);
+                    localStorage.removeItem('editor_canvas_html_' + deletedId);
+                } catch (_e) {}
+
+                if (deletedId === currentSessionId) {
                     if (chatSessions.length > 0) {
                         const nextIndex = sessionIndex > 0 ? sessionIndex - 1 : 0;
                         window.loadSession(chatSessions[nextIndex].id, true);
                     } else {
                         window.createNewSession();
                     }
-
-                    // === EDITOR SYNC ▶ Active session delete হলে Editor clear করা ===
-                    try {
-                        localStorage.setItem('nb_qa_entries', JSON.stringify([]));
-                        localStorage.setItem('nb_qa_pending', Date.now().toString());
-                    } catch (_e) {}
                 } else {
                     updateSidebarList();
                 }
@@ -660,18 +662,24 @@ window.updateSidebarList = function() {
 // --- End of Floating Context Menu Setup ---
 
 window.loadSession = function(id, forceLoad = false) {
-    if(id === currentSessionId && !forceLoad) { closeSidebar(); return; } 
+    if(id === currentSessionId && !forceLoad) { closeSidebar(); return; }
     let session = chatSessions.find(s => s.id === id);
     if(!session) return;
     currentSessionId = session.id;
     localStorage.setItem('aiNoteMaker_currentId', currentSessionId.toString());
-    
+
     if (!session.chatHTML || session.chatHTML.trim() === '') {
         chatContainer.innerHTML = '';
     } else {
         chatContainer.innerHTML = session.chatHTML;
     }
-    
+
+    // ── Editor-কে জানাই যে Session Switch হয়েছে ──
+    try {
+        localStorage.setItem('nb_session_switched', id.toString());
+        localStorage.setItem('nb_qa_pending', Date.now().toString());
+    } catch (_e) {}
+
     const headerToggleBtn = document.getElementById('headerToggleBtn');
     const bottomNavElement = document.getElementById('bottomNav');
     if (headerToggleBtn && bottomNavElement) {
@@ -682,7 +690,7 @@ window.loadSession = function(id, forceLoad = false) {
             bottomNavElement.style.display = '';
         }
     }
-    
+
     updateSidebarList();
     closeSidebar();
 };
@@ -693,14 +701,21 @@ window.createNewSession = function() {
     chatSessions.push({ id: currentSessionId, title: "New Note", chatHTML: chatContainer.innerHTML, isNavHidden: false });
     localStorage.setItem('aiNoteMaker_sessions', JSON.stringify(chatSessions));
     localStorage.setItem('aiNoteMaker_currentId', currentSessionId.toString());
-    
+
+    // ── নতুন chat-এর জন্য নির্দিষ্ট ID তে empty data set করা ──
+    try {
+        localStorage.setItem('nb_qa_entries_' + currentSessionId, JSON.stringify([]));
+        localStorage.setItem('nb_session_switched', currentSessionId.toString());
+        localStorage.setItem('nb_qa_pending', Date.now().toString());
+    } catch (_e) {}
+
     const headerToggleBtn = document.getElementById('headerToggleBtn');
     const bottomNavElement = document.getElementById('bottomNav');
     if (headerToggleBtn && bottomNavElement) {
         headerToggleBtn.checked = false;
         bottomNavElement.style.display = '';
     }
-    
+
     updateSidebarList();
     closeSidebar();
 };
@@ -715,22 +730,24 @@ window.deleteCurrentNote = function() {
     const sessionIndex = chatSessions.findIndex(s => s.id === currentSessionId);
     
     if (sessionIndex !== -1) {
+        let deletedId = currentSessionId;
         chatSessions.splice(sessionIndex, 1);
         localStorage.setItem('aiNoteMaker_sessions', JSON.stringify(chatSessions));
         window.showToast('Note deleted successfully', 'error');
         
+        // === EDITOR SYNC ▶ Delete হওয়া session এর ডাটা মুছে ফেলা ===
+        try {
+            localStorage.removeItem('nb_qa_entries_' + deletedId);
+            localStorage.removeItem('editor_qa_formatted_html_' + deletedId);
+            localStorage.removeItem('editor_canvas_html_' + deletedId);
+        } catch (_e) {}
+
         if (chatSessions.length > 0) {
             const nextIndex = sessionIndex > 0 ? sessionIndex - 1 : 0;
             window.loadSession(chatSessions[nextIndex].id, true);
         } else {
             window.createNewSession();
         }
-
-        // === EDITOR SYNC ▶ Note delete-এর পর Editor-কে clear করার signal ===
-        try {
-            localStorage.setItem('nb_qa_entries', JSON.stringify([]));
-            localStorage.setItem('nb_qa_pending', Date.now().toString());
-        } catch (_e) {}
     }
 };
 
@@ -942,7 +959,7 @@ function handleSendMessage() {
         try {
             const _chatEl = document.getElementById('chatContainer');
             const _bubbles = _chatEl.querySelectorAll('.user-msg-bubble');
-            const _rebuiltEntries = [];
+            const _rebuiltEntries =[];
             let _pendingQ = null;
 
             _bubbles.forEach(function (_bubble) {
@@ -960,10 +977,9 @@ function handleSendMessage() {
                 }
             });
 
-            if (_rebuiltEntries.length > 0) {
-                localStorage.setItem('nb_qa_entries', JSON.stringify(_rebuiltEntries));
-                localStorage.setItem('nb_qa_pending', Date.now().toString());
-            }
+            // শুধুমাত্র active session ID তেই data save হবে
+            localStorage.setItem('nb_qa_entries_' + currentSessionId, JSON.stringify(_rebuiltEntries));
+            localStorage.setItem('nb_qa_pending', Date.now().toString());
         } catch (_e) { /* silent fail */ }
 
         window.showToast('Message updated!', 'success');
@@ -1025,9 +1041,10 @@ function handleSendMessage() {
     // === EDITOR SYNC ▶ সম্পূর্ণ Q&A pair localStorage-এ push করা ===
     if (currentMessageType === 'ANS' && _syncQueText) {
         try {
-            const _entries = JSON.parse(localStorage.getItem('nb_qa_entries') || '[]');
+            // Active session ID অনুযায়ী data fetch ও save
+            const _entries = JSON.parse(localStorage.getItem('nb_qa_entries_' + currentSessionId) || '[]');
             _entries.push({ q: _syncQueText, a: message, ts: Date.now() });
-            localStorage.setItem('nb_qa_entries', JSON.stringify(_entries));
+            localStorage.setItem('nb_qa_entries_' + currentSessionId, JSON.stringify(_entries));
             localStorage.setItem('nb_qa_pending', Date.now().toString());
         } catch (_e) { /* silent fail */ }
     }
