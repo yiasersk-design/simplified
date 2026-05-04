@@ -1376,6 +1376,7 @@ toolboxBtns.forEach(btn => {
             // ==========================================
 
             // Template — Online Image option
+// ⚠️ submenu এখানে auto-close হবে না — user manually back button দিয়ে বন্ধ করবে
 document.getElementById('btn-template-online').addEventListener('click', () => {
     const bgImage = document.getElementById('main-bg-image');
 
@@ -1399,23 +1400,23 @@ document.getElementById('btn-template-online').addEventListener('click', () => {
     };
     tempImg.src = newSrc;
 
-    // Submenu বন্ধ করো
-    document.querySelectorAll('.submenu-panel').forEach(p => p.classList.remove('active-state'));
+    // ✅ Auto-close সরানো হয়েছে — submenu open থাকবে
+    // user back button দিয়ে manually close করবে
 });
 
 // Template — None option (background image সরিয়ে দাও)
+// None click করলে submenu বন্ধ হবে — কারণ কাজ শেষ
 document.getElementById('btn-template-none').addEventListener('click', () => {
     const bgImage = document.getElementById('main-bg-image');
 
     // Image-টিকে blank/transparent placeholder-এ reset করো
-    // src হিসেবে transparent 1x1 pixel দেওয়া হচ্ছে যাতে layout না ভাঙে
     bgImage.src = 'https://placehold.co/840x1160/ffffff/ffffff?text=+';
     bgImage.style.opacity = '1';
     bgImage.style.display = '';
 
     saveState();
 
-    // Submenu বন্ধ করো
+    // None select করলে submenu বন্ধ করো
     document.querySelectorAll('.submenu-panel').forEach(p => p.classList.remove('active-state'));
 });
 
