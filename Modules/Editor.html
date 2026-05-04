@@ -360,7 +360,7 @@
             
             <!-- ================= MAIN MENU ================= -->
             <div id="main-menu" class="menu-panel overflow-x-auto hide-scrollbar px-2 gap-1">
-                <button id="btn-template" class="main-tool toolbar-item min-w-[72px] shrink-0 flex flex-col items-center justify-center h-[56px] outline-none" data-target="none">
+                <button id="btn-template" class="main-tool toolbar-item min-w-[72px] shrink-0 flex flex-col items-center justify-center h-[56px] outline-none" data-target="submenu-template">
                     <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"><path d="M2.25 12.75V12A2.25 2.25 0 0 1 4.5 9.75h15A2.25 2.25 0 0 1 21.75 12v.75m-8.69-6.44l-2.12-2.12a1.5 1.5 0 0 0-1.061-.44H4.5A2.25 2.25 0 0 0 2.25 6v12a2.25 2.25 0 0 0 2.25 2.25h15A2.25 2.25 0 0 0 21.75 18V9a2.25 2.25 0 0 0-2.25-2.25h-5.379a1.5 1.5 0 0 1-1.06-.44Z"/></svg>
                     <span class="toolbar-text">Template</span>
                 </button>
@@ -372,13 +372,13 @@
                     <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7V4h16v3"></path><path d="M9 20h6"></path><path d="M12 4v16"></path></svg>
                     <span class="toolbar-text">Text Style</span>
                 </button>
-                
-                <!-- New Alignment Button -->
+
+                <!-- Alignment Button -->
                 <button class="main-tool toolbar-item min-w-[72px] shrink-0 flex flex-col items-center justify-center h-[56px] outline-none" data-target="submenu-alignment">
                     <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><line x1="21" y1="6" x2="3" y2="6"></line><line x1="15" y1="12" x2="3" y2="12"></line><line x1="17" y1="18" x2="3" y2="18"></line></svg>
                     <span class="toolbar-text">Align</span>
                 </button>
-                
+
                 <button class="main-tool toolbar-item min-w-[72px] shrink-0 flex flex-col items-center justify-center h-[56px] outline-none" data-target="submenu-insert">
                     <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="12" y1="8" x2="12" y2="16"></line><line x1="8" y1="12" x2="16" y2="12"></line></svg>
                     <span class="toolbar-text">Insert</span>
@@ -394,6 +394,24 @@
             </div>
 
             <!-- ================= SUB-MENUS ================= -->
+
+            <!-- 0. Template Submenu (নতুন) -->
+            <div id="submenu-template" class="menu-panel submenu-panel overflow-x-auto hide-scrollbar px-2 gap-1">
+                <button class="back-btn shrink-0 flex flex-col items-center justify-center h-[56px] w-[36px] outline-none">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"><path d="m15.583 4l-6.587 6.587a2.013 2.013 0 0 0 0 2.826L15.583 20"/></svg>
+                </button>
+                <div class="w-px h-8 bg-gray-300 mx-1 shrink-0"></div>
+                <!-- Online Image option -->
+                <button id="btn-template-online" class="submenu-item min-w-[72px] shrink-0 flex flex-col items-center justify-center h-[56px] outline-none">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+                    <span class="toolbar-text">Online Image</span>
+                </button>
+                <!-- None option -->
+                <button id="btn-template-none" class="submenu-item min-w-[72px] shrink-0 flex flex-col items-center justify-center h-[56px] outline-none text-red-400 hover:text-red-600">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg>
+                    <span class="toolbar-text text-inherit">None</span>
+                </button>
+            </div>
             
             <!-- 1. Layout Submenu -->
             <div id="submenu-layout" class="menu-panel submenu-panel overflow-x-auto hide-scrollbar px-2 gap-1">
@@ -1357,16 +1375,49 @@ toolboxBtns.forEach(btn => {
             // 5. Main Toolbar Actions
             // ==========================================
 
-            // Template Menu
-            document.getElementById('btn-template').addEventListener('click', () => {
-                const bgImage = document.getElementById('main-bg-image');
-                // Fetch a random aesthetic image
-                const randomId = Math.floor(Math.random() * 1000);
-                bgImage.src = `https://picsum.photos/840/1160?random=${randomId}`;
-                
-                // wait for image load to save state
-                bgImage.onload = () => saveState();
-            });
+            // Template — Online Image option
+document.getElementById('btn-template-online').addEventListener('click', () => {
+    const bgImage = document.getElementById('main-bg-image');
+
+    // Loading state দেখাও
+    bgImage.style.opacity = '0.4';
+
+    // Random online image load করো (picsum.photos)
+    const randomId = Math.floor(Math.random() * 1000);
+    const newSrc = `https://picsum.photos/840/1160?random=${randomId}`;
+
+    const tempImg = new Image();
+    tempImg.onload = () => {
+        bgImage.src = newSrc;
+        bgImage.style.opacity = '1';
+        bgImage.style.display = '';
+        saveState();
+    };
+    tempImg.onerror = () => {
+        bgImage.style.opacity = '1';
+        alert("Image load করা যায়নি। Internet connection check করুন।");
+    };
+    tempImg.src = newSrc;
+
+    // Submenu বন্ধ করো
+    document.querySelectorAll('.submenu-panel').forEach(p => p.classList.remove('active-state'));
+});
+
+// Template — None option (background image সরিয়ে দাও)
+document.getElementById('btn-template-none').addEventListener('click', () => {
+    const bgImage = document.getElementById('main-bg-image');
+
+    // Image-টিকে blank/transparent placeholder-এ reset করো
+    // src হিসেবে transparent 1x1 pixel দেওয়া হচ্ছে যাতে layout না ভাঙে
+    bgImage.src = 'https://placehold.co/840x1160/ffffff/ffffff?text=+';
+    bgImage.style.opacity = '1';
+    bgImage.style.display = '';
+
+    saveState();
+
+    // Submenu বন্ধ করো
+    document.querySelectorAll('.submenu-panel').forEach(p => p.classList.remove('active-state'));
+});
 
             // Reset — Smart Toggle: formatting remove ↔ restore
 let _resetFormattingSnapshot = null; // formatted state store করার জন্য
