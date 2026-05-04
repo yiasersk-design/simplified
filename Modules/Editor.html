@@ -1547,90 +1547,148 @@ document.getElementById('btn-reset').addEventListener('click', () => {
             });
             
             // Floating Canvas Color Logic (Pops up above toolbar) - Applies to Border & Text
-            const btnCanvasColor = document.getElementById('btn-canvas-color');
-            const btnTextColor = document.getElementById('btn-text-color');
-            const floatingColorPicker = document.getElementById('floating-color-picker');
-            const colorItems = document.querySelectorAll('.item-color');
-            
-            let colorPickerTarget = 'border'; // Track what we are coloring ('border' or 'text')
+const btnCanvasColor = document.getElementById('btn-canvas-color');
+const btnTextColor = document.getElementById('btn-text-color');
+const floatingColorPicker = document.getElementById('floating-color-picker');
+const colorItems = document.querySelectorAll('.item-color');
 
-            // Toggle floating picker visibility
-            function toggleFloatingPicker(e, target) {
-                if (e) e.stopPropagation();
-                
-                if (floatingColorPicker.classList.contains('opacity-0') || colorPickerTarget !== target) {
-                    // Show Picker and set target mode
-                    colorPickerTarget = target;
-                    floatingColorPicker.classList.remove('opacity-0', 'translate-y-8');
-                    floatingColorPicker.classList.add('opacity-100', 'translate-y-0');
-                } else {
-                    // Hide Picker
-                    floatingColorPicker.classList.add('opacity-0', 'translate-y-8');
-                    floatingColorPicker.classList.remove('opacity-100', 'translate-y-0');
-                }
-            }
+let colorPickerTarget = 'border'; // Track what we are coloring ('border' or 'text')
 
-            // Hide floating picker when clicking anywhere outside of it
-            document.addEventListener('click', (e) => {
-                if (floatingColorPicker && !floatingColorPicker.classList.contains('opacity-0') && 
-                    !floatingColorPicker.contains(e.target) && 
-                    (!btnCanvasColor || !btnCanvasColor.contains(e.target)) &&
-                    (!btnTextColor || !btnTextColor.contains(e.target))) {
-                    
-                    floatingColorPicker.classList.add('opacity-0', 'translate-y-8');
-                    floatingColorPicker.classList.remove('opacity-100', 'translate-y-0');
-                }
-            });
+// ── QA zone-এর selection snapshot — picker খোলার সময় save করা হবে ──
+// কারণ: color picker button-এ click করলে browser selection হারিয়ে যায়
+let _savedQaRange = null;
 
-            // Bind click event to "Color" button in Layout submenu (for Border)
-            if (btnCanvasColor) {
-                btnCanvasColor.addEventListener('click', (e) => toggleFloatingPicker(e, 'border'));
-            }
-            
-            // Bind click event to "Colour" button in Text Style submenu (for Text)
+// Toggle floating picker visibility
+function toggleFloatingPicker(e, target) {
+    if (e) e.stopPropagation();
+
+    if (floatingColorPicker.classList.contains('opacity-0') || colorPickerTarget !== target) {
+        // Show Picker and set target mode
+        colorPickerTarget = target;
+        floatingColorPicker.classList.remove('opacity-0', 'translate-y-8');
+        floatingColorPicker.classList.add('opacity-100', 'translate-y-0');
+    } else {
+        // Hide Picker
+        floatingColorPicker.classList.add('opacity-0', 'translate-y-8');
+        floatingColorPicker.classList.remove('opacity-100', 'translate-y-0');
+    }
+}
+
+// Hide floating picker when clicking anywhere outside of it
+document.addEventListener('click', (e) => {
+    if (floatingColorPicker && !floatingColorPicker.classList.contains('opacity-0') &&
+        !floatingColorPicker.contains(e.target) &&
+        (!btnCanvasColor || !btnCanvasColor.contains(e.target)) &&
+        (!btnTextColor || !btnTextColor.contains(e.target))) {
+
+        floatingColorPicker.classList.add('opacity-0', 'translate-y-8');
+        floatingColorPicker.classList.remove('opacity-100', 'translate-y-0');
+    }
+});
+
+// Bind click event to "Color" button in Layout submenu (for Border)
+if (btnCanvasColor) {
+    btnCanvasColor.addEventListener('click', (e) => toggleFloatingPicker(e, 'border'));
+}
+
+// Bind click event to "Colour" button in Text Style submenu (for Text)
 if (btnTextColor) {
     btnTextColor.addEventListener('click', (e) => {
         const hasInsertedEl = activeElement && activeElement.tagName === 'DIV' && activeElement.id !== 'canvas-watermark';
-        // QA zone-এ selection অথবা inserted element — উভয়ের জন্য color picker দেখাও
-        if (hasInsertedEl || hasQaSelection() || isQaZoneActive()) {
+
+        if (hasInsertedEl) {
+            // Inserted text element selected — সরাসরি picker খোলো
+            _savedQaRange = null;
             toggleFloatingPicker(e, 'text');
+
+        } else if (hasQaSelection()) {
+            // QA zone-এ selection আছে — এই মুহূর্তে Range snapshot নেও
+            // কারণ picker button-এ tap করলেই selection হারিয়ে যাবে
+            const sel = window.getSelection();
+            if (sel && sel.rangeCount > 0) {
+                _savedQaRange = sel.getRangeAt(0).cloneRange();
+            }
+            toggleFloatingPicker(e, 'text');
+
         } else {
             alert("Please select text from notebook content or a text element first.");
         }
     });
 }
 
-            // Applying the selected Color dynamically to Border or Text
-            colorItems.forEach(item => {
-                item.addEventListener('click', (e) => {
-                    e.stopPropagation(); // Prevent the document click event from firing
-                    
-                    const selectedColor = item.style.getPropertyValue('--color').trim();
-                    
-                    if (colorPickerTarget === 'border') {
-                        // Apply new color directly to Border
-                        canvasContainer.style.borderColor = selectedColor;
-                    } else if (colorPickerTarget === 'text') {
-    if (hasQaSelection()) {
-        // QA zone-এ selected text-এ color apply করো
-        const qInner = document.getElementById('qa-content-inner');
-        if (qInner) {
-            qInner.focus();
-            document.execCommand('foreColor', false, selectedColor);
+// Applying the selected Color dynamically to Border or Text
+colorItems.forEach(item => {
+    item.addEventListener('click', (e) => {
+        e.stopPropagation();
+
+        const selectedColor = item.style.getPropertyValue('--color').trim();
+
+        if (colorPickerTarget === 'border') {
+            // Canvas border-এ color apply করো
+            canvasContainer.style.borderColor = selectedColor;
+
+        } else if (colorPickerTarget === 'text') {
+
+            if (_savedQaRange) {
+                // ── Saved QA Range থেকে color apply করো ──
+                // span-wrap পদ্ধতি: applyCommandToQaZone-এর মতো
+                // কিন্তু এখানে saved range ব্যবহার হবে, live selection নয়
+                const qInner = document.getElementById('qa-content-inner');
+                if (qInner) {
+                    const span = document.createElement('span');
+                    span.setAttribute('data-qa-fmt', 'foreColor');
+                    span.style.color = selectedColor;
+
+                    // Saved range থেকে text আছে কিনা চেক করো
+                    const rangeText = _savedQaRange.toString();
+                    if (rangeText) {
+                        try {
+                            // Browser-এর current selection-কে saved range-এ set করো
+                            const sel = window.getSelection();
+                            sel.removeAllRanges();
+                            sel.addRange(_savedQaRange);
+
+                            // Toggle check: আগে থেকে same color span আছে কিনা
+                            const parentEl = _savedQaRange.commonAncestorContainer.nodeType === 3
+                                ? _savedQaRange.commonAncestorContainer.parentElement
+                                : _savedQaRange.commonAncestorContainer;
+
+                            if (parentEl && parentEl.tagName === 'SPAN' && parentEl.getAttribute('data-qa-fmt') === 'foreColor') {
+                                // আগের color span-এর color update করো
+                                parentEl.style.color = selectedColor;
+                                sel.removeAllRanges();
+                            } else {
+                                // নতুন color span দিয়ে wrap করো
+                                try {
+                                    _savedQaRange.surroundContents(span);
+                                } catch (err) {
+                                    const fragment = _savedQaRange.extractContents();
+                                    span.appendChild(fragment);
+                                    _savedQaRange.insertNode(span);
+                                }
+                                sel.removeAllRanges();
+                            }
+                        } catch (err) {
+                            // কোনো error হলে silently ignore
+                        }
+                    }
+                }
+                // Snapshot clear করো
+                _savedQaRange = null;
+
+            } else if (activeElement) {
+                // Inserted text element-এ পুরো element-এর color বদলাও
+                activeElement.style.color = selectedColor;
+            }
         }
-    } else if (activeElement) {
-        // Inserted element-এ color apply করো
-        activeElement.style.color = selectedColor;
-    }
-}
-                    
-                    saveState(); // Save to undo/redo history
-                    
-                    // Auto-hide the floating picker after selecting a color
-                    floatingColorPicker.classList.add('opacity-0', 'translate-y-8');
-                    floatingColorPicker.classList.remove('opacity-100', 'translate-y-0');
-                });
-            });
+
+        saveState();
+
+        // Color pick হওয়ার পর picker লুকাও
+        floatingColorPicker.classList.add('opacity-0', 'translate-y-8');
+        floatingColorPicker.classList.remove('opacity-100', 'translate-y-0');
+    });
+});
             
             // Border Size Slide-up Panel Logic
             const btnBorder = document.getElementById('btn-border');
