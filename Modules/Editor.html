@@ -2312,13 +2312,9 @@ effectBtns[1].addEventListener('click', () => {
         qEl.textContent = item.q;
 
         const aEl = document.createElement('p');
-        aEl.style.marginTop = '1px';
-        aEl.style.margin    = '1px 0 0 0';
-        const labelSpan = document.createElement('span');
-        labelSpan.style.fontWeight = 'bold';
-        labelSpan.textContent = 'উত্তর: ';
-        aEl.appendChild(labelSpan);
-        aEl.appendChild(document.createTextNode(item.a));
+aEl.style.marginTop = '1px';
+aEl.style.margin    = '1px 0 0 0';
+aEl.appendChild(document.createTextNode(item.a));
 
         block.appendChild(qEl);
         block.appendChild(aEl);
