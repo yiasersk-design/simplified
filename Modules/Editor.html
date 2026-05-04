@@ -443,7 +443,29 @@
                     <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"><path d="m15.583 4l-6.587 6.587a2.013 2.013 0 0 0 0 2.826L15.583 20"/></svg>
                 </button>
                 <div class="w-px h-8 bg-gray-300 mx-1 shrink-0"></div>
-                <button class="submenu-item min-w-[72px] shrink-0 flex flex-col items-center justify-center h-[56px] outline-none"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7V4h16v3"/><path d="M12 4v16"/><path d="M9 20h6"/></svg><span class="toolbar-text">Size</span></button>
+                
+                <!-- Size Decrease (-) -->
+                <button id="btn-text-size-minus" class="submenu-item min-w-[72px] shrink-0 flex flex-col items-center justify-center h-[56px] outline-none">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                        <!-- Text Icon Shrinked Left -->
+                        <path d="M4 7V4h10v3"/><path d="M9 4v16"/><path d="M6 20h6"/>
+                        <!-- Minus Sign Right -->
+                        <line x1="16" y1="12" x2="22" y2="12"/>
+                    </svg>
+                    <span class="toolbar-text">Size -</span>
+                </button>
+
+                <!-- Size Increase (+) -->
+                <button id="btn-text-size-plus" class="submenu-item min-w-[72px] shrink-0 flex flex-col items-center justify-center h-[56px] outline-none">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                        <!-- Text Icon Shrinked Left -->
+                        <path d="M4 7V4h10v3"/><path d="M9 4v16"/><path d="M6 20h6"/>
+                        <!-- Plus Sign Right -->
+                        <line x1="19" y1="9" x2="19" y2="15"/><line x1="16" y1="12" x2="22" y2="12"/>
+                    </svg>
+                    <span class="toolbar-text">Size +</span>
+                </button>
+
                 <button id="btn-text-color" class="submenu-item min-w-[72px] shrink-0 flex flex-col items-center justify-center h-[56px] outline-none">
                     <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"><path d="M2.75 9.938v4.124m3.7-7.217v10.31m3.7-13.918v17.526m3.7-13.631v9.736m3.7-7.302v4.868m3.7-3.465v2.062"/></svg>
                     <span class="toolbar-text">Colour</span>
@@ -1870,23 +1892,46 @@ function applyCommandToQaZone(command, value, customRange = null) {
     saveState();
 }
 
-            textStyleBtns[0].addEventListener('click', () => {
+            // ── Manual Font Size Control Logic (+ / -) ──
+            function adjustFontSize(isIncrease) {
                 if (hasQaSelection()) {
-                    // QA zone-এর জন্য নতুন স্মার্ট engine ব্যবহার করা হচ্ছে
-                    applyCommandToQaZone('fontSize', '1.3em');
-                } else {
+                    // QA zone selected text
+                    const sel = window.getSelection();
+                    if (!sel || sel.rangeCount === 0) return;
+                    let node = sel.getRangeAt(0).startContainer;
+                    if (node.nodeType === 3) node = node.parentNode; // Get parent element of text node
+                    
+                    let currentSize = window.getComputedStyle(node).fontSize;
+                    let sizeNum = parseFloat(currentSize) || 16;
+                    
+                    // ২ পিক্সেল করে সাইজ পরিবর্তন হবে (Smooth control)
+                    let newSize = isIncrease ? sizeNum + 2 : sizeNum - 2;
+                    newSize = Math.max(8, Math.min(newSize, 72)); // Limit: min 8px, max 72px
+                    
+                    applyCommandToQaZone('fontSize', newSize + 'px');
+                } else if (activeElement && activeElement.tagName === 'DIV' && activeElement.id !== 'canvas-watermark') {
+                    // Canvas inserted text element
                     styleText(() => { 
                         let currentSize = window.getComputedStyle(activeElement).fontSize;
-                        let sizeNum = parseFloat(currentSize);
-                        activeElement.style.fontSize = (sizeNum >= 64 ? 16 : sizeNum + 8) + 'px';
+                        let sizeNum = parseFloat(currentSize) || 16;
+                        
+                        let newSize = isIncrease ? sizeNum + 2 : sizeNum - 2;
+                        newSize = Math.max(8, Math.min(newSize, 120)); // Limit for canvas elements
+                        
+                        activeElement.style.fontSize = newSize + 'px';
                     });
+                } else {
+                    alert("Please select text from notebook content or a text element first.");
                 }
-            });
+            }
 
-// Text Style Submenu — Bold (index 2) — Toggle ON ↔ OFF
-textStyleBtns[2].addEventListener('click', () => {
+            // Bind new Size buttons
+            document.getElementById('btn-text-size-minus').addEventListener('click', () => adjustFontSize(false));
+            document.getElementById('btn-text-size-plus').addEventListener('click', () => adjustFontSize(true));
+
+// Text Style Submenu — Bold (now index 3 due to added button) — Toggle ON ↔ OFF
+textStyleBtns[3].addEventListener('click', () => {
     if (hasQaSelection()) {
-        // QA zone: applyCommandToQaZone নিজেই toggle করবে
         applyCommandToQaZone('bold');
     } else {
         styleText(() => {
@@ -1896,8 +1941,8 @@ textStyleBtns[2].addEventListener('click', () => {
     }
 });
 
-// Text Style Submenu — Italic (index 3) — Toggle ON ↔ OFF
-textStyleBtns[3].addEventListener('click', () => {
+// Text Style Submenu — Italic (now index 4) — Toggle ON ↔ OFF
+textStyleBtns[4].addEventListener('click', () => {
     if (hasQaSelection()) {
         applyCommandToQaZone('italic');
     } else {
@@ -1908,8 +1953,8 @@ textStyleBtns[3].addEventListener('click', () => {
     }
 });
 
-// Text Style Submenu — Underline (index 4) — Toggle ON ↔ OFF
-textStyleBtns[4].addEventListener('click', () => {
+// Text Style Submenu — Underline (now index 5) — Toggle ON ↔ OFF
+textStyleBtns[5].addEventListener('click', () => {
     if (hasQaSelection()) {
         applyCommandToQaZone('underline');
     } else {
@@ -1922,8 +1967,8 @@ textStyleBtns[4].addEventListener('click', () => {
     }
 });
 
-// Text Style Submenu — Strikethrough (index 5) — Toggle ON ↔ OFF
-textStyleBtns[5].addEventListener('click', () => {
+// Text Style Submenu — Strikethrough (now index 6) — Toggle ON ↔ OFF
+textStyleBtns[6].addEventListener('click', () => {
     if (hasQaSelection()) {
         applyCommandToQaZone('strikeThrough');
     } else {
