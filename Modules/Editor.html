@@ -9,7 +9,21 @@
     <!-- HTML2Canvas for Download Feature -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     
-    <style>
+    <style> /* ======= NEW TOAST ANIMATION ======= */
+@keyframes toastSlideIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes toastSlideOut {
+    from { opacity: 1; transform: translateY(0); }
+    to   { opacity: 0; transform: translateY(10px); }
+}
+.toast-slide-in {
+    animation: toastSlideIn 0.4s ease-out forwards;
+}
+.toast-slide-out {
+    animation: toastSlideOut 0.3s ease-in forwards;
+}
         /* মূল ব্যাকগ্রাউন্ড এবং সাধারণ স্টাইল */
         body {
             background-color: #F3F4F6;
@@ -607,8 +621,8 @@
             </div>
         </div>
     </div>  <script>
-        // ==========================================
-// 🚀 Global Toast Notification System (Updated)
+// ==========================================
+// 🚀 Global Toast Notification System (New Design)
 // ==========================================
 function showToast(message, type = 'info', duration = 3000) {
     // Container তৈরি করা (যদি না থাকে)
@@ -616,56 +630,70 @@ function showToast(message, type = 'info', duration = 3000) {
     if (!container) {
         container = document.createElement('div');
         container.id = 'toast-container';
-        // top-4 দেওয়া হলো যাতে উপরে থাকে এবং gap-1.5 দিয়ে আইটেমগুলো compact থাকে
-        container.className = 'fixed top-4 left-1/2 transform -translate-x-1/2 z-[9999] flex flex-col gap-1.5 pointer-events-none w-max max-w-[90vw]';
+        container.className = 'fixed top-4 left-1/2 -translate-x-1/2 z-[9999] flex flex-col gap-2 pointer-events-none w-max max-w-[90vw]';
         document.body.appendChild(container);
     }
 
-    // Toast element তৈরি করা
-    const toast = document.createElement('div');
-    
-    // টাইপ অনুযায়ী Soft Color Palette (প্যাস্টেল কালার) এবং ছোট আইকন সেট করা
-    let bgClass, iconSvg;
+    // টাইপ অনুযায়ী icon color এবং hover border color
+    let iconColor, hoverBorder, iconSvg, labelText;
     switch(type) {
         case 'success':
-            bgClass = 'bg-green-50 text-green-800 border border-green-200';
-            iconSvg = `<svg class="w-4 h-4 mr-1.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>`;
+            iconColor = 'text-emerald-500';
+            hoverBorder = 'hover:border-emerald-200';
+            labelText = 'Success';
+            iconSvg = `<svg class="w-4 h-4 ${iconColor} flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>`;
             break;
         case 'error':
-            bgClass = 'bg-red-50 text-red-800 border border-red-200';
-            iconSvg = `<svg class="w-4 h-4 mr-1.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>`;
+            iconColor = 'text-rose-500';
+            hoverBorder = 'hover:border-rose-200';
+            labelText = 'Error';
+            iconSvg = `<svg class="w-4 h-4 ${iconColor} flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>`;
             break;
         case 'warning':
-            bgClass = 'bg-yellow-50 text-yellow-800 border border-yellow-200';
-            iconSvg = `<svg class="w-4 h-4 mr-1.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>`;
+            iconColor = 'text-amber-500';
+            hoverBorder = 'hover:border-amber-200';
+            labelText = 'Warning';
+            iconSvg = `<svg class="w-4 h-4 ${iconColor} flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>`;
             break;
         default: // info
-            bgClass = 'bg-blue-50 text-blue-800 border border-blue-200';
-            iconSvg = `<svg class="w-4 h-4 mr-1.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>`;
+            iconColor = 'text-sky-500';
+            hoverBorder = 'hover:border-sky-200';
+            labelText = 'Info';
+            iconSvg = `<svg class="w-4 h-4 ${iconColor} flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h1m0-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>`;
     }
 
-    // px-2.5 py-1.5 দিয়ে স্পেস টাইট রাখা হয়েছে, rounded-md দিয়ে এজ একটু বাড়ানো হয়েছে (rounded-sm থেকে rounded-md করা হলো)
-    toast.className = `flex items-center px-2.5 py-1.5 rounded-md shadow-sm text-[13px] font-medium transition-all duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] transform -translate-y-8 opacity-0 ${bgClass}`;
-    toast.innerHTML = `${iconSvg} <span class="leading-tight">${message}</span>`;
+    // Toast element তৈরি
+    const toast = document.createElement('div');
+    toast.setAttribute('role', 'alert');
+    toast.className = `toast-slide-in pointer-events-auto relative overflow-hidden bg-white border border-neutral-200 shadow-sm rounded-md py-2 px-3 transition-all duration-300 ${hoverBorder} hover:shadow-md flex items-center justify-between cursor-pointer gap-3 min-w-[220px]`;
+
+    toast.innerHTML = `
+        <div class="flex items-center">
+            ${iconSvg}
+            <p class="ml-2.5 text-xs text-neutral-600 leading-tight">
+                <span class="font-bold text-neutral-900 mr-1">${labelText}</span>${message}
+            </p>
+        </div>
+        <button class="toast-close-btn text-neutral-400 hover:text-neutral-700 transition-colors outline-none ml-2 shrink-0">
+            <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+            </svg>
+        </button>
+    `;
 
     container.appendChild(toast);
 
-    // Animation trigger করার জন্য DOM reflow
-    void toast.offsetWidth;
+    // Close button দিয়ে manually dismiss করার সুবিধা
+    function dismissToast() {
+        toast.classList.remove('toast-slide-in');
+        toast.classList.add('toast-slide-out');
+        toast.addEventListener('animationend', () => toast.remove(), { once: true });
+    }
 
-    // Animate In (Fade & Slide down from Top)
-    toast.classList.remove('-translate-y-8', 'opacity-0');
-    toast.classList.add('translate-y-0', 'opacity-100');
+    toast.querySelector('.toast-close-btn').addEventListener('click', dismissToast);
 
-    // নির্দিষ্ট সময় পর Remove করা (Animate Out)
-    setTimeout(() => {
-        toast.classList.remove('translate-y-0', 'opacity-100');
-        toast.classList.add('-translate-y-8', 'opacity-0');
-        // ট্রানজিশন শেষ হলে DOM থেকে মুছে ফেলা
-        toast.addEventListener('transitionend', () => {
-            toast.remove();
-        });
-    }, duration);
+    // নির্দিষ্ট সময় পর auto dismiss
+    setTimeout(dismissToast, duration);
 }      document.addEventListener('DOMContentLoaded', () => {
             
             const canvasContainer = document.getElementById('design-canvas');
