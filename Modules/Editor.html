@@ -1683,65 +1683,18 @@ colorItems.forEach(item => {
         const selectedColor = item.style.getPropertyValue('--color').trim();
 
         if (colorPickerTarget === 'border') {
-            // Canvas border-এ color apply করো
             canvasContainer.style.borderColor = selectedColor;
-
+            saveState();
         } else if (colorPickerTarget === 'text') {
-
             if (_savedQaRange) {
-                // ── Saved QA Range থেকে color apply করো ──
-                // span-wrap পদ্ধতি: applyCommandToQaZone-এর মতো
-                // কিন্তু এখানে saved range ব্যবহার হবে, live selection নয়
-                const qInner = document.getElementById('qa-content-inner');
-                if (qInner) {
-                    const span = document.createElement('span');
-                    span.setAttribute('data-qa-fmt', 'foreColor');
-                    span.style.color = selectedColor;
-
-                    // Saved range থেকে text আছে কিনা চেক করো
-                    const rangeText = _savedQaRange.toString();
-                    if (rangeText) {
-                        try {
-                            // Browser-এর current selection-কে saved range-এ set করো
-                            const sel = window.getSelection();
-                            sel.removeAllRanges();
-                            sel.addRange(_savedQaRange);
-
-                            // Toggle check: আগে থেকে same color span আছে কিনা
-                            const parentEl = _savedQaRange.commonAncestorContainer.nodeType === 3
-                                ? _savedQaRange.commonAncestorContainer.parentElement
-                                : _savedQaRange.commonAncestorContainer;
-
-                            if (parentEl && parentEl.tagName === 'SPAN' && parentEl.getAttribute('data-qa-fmt') === 'foreColor') {
-                                // আগের color span-এর color update করো
-                                parentEl.style.color = selectedColor;
-                                sel.removeAllRanges();
-                            } else {
-                                // নতুন color span দিয়ে wrap করো
-                                try {
-                                    _savedQaRange.surroundContents(span);
-                                } catch (err) {
-                                    const fragment = _savedQaRange.extractContents();
-                                    span.appendChild(fragment);
-                                    _savedQaRange.insertNode(span);
-                                }
-                                sel.removeAllRanges();
-                            }
-                        } catch (err) {
-                            // কোনো error হলে silently ignore
-                        }
-                    }
-                }
-                // Snapshot clear করো
-                _savedQaRange = null;
-
+                // নতুন ইঞ্জিন দিয়ে custom range-এ color apply/toggle
+                applyCommandToQaZone('foreColor', selectedColor, _savedQaRange);
+                _savedQaRange = null; 
             } else if (activeElement) {
-                // Inserted text element-এ পুরো element-এর color বদলাও
                 activeElement.style.color = selectedColor;
+                saveState();
             }
         }
-
-        saveState();
 
         // Color pick হওয়ার পর picker লুকাও
         floatingColorPicker.classList.add('opacity-0', 'translate-y-8');
@@ -1833,149 +1786,94 @@ colorItems.forEach(item => {
             }
 
             // Read-only mode-এ QA zone-এ span-wrap দিয়ে styling apply/toggle করা
-// contentEditable ছাড়াও কাজ করে — keyboard open হয় না
-function applyCommandToQaZone(command, value) {
-    const sel = window.getSelection();
-    if (!sel || sel.rangeCount === 0 || sel.isCollapsed) return;
-
-    const range = sel.getRangeAt(0);
-    const selectedText = range.toString();
-    if (!selectedText) return;
-
-    // ── Helper: selection-এর ভেতরে কোনো node-এ এই formatting আছে কিনা detect করো ──
-    function isFormattingApplied(rng, cmd) {
-        // Selection-এর common ancestor থেকে সব span খুঁজি
-        const container = rng.commonAncestorContainer.nodeType === 3
-            ? rng.commonAncestorContainer.parentElement
-            : rng.commonAncestorContainer;
-
-        // Case 1: container নিজেই সেই span কিনা
-        if (container.tagName === 'SPAN' && container.getAttribute('data-qa-fmt') === cmd) {
-            return true;
-        }
-
-        // Case 2: container-এর ভেতরে কোনো matching span আছে কিনা
-        const innerSpans = container.querySelectorAll('span[data-qa-fmt="' + cmd + '"]');
-        if (innerSpans.length > 0) return true;
-
-        // Case 3: selection-এর start node-এর ancestor-এ matching span আছে কিনা
-        let node = rng.startContainer.nodeType === 3
-            ? rng.startContainer.parentElement
-            : rng.startContainer;
-        while (node && node !== document.getElementById('qa-content-inner')) {
-            if (node.tagName === 'SPAN' && node.getAttribute('data-qa-fmt') === cmd) {
-                return true;
-            }
-            node = node.parentElement;
-        }
-
-        return false;
+function applyCommandToQaZone(command, value, customRange = null) {
+    let range;
+    let sel = null;
+    
+    if (customRange) {
+        range = customRange; // Color picker থেকে আসলে saved range ব্যবহার হবে
+    } else {
+        sel = window.getSelection();
+        if (!sel || sel.rangeCount === 0 || sel.isCollapsed) return;
+        range = sel.getRangeAt(0);
     }
 
-    // ── Helper: selection-এর ভেতরের সব matching span unwrap করো ──
-    function removeFormattingFromRange(rng, cmd) {
-        const container = rng.commonAncestorContainer.nodeType === 3
-            ? rng.commonAncestorContainer.parentElement
-            : rng.commonAncestorContainer;
+    if (range.toString().trim() === '') return;
 
-        // container নিজেই সেই span হলে unwrap করো
-        if (container.tagName === 'SPAN' && container.getAttribute('data-qa-fmt') === cmd) {
-            const parent = container.parentNode;
-            while (container.firstChild) {
-                parent.insertBefore(container.firstChild, container);
+    let isRemove = false;
+    let node = range.startContainer;
+    
+    while (node && node !== document.getElementById('qa-content-inner')) {
+        if (node.nodeType === 1 && node.getAttribute('data-qa-fmt') === command) {
+            if (command === 'backColor' || command === 'foreColor') {
+                const temp = document.createElement('div');
+                if (command === 'backColor') temp.style.backgroundColor = value;
+                else temp.style.color = value;
+                document.body.appendChild(temp);
+                const normalizedValue = command === 'backColor' ? getComputedStyle(temp).backgroundColor : getComputedStyle(temp).color;
+                temp.remove();
+
+                const currentNodeColor = command === 'backColor' ? node.style.backgroundColor : node.style.color;
+                if (currentNodeColor === normalizedValue) isRemove = true;
+            } else if (command === 'fontSize') {
+                if (node.style.fontSize === value) isRemove = true;
+            } else {
+                isRemove = true;
             }
-            parent.removeChild(container);
-            return;
+            break;
         }
+        node = node.parentNode;
+    }
 
-        // ভেতরের সব matching span unwrap করো
-        const spans = Array.from(container.querySelectorAll('span[data-qa-fmt="' + cmd + '"]'));
-        spans.forEach(sp => {
-            const par = sp.parentNode;
-            while (sp.firstChild) {
-                par.insertBefore(sp.firstChild, sp);
-            }
-            par.removeChild(sp);
+    const fragment = range.extractContents();
+
+    if (isRemove) {
+        const matchingSpans = fragment.querySelectorAll(`span[data-qa-fmt="${command}"]`);
+        matchingSpans.forEach(span => {
+            const parent = span.parentNode;
+            while (span.firstChild) parent.insertBefore(span.firstChild, span);
+            parent.removeChild(span);
+        });
+        range.insertNode(fragment);
+    } else {
+        const matchingSpans = fragment.querySelectorAll(`span[data-qa-fmt="${command}"]`);
+        matchingSpans.forEach(span => {
+            const parent = span.parentNode;
+            while (span.firstChild) parent.insertBefore(span.firstChild, span);
+            parent.removeChild(span);
         });
 
-        // Start node-এর ancestor-এ matching span থাকলে সেটাও unwrap করো
-        let node = rng.startContainer.nodeType === 3
-            ? rng.startContainer.parentElement
-            : rng.startContainer;
-        while (node && node !== document.getElementById('qa-content-inner')) {
-            if (node.tagName === 'SPAN' && node.getAttribute('data-qa-fmt') === cmd) {
-                const par = node.parentNode;
-                while (node.firstChild) {
-                    par.insertBefore(node.firstChild, node);
-                }
-                par.removeChild(node);
-                break;
-            }
-            node = node.parentElement;
-        }
+        const wrapper = document.createElement('span');
+        wrapper.setAttribute('data-qa-fmt', command);
+
+        if (command === 'bold') wrapper.style.fontWeight = 'bold';
+        else if (command === 'italic') wrapper.style.fontStyle = 'italic';
+        else if (command === 'underline') wrapper.style.textDecoration = 'underline';
+        else if (command === 'strikeThrough') wrapper.style.textDecoration = 'line-through';
+        else if (command === 'backColor') wrapper.style.backgroundColor = value || 'rgba(253, 224, 71, 0.7)';
+        else if (command === 'foreColor') wrapper.style.color = value;
+        else if (command === 'fontSize') wrapper.style.fontSize = value;
+
+        wrapper.appendChild(fragment);
+        range.insertNode(wrapper);
     }
 
-    // ── Toggle: আগে detect করো, তারপর apply অথবা remove ──
-    const alreadyApplied = isFormattingApplied(range, command);
-
-    if (alreadyApplied) {
-        // Formatting আছে → Remove করো
-        removeFormattingFromRange(range, command);
-        sel.removeAllRanges();
-        saveState();
-        return;
+    const qaInner = document.getElementById('qa-content-inner');
+    if (qaInner) {
+        const allSpans = qaInner.querySelectorAll('span[data-qa-fmt]');
+        allSpans.forEach(s => {
+            if (s.innerHTML === '') s.remove();
+        });
     }
 
-    // Formatting নেই → Apply করো (নতুন styled span দিয়ে wrap)
-    const span = document.createElement('span');
-    span.setAttribute('data-qa-fmt', command);
-
-    if (command === 'bold') {
-        span.style.fontWeight = 'bold';
-    } else if (command === 'italic') {
-        span.style.fontStyle = 'italic';
-    } else if (command === 'underline') {
-        span.style.textDecoration = 'underline';
-    } else if (command === 'strikeThrough') {
-        span.style.textDecoration = 'line-through';
-    } else if (command === 'backColor') {
-        span.style.backgroundColor = value || 'rgba(253, 224, 71, 0.7)';
-    } else if (command === 'foreColor') {
-        span.style.color = value;
-    }
-
-    try {
-        range.surroundContents(span);
-    } catch (e) {
-        // Cross-element selection-এর জন্য fallback
-        const fragment = range.extractContents();
-        span.appendChild(fragment);
-        range.insertNode(span);
-    }
-
-    sel.removeAllRanges();
+    if (sel) sel.removeAllRanges();
     saveState();
 }
 
             textStyleBtns[0].addEventListener('click', () => {
                 if (hasQaSelection()) {
-                    // Read-only mode-এ selected text-এ font size বড় করা — span wrap দিয়ে
-                    const sel = window.getSelection();
-                    if (sel && sel.rangeCount > 0 && !sel.isCollapsed) {
-                        const range = sel.getRangeAt(0);
-                        const span = document.createElement('span');
-                        span.style.fontSize = '1.3em';
-                        span.setAttribute('data-qa-fmt', 'fontSize');
-                        try {
-                            range.surroundContents(span);
-                        } catch (e) {
-                            const frag = range.extractContents();
-                            span.appendChild(frag);
-                            range.insertNode(span);
-                        }
-                        sel.removeAllRanges();
-                        saveState();
-                    }
+                    // QA zone-এর জন্য নতুন স্মার্ট engine ব্যবহার করা হচ্ছে
+                    applyCommandToQaZone('fontSize', '1.3em');
                 } else {
                     styleText(() => { 
                         let currentSize = window.getComputedStyle(activeElement).fontSize;
