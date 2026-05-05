@@ -2279,6 +2279,16 @@ effectBtns[1].addEventListener('click', () => {
 
         if (designCanvas) {
             designCanvas.style.backgroundColor = config.bgColor || '#ffffff';
+
+            // ── Canvas Size Sync: template-এর aspectRatio Editor canvas-এ apply করা ──
+            if (config.aspectRatio) {
+                designCanvas.classList.remove(
+                    'aspect-square', 'aspect-video',
+                    'aspect-[3/4]', 'aspect-[4/5]',
+                    'aspect-[9/16]', 'aspect-[21/29]'
+                );
+                designCanvas.classList.add(config.aspectRatio);
+            }
         }
 
         qZone.style.display = 'block';
