@@ -2104,7 +2104,9 @@ textStyleBtns[5].addEventListener('click', () => {
     }
 });
 
-// Text Style Submenu — Strikethrough (now index 6) — Toggle ON ↔ OFF
+// ==========================================
+// 9. Effects Submenu Functionalities
+// ==========================================         // Text Style Submenu — Strikethrough (now index 6) — Toggle ON ↔ OFF
 textStyleBtns[6].addEventListener('click', () => {
     if (hasQaSelection()) {
         applyCommandToQaZone('strikeThrough');
@@ -2119,9 +2121,151 @@ textStyleBtns[6].addEventListener('click', () => {
 });
 
 // ==========================================
-// 9. Effects Submenu Functionalities
+// 8. Alignment Submenu — Container-Based (Selection-Free) System
 // ==========================================
-const effectBtns = document.querySelectorAll('#submenu-effects .submenu-item');
+
+// Active column tracker: two-column layout-এ last interacted column track করবে
+// null = single column বা column select হয়নি (পুরো container-এ apply হবে)
+let _activeAlignColumn = null; // 'left' | 'right' | null
+
+// Two-column layout-এ user যে column-এ touch/click করেছে সেটি detect করা
+(function setupColumnTracker() {
+    const qInner = document.getElementById('qa-content-inner');
+    if (!qInner) return;
+
+    function detectAndSetColumn(e) {
+        // শুধু double layout-এ column track করবো
+        const isDouble = qInner.classList.contains('layout-double') ||
+                         window.getComputedStyle(qInner).columnCount === '2' ||
+                         qInner.style.columnCount === '2';
+        if (!isDouble) {
+            _activeAlignColumn = null;
+            return;
+        }
+
+        // Touch/click position থেকে left/right column বের করা
+        const rect = qInner.getBoundingClientRect();
+        const midX = rect.left + rect.width / 2;
+        const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+
+        _activeAlignColumn = clientX < midX ? 'left' : 'right';
+    }
+
+    // qa-content-zone এবং qInner উভয়তেই listen করা
+    const qaZone = document.getElementById('qa-content-zone');
+    if (qaZone) {
+        qaZone.addEventListener('click',      detectAndSetColumn, true);
+        qaZone.addEventListener('touchstart', detectAndSetColumn, { passive: true, capture: true });
+    }
+    qInner.addEventListener('click',      detectAndSetColumn, true);
+    qInner.addEventListener('touchstart', detectAndSetColumn, { passive: true, capture: true });
+})();
+
+// ── Core Alignment Apply Function ──────────────────────────────────────────
+function applyContainerAlignment(alignValue) {
+    const qInner = document.getElementById('qa-content-inner');
+    if (!qInner) return;
+
+    // Layout detect: double column কিনা
+    const isDouble = qInner.classList.contains('layout-double') ||
+                     window.getComputedStyle(qInner).columnCount === '2' ||
+                     qInner.style.columnCount === '2';
+
+    if (!isDouble) {
+        // ── Single Column: পুরো container-এ apply ──────────────────────────
+        qInner.style.textAlign = alignValue;
+
+        // সব paragraph ও block-এ explicitly set করা (inherit override এড়াতে)
+        qInner.querySelectorAll('.qa-entry-block, .qa-entry-block p').forEach(el => {
+            el.style.textAlign = alignValue;
+        });
+
+        showToast(`Text aligned: ${alignValue}`, 'success');
+
+    } else {
+        // ── Double Column: active column-এর সব block-এ apply ───────────────
+        // column detect: user interaction না থাকলে left column default
+        const side = _activeAlignColumn || 'left';
+
+        const allBlocks = Array.from(qInner.querySelectorAll('.qa-entry-block'));
+        const totalBlocks = allBlocks.length;
+
+        if (totalBlocks === 0) {
+            // Block না থাকলে পুরো container-এ apply
+            qInner.style.textAlign = alignValue;
+            showToast(`Text aligned: ${alignValue}`, 'success');
+            return;
+        }
+
+        // CSS column layout-এ DOM order = visual order
+        // প্রথম ~50% block → left column, বাকি → right column (approximate)
+        // সঠিক split: getBoundingClientRect দিয়ে visually detect করা
+        const qRect = qInner.getBoundingClientRect();
+        const midX  = qRect.left + qRect.width / 2;
+
+        let appliedCount = 0;
+        allBlocks.forEach(block => {
+            const bRect = block.getBoundingClientRect();
+            // block-এর horizontal center দিয়ে column determine করা
+            const blockCenterX = bRect.left + bRect.width / 2;
+
+            // column-count layout-এ left column: blockCenterX < midX
+            const blockSide = blockCenterX < midX ? 'left' : 'right';
+
+            if (blockSide === side) {
+                block.style.textAlign = alignValue;
+                block.querySelectorAll('p').forEach(p => {
+                    p.style.textAlign = alignValue;
+                });
+                appliedCount++;
+            }
+        });
+
+        // যদি কোনো block visually detect না হয় (content hidden/zero-height),
+        // fallback: DOM order দিয়ে প্রথম/দ্বিতীয় অর্ধেকে apply করা
+        if (appliedCount === 0) {
+            const half = Math.ceil(totalBlocks / 2);
+            const targetBlocks = side === 'left'
+                ? allBlocks.slice(0, half)
+                : allBlocks.slice(half);
+
+            targetBlocks.forEach(block => {
+                block.style.textAlign = alignValue;
+                block.querySelectorAll('p').forEach(p => {
+                    p.style.textAlign = alignValue;
+                });
+            });
+        }
+
+        const columnName = side === 'left' ? 'Left Column' : 'Right Column';
+        showToast(`${columnName} aligned: ${alignValue}`, 'success');
+    }
+
+    saveState();
+}
+
+// ── Alignment Buttons Click Handler ────────────────────────────────────────
+document.querySelectorAll('.align-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+        const alignValue = btn.getAttribute('data-align'); // 'left' | 'center' | 'right' | 'justify'
+        if (!alignValue) return;
+
+        // Active element (inserted DIV) selected থাকলে সেটাতেও apply করা
+        if (activeElement && activeElement.tagName === 'DIV' && activeElement.id !== 'canvas-watermark') {
+            activeElement.style.textAlign = alignValue;
+            saveState();
+        }
+
+        // QA zone content-এ container-based alignment apply করা
+        applyContainerAlignment(alignValue);
+
+        // ── Active state: clicked button highlight করা ──
+        document.querySelectorAll('.align-btn').forEach(b => {
+            b.classList.remove('text-blue-600');
+        });
+        btn.classList.add('text-blue-600');
+    });
+});
 
 // Effects — Marker / Highlight — Toggle ON ↔ OFF
 effectBtns[0].addEventListener('click', () => {
