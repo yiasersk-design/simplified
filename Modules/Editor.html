@@ -9,7 +9,17 @@
     <!-- HTML2Canvas for Download Feature -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     
-    <style> /* ======= NEW TOAST ANIMATION ======= */
+    <style> /* ===== Underline Style Spans ===== */
+span[data-qa-fmt^="ul-"] {
+    display: inline;
+    -webkit-box-decoration-break: clone;
+    box-decoration-break: clone;
+}
+span[data-qa-fmt="ul-solid"]   { text-decoration: underline; text-decoration-style: solid; }
+span[data-qa-fmt="ul-dotted"]  { text-decoration: underline; text-decoration-style: dotted; }
+span[data-qa-fmt="ul-dashed"]  { text-decoration: underline; text-decoration-style: dashed; }
+span[data-qa-fmt="ul-double"]  { text-decoration: underline; text-decoration-style: double; }
+span[data-qa-fmt="ul-wavy"]    { text-decoration: underline; text-decoration-style: wavy; } /* ======= NEW TOAST ANIMATION ======= */
 @keyframes toastSlideIn {
     from { opacity: 0; transform: translateY(10px); }
     to   { opacity: 1; transform: translateY(0); }
@@ -393,10 +403,13 @@
                     <span class="toolbar-text">Align</span>
                 </button>
 
-                <button class="main-tool toolbar-item min-w-[72px] shrink-0 flex flex-col items-center justify-center h-[56px] outline-none" data-target="submenu-insert">
-                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="12" y1="8" x2="12" y2="16"></line><line x1="8" y1="12" x2="16" y2="12"></line></svg>
-                    <span class="toolbar-text">Insert</span>
-                </button>
+                <button class="main-tool toolbar-item min-w-[72px] shrink-0 flex flex-col items-center justify-center h-[56px] outline-none" data-target="submenu-underline">
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 4v6a6 6 0 0 0 12 0V4"/><line x1="4" y1="20" x2="20" y2="20"/></svg>
+    <span class="toolbar-text">Underline</span>
+</button> <button class="main-tool toolbar-item min-w-[72px] shrink-0 flex flex-col items-center justify-center h-[56px] outline-none" data-target="submenu-insert">
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="12" y1="8" x2="12" y2="16"></line><line x1="8" y1="12" x2="16" y2="12"></line></svg>
+    <span class="toolbar-text">Insert</span>
+</button>
                 <button class="main-tool toolbar-item min-w-[72px] shrink-0 flex flex-col items-center justify-center h-[56px] outline-none" data-target="submenu-effects">
                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"><g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"><path d="M7 2h9.5L21 6.5V19"/><path d="M3 20.5v-14A1.5 1.5 0 0 1 4.5 5h9.752a.6.6 0 0 1 .424.176l3.148 3.148A.6.6 0 0 1 18 8.75V20.5a1.5 1.5 0 0 1-1.5 1.5h-12A1.5 1.5 0 0 1 3 20.5Z"/><path d="M14 5v3.4a.6.6 0 0 0 .6.6H18"/></g></svg>
                     <span class="toolbar-text">Effects</span>
@@ -451,7 +464,59 @@
                 </button>
             </div>
 
-            <!-- 2. Text Style Submenu -->
+            <!-- Underline Style Submenu -->
+<div id="submenu-underline" class="menu-panel submenu-panel overflow-x-auto hide-scrollbar px-2 gap-1">
+    <button class="back-btn shrink-0 flex flex-col items-center justify-center h-[56px] w-[36px] outline-none">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"><path d="m15.583 4l-6.587 6.587a2.013 2.013 0 0 0 0 2.826L15.583 20"/></svg>
+    </button>
+    <div class="w-px h-8 bg-gray-300 mx-1 shrink-0"></div>
+
+    <!-- Solid -->
+    <button class="ul-style-btn submenu-item min-w-[72px] shrink-0 flex flex-col items-center justify-center h-[56px] outline-none" data-ul="ul-solid">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M6 4v6a6 6 0 0 0 12 0V4"/>
+            <line x1="4" y1="20" x2="20" y2="20" stroke-width="2"/>
+        </svg>
+        <span class="toolbar-text">Solid</span>
+    </button>
+
+    <!-- Dotted -->
+    <button class="ul-style-btn submenu-item min-w-[72px] shrink-0 flex flex-col items-center justify-center h-[56px] outline-none" data-ul="ul-dotted">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M6 4v6a6 6 0 0 0 12 0V4"/>
+            <line x1="4" y1="20" x2="20" y2="20" stroke-dasharray="2 2" stroke-width="2"/>
+        </svg>
+        <span class="toolbar-text">Dotted</span>
+    </button>
+
+    <!-- Dashed -->
+    <button class="ul-style-btn submenu-item min-w-[72px] shrink-0 flex flex-col items-center justify-center h-[56px] outline-none" data-ul="ul-dashed">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M6 4v6a6 6 0 0 0 12 0V4"/>
+            <line x1="4" y1="20" x2="20" y2="20" stroke-dasharray="5 3" stroke-width="2"/>
+        </svg>
+        <span class="toolbar-text">Dashed</span>
+    </button>
+
+    <!-- Double -->
+    <button class="ul-style-btn submenu-item min-w-[72px] shrink-0 flex flex-col items-center justify-center h-[56px] outline-none" data-ul="ul-double">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M6 4v6a6 6 0 0 0 12 0V4"/>
+            <line x1="4" y1="19" x2="20" y2="19" stroke-width="1.5"/>
+            <line x1="4" y1="22" x2="20" y2="22" stroke-width="1.5"/>
+        </svg>
+        <span class="toolbar-text">Double</span>
+    </button>
+
+    <!-- Wavy -->
+    <button class="ul-style-btn submenu-item min-w-[72px] shrink-0 flex flex-col items-center justify-center h-[56px] outline-none" data-ul="ul-wavy">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M6 4v6a6 6 0 0 0 12 0V4"/>
+            <path d="M3 20 Q5.5 18 8 20 T13 20 T18 20 T21 20" stroke-width="2" fill="none"/>
+        </svg>
+        <span class="toolbar-text">Wavy</span>
+    </button>
+</div> <!-- 2. Text Style Submenu -->
             <div id="submenu-textstyle" class="menu-panel submenu-panel overflow-x-auto hide-scrollbar px-2 gap-1">
                 <button class="back-btn shrink-0 flex flex-col items-center justify-center h-[56px] w-[36px] outline-none">
                     <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"><path d="m15.583 4l-6.587 6.587a2.013 2.013 0 0 0 0 2.826L15.583 20"/></svg>
@@ -2012,6 +2077,8 @@ function applyCommandToQaZone(command, value, customRange = null) {
         else if (command === 'backColor') wrapper.style.backgroundColor = value || 'rgba(253, 224, 71, 0.7)';
         else if (command === 'foreColor') wrapper.style.color = value;
         else if (command === 'fontSize') wrapper.style.fontSize = value;
+        // ul-* commands-এর জন্য CSS class দিয়ে style control হবে (CSS-এ defined)
+        // wrapper-এ data-qa-fmt="ul-solid" ইত্যাদি set হবে, বাকি CSS করবে
 
         wrapper.appendChild(fragment);
         range.insertNode(wrapper);
@@ -2120,6 +2187,91 @@ textStyleBtns[6].addEventListener('click', () => {
     }
 });
 
+// ==========================================
+// Underline Style Submenu — Selection-Based
+// ==========================================
+document.querySelectorAll('.ul-style-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+        const ulCommand = btn.getAttribute('data-ul'); // e.g. "ul-solid"
+
+        if (hasQaSelection()) {
+            // ── QA zone: selected text-এ apply/toggle ──
+            const sel = window.getSelection();
+            if (!sel || sel.rangeCount === 0) return;
+            const range = sel.getRangeAt(0);
+            if (range.toString().trim() === '') return;
+
+            // Toggle check: selection শুরুর node-এ same ul-* span আছে কিনা
+            let checkNode = range.startContainer;
+            let isRemove = false;
+            while (checkNode && checkNode !== document.getElementById('qa-content-inner')) {
+                if (checkNode.nodeType === 1 && checkNode.getAttribute('data-qa-fmt') === ulCommand) {
+                    isRemove = true;
+                    break;
+                }
+                checkNode = checkNode.parentNode;
+            }
+
+            const fragment = range.extractContents();
+
+            // Fragment-এ থাকা যেকোনো ul-* span unwrap করো (clean state)
+            fragment.querySelectorAll('span[data-qa-fmt^="ul-"]').forEach(s => {
+                const p = s.parentNode;
+                while (s.firstChild) p.insertBefore(s.firstChild, s);
+                p.removeChild(s);
+            });
+
+            if (!isRemove) {
+                // Apply: নতুন wrapper দিয়ে wrap করো
+                const wrapper = document.createElement('span');
+                wrapper.setAttribute('data-qa-fmt', ulCommand);
+                wrapper.appendChild(fragment);
+                range.insertNode(wrapper);
+            } else {
+                // Remove: শুধু unwrapped fragment ঢোকাও
+                range.insertNode(fragment);
+            }
+
+            // Empty span cleanup
+            document.getElementById('qa-content-inner')
+                .querySelectorAll('span[data-qa-fmt^="ul-"]')
+                .forEach(s => { if (!s.textContent) s.remove(); });
+
+            sel.removeAllRanges();
+            saveState();
+
+        } else if (activeElement && activeElement.tagName === 'DIV' && activeElement.id !== 'canvas-watermark') {
+            // ── Canvas inserted element: পুরো element-এ apply ──
+            const styleMap = {
+                'ul-solid':  { line: 'underline', style: 'solid' },
+                'ul-dotted': { line: 'underline', style: 'dotted' },
+                'ul-dashed': { line: 'underline', style: 'dashed' },
+                'ul-double': { line: 'underline', style: 'double' },
+                'ul-wavy':   { line: 'underline', style: 'wavy' },
+            };
+            const s = styleMap[ulCommand];
+            if (!s) return;
+
+            const curLine  = activeElement.style.textDecorationLine || '';
+            const curStyle = activeElement.style.textDecorationStyle || '';
+
+            // Toggle: same style আগে থেকে থাকলে সরাও
+            if (curLine.includes('underline') && curStyle === s.style) {
+                activeElement.style.textDecorationLine  = curLine.replace('underline', '').trim() || 'none';
+                activeElement.style.textDecorationStyle = '';
+            } else {
+                activeElement.style.textDecorationLine  = curLine.includes('underline')
+                    ? curLine
+                    : (curLine === 'none' ? 'underline' : curLine + ' underline').trim();
+                activeElement.style.textDecorationStyle = s.style;
+            }
+            saveState();
+
+        } else {
+            showToast("Select text or tap a text element first.", 'warning');
+        }
+    });
+});
 // ==========================================
 // 8. Alignment Submenu — Container-Based (Selection-Free) System
 // ==========================================
