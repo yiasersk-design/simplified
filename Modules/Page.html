@@ -1462,9 +1462,26 @@
     });
 
     tPopupCloseBtn.addEventListener('click', () => {
-        tPopupOverlay.classList.remove('active');
-        tPopupSheet.classList.remove('active');
-    });
+        // ── Font Sync: language change হলে নতুন pairing Editor-এ পাঠাও ──
+    if (activeFontId && activeFontId > 0) {
+        const syncPairing = getPairingForLang(activeFontId, lang);
+        if (syncPairing) {
+            localStorage.setItem('page_font_config', JSON.stringify({
+                fontId: activeFontId,
+                lang: lang,
+                mainFont: syncPairing.mainFont,
+                subFont: syncPairing.subFont,
+                mainWeight: syncPairing.mainWeight,
+                subWeight: syncPairing.subWeight,
+                subStyle: syncPairing.subStyle,
+                subLetterSpacing: syncPairing.subLetterSpacing
+            }));
+        }
+    }
+
+    tPopupOverlay.classList.remove('active');
+    tPopupSheet.classList.remove('active');
+});
 
     tPopupOverlay.addEventListener('click', () => {
         tPopupOverlay.classList.remove('active');
@@ -1658,56 +1675,17 @@
     }
 
     function applyFontPairing(fontId) {
-        if (fontId === 0) {
-            for (let i = 1; i <= 7; i++) {
-                const layer = document.getElementById('text-layer-' + i);
-                if (!layer) continue;
-
-                const allElements = layer.querySelectorAll('p, h3, span');
-                allElements.forEach(el => {
-                    el.style.fontFamily = '';
-                    el.style.fontWeight = '';
-                    el.style.fontStyle = '';
-                    el.style.letterSpacing = '';
-                });
-            }
-
-            document.querySelectorAll('[data-font-id]').forEach(item => {
-                item.style.borderLeft = '';
-                item.style.background = '';
-            });
-
-            return;
-        }
-
-        const pairing = getPairingForLang(fontId, currentLang);
-        if (!pairing) return;
-
+    if (fontId === 0) {
         for (let i = 1; i <= 7; i++) {
             const layer = document.getElementById('text-layer-' + i);
             if (!layer) continue;
 
-            const mainElements = layer.querySelectorAll('p.font-bold, h3, .font-bold');
-            mainElements.forEach(el => {
-                el.style.fontFamily = pairing.mainFont;
-                el.style.fontWeight = pairing.mainWeight;
-                el.style.fontStyle = 'normal';
-            });
-
-            const allP = layer.querySelectorAll('p');
-            allP.forEach(el => {
-                if (!el.classList.contains('font-bold')) {
-                    el.style.fontFamily = pairing.subFont;
-                    el.style.fontWeight = pairing.subWeight;
-                    el.style.fontStyle = pairing.subStyle;
-                    el.style.letterSpacing = pairing.subLetterSpacing;
-                }
-            });
-
-            const boldSpans = layer.querySelectorAll('span.font-bold, span.font-semibold');
-            boldSpans.forEach(el => {
-                el.style.fontFamily = pairing.mainFont;
-                el.style.fontWeight = pairing.mainWeight;
+            const allElements = layer.querySelectorAll('p, h3, span');
+            allElements.forEach(el => {
+                el.style.fontFamily = '';
+                el.style.fontWeight = '';
+                el.style.fontStyle = '';
+                el.style.letterSpacing = '';
             });
         }
 
@@ -1715,15 +1693,68 @@
             item.style.borderLeft = '';
             item.style.background = '';
         });
-        const activeItem = document.querySelector('[data-font-id="' + fontId + '"]');
-        if (activeItem) {
-            activeItem.style.borderLeft = '3px solid rgba(0,0,0,0.6)';
-            activeItem.style.background = 'rgba(0,0,0,0.08)';
-        }
-    
 
-        closeSlideUpPanel();
+        // ── Font Sync: reset হলে Editor-এর saved font config মুছে দাও ──
+        localStorage.removeItem('page_font_config');
+
+        return;
     }
+
+    const pairing = getPairingForLang(fontId, currentLang);
+    if (!pairing) return;
+
+    for (let i = 1; i <= 7; i++) {
+        const layer = document.getElementById('text-layer-' + i);
+        if (!layer) continue;
+
+        const mainElements = layer.querySelectorAll('p.font-bold, h3, .font-bold');
+        mainElements.forEach(el => {
+            el.style.fontFamily = pairing.mainFont;
+            el.style.fontWeight = pairing.mainWeight;
+            el.style.fontStyle = 'normal';
+        });
+
+        const allP = layer.querySelectorAll('p');
+        allP.forEach(el => {
+            if (!el.classList.contains('font-bold')) {
+                el.style.fontFamily = pairing.subFont;
+                el.style.fontWeight = pairing.subWeight;
+                el.style.fontStyle = pairing.subStyle;
+                el.style.letterSpacing = pairing.subLetterSpacing;
+            }
+        });
+
+        const boldSpans = layer.querySelectorAll('span.font-bold, span.font-semibold');
+        boldSpans.forEach(el => {
+            el.style.fontFamily = pairing.mainFont;
+            el.style.fontWeight = pairing.mainWeight;
+        });
+    }
+
+    document.querySelectorAll('[data-font-id]').forEach(item => {
+        item.style.borderLeft = '';
+        item.style.background = '';
+    });
+    const activeItem = document.querySelector('[data-font-id="' + fontId + '"]');
+    if (activeItem) {
+        activeItem.style.borderLeft = '3px solid rgba(0,0,0,0.6)';
+        activeItem.style.background = 'rgba(0,0,0,0.08)';
+    }
+
+    // ── Font Sync: Editor.html-এ font reflect করার জন্য localStorage-এ save করো ──
+    localStorage.setItem('page_font_config', JSON.stringify({
+        fontId: fontId,
+        lang: currentLang,
+        mainFont: pairing.mainFont,
+        subFont: pairing.subFont,
+        mainWeight: pairing.mainWeight,
+        subWeight: pairing.subWeight,
+        subStyle: pairing.subStyle,
+        subLetterSpacing: pairing.subLetterSpacing
+    }));
+
+    closeSlideUpPanel();
+}
 
     document.querySelectorAll('[data-font-id]').forEach(item => {
         item.addEventListener('click', () => {
