@@ -144,17 +144,17 @@
 }
 
         .qa-column-divider {
-            position: absolute;
-            top: 0;
-            bottom: 0;
-            left: 50%;
-            transform: translateX(-50%);
-            width: 2px;
-            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='2' height='4' viewBox='0 0 2 4'%3E%3Cpath d='M1,0 Q2,1 1,2 T1,4' fill='none' stroke='%23000000' stroke-width='0.5'/%3E%3C/svg%3E");
-            background-repeat: repeat-y;
-            pointer-events: none;
-            z-index: 6;
-        }
+    position: absolute;
+    top: 2.5rem;    /* DEFAULT_CONFIG.paddingTop — JS inline style override করবে */
+    bottom: 0.8rem; /* DEFAULT_CONFIG.paddingBottom — JS inline style override করবে */
+    left: 50%;
+    transform: translateX(-50%);
+    width: 2px;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='2' height='4' viewBox='0 0 2 4'%3E%3Cpath d='M1,0 Q2,1 1,2 T1,4' fill='none' stroke='%23000000' stroke-width='0.5'/%3E%3C/svg%3E");
+    background-repeat: repeat-y;
+    pointer-events: none;
+    z-index: 6;
+}
 
         #qa-empty-hint {
             position: absolute;
@@ -2319,6 +2319,11 @@ effectBtns[1].addEventListener('click', () => {
         if (config.useSeparator && config.layout === 'double') {
             const divEl = document.createElement('div');
             divEl.className = 'qa-column-divider';
+            // margin-aware: content area-র exact boundary অনুযায়ী divider clip করা
+            // config থেকে padding পড়ে top/bottom dynamically set করলে
+            // যেকোনো margin size-এ divider automatically adjust হবে
+            divEl.style.top    = config.paddingTop    || '2.5rem';
+            divEl.style.bottom = config.paddingBottom || '0.8rem';
             qZone.appendChild(divEl);
         }
 
