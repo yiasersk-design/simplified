@@ -312,6 +312,7 @@ span[data-qa-fmt="ul-wavy"]    { text-decoration: underline; text-decoration-sty
                 <button id="btn-undo" class="opacity-50 transition-all outline-none" disabled>
                     <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7v6h6"></path><path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13"></path></svg>
                 </button>
+
                 <button id="btn-redo" class="opacity-50 transition-all outline-none" disabled>
                     <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 7v6h-6"></path><path d="M3 17a9 9 0 0 1 9-9 9 9 0 0 1 6 2.3l3 2.7"></path></svg>
                 </button>
@@ -414,12 +415,18 @@ span[data-qa-fmt="ul-wavy"]    { text-decoration: underline; text-decoration-sty
                     <span class="toolbar-text">Text Style</span>
                 </button>
 
-                <button class="main-tool toolbar-item min-w-[72px] shrink-0 flex flex-col items-center justify-center h-[56px] outline-none" data-target="submenu-label">
+                       <button class="main-tool toolbar-item min-w-[72px] shrink-0 flex flex-col items-center justify-center h-[56px] outline-none" data-target="submenu-label">
     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none">
         <path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="m20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82zM7 7h.01"/>
     </svg>
     <span class="toolbar-text">Label</span>
-</button>। <!-- Alignment Button -->
+</button>
+
+                <button class="main-tool toolbar-item min-w-[72px] shrink-0 flex flex-col items-center justify-center h-[56px] outline-none" data-target="submenu-pointers">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><line x1="9" y1="6" x2="20" y2="6"></line><line x1="9" y1="12" x2="20" y2="12"></line><line x1="9" y1="18" x2="20" y2="18"></line><circle cx="4" cy="6" r="2"></circle><circle cx="4" cy="12" r="2"></circle><circle cx="4" cy="18" r="2"></circle></svg>
+                    <span class="toolbar-text">Pointers</span>
+                </button>
+
                 <button class="main-tool toolbar-item min-w-[72px] shrink-0 flex flex-col items-center justify-center h-[56px] outline-none" data-target="submenu-alignment">
                     <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><line x1="21" y1="6" x2="3" y2="6"></line><line x1="15" y1="12" x2="3" y2="12"></line><line x1="17" y1="18" x2="3" y2="18"></line></svg>
                     <span class="toolbar-text">Align</span>
@@ -639,8 +646,64 @@ span[data-qa-fmt="ul-wavy"]    { text-decoration: underline; text-decoration-sty
     </button>
 </div>
 
-            <!-- 3. Insert Submenu -->
-<div id="submenu-insert" class="menu-panel submenu-panel overflow-x-auto hide-scrollbar px-2 gap-1">
+            <div id="submenu-pointers" class="menu-panel submenu-panel overflow-hidden px-0">
+                <div id="pointers-state-main" class="flex items-center gap-1 w-full h-full px-2 overflow-x-auto hide-scrollbar">
+                    <button class="back-btn shrink-0 flex flex-col items-center justify-center h-[56px] w-[36px] outline-none">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"><path d="m15.583 4l-6.587 6.587a2.013 2.013 0 0 0 0 2.826L15.583 20"/></svg>
+                    </button>
+                    <div class="w-px h-8 bg-gray-300 mx-1 shrink-0"></div>
+                    <button id="btn-pointers-svg" class="submenu-item min-w-[80px] shrink-0 flex flex-col items-center justify-center h-[56px] outline-none">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
+                        <span class="toolbar-text">SVG Points</span>
+                    </button>
+                    <button id="btn-pointers-bullet" class="submenu-item min-w-[80px] shrink-0 flex flex-col items-center justify-center h-[56px] outline-none">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><line x1="9" y1="6" x2="20" y2="6"></line><line x1="9" y1="12" x2="20" y2="12"></line><line x1="9" y1="18" x2="20" y2="18"></line><circle cx="4" cy="6" r="2"></circle><circle cx="4" cy="12" r="2"></circle><circle cx="4" cy="18" r="2"></circle></svg>
+                        <span class="toolbar-text">Bullet Points</span>
+                    </button>
+                </div>
+
+                <div id="pointers-state-svg" class="hidden items-center gap-1 w-full h-full px-2 overflow-x-auto hide-scrollbar">
+                    <button id="btn-back-pointers-main-1" class="shrink-0 flex flex-col items-center justify-center h-[56px] w-[36px] outline-none text-gray-500 hover:text-gray-800 transition-colors">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"><path d="m15.583 4l-6.587 6.587a2.013 2.013 0 0 0 0 2.826L15.583 20"/></svg>
+                    </button>
+                    <div class="w-px h-8 bg-gray-300 mx-1 shrink-0"></div>
+                    <button class="pointer-apply-btn submenu-item min-w-[56px] shrink-0 flex flex-col items-center justify-center h-[56px] outline-none text-red-400 hover:text-red-600" data-pointer="none">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
+                        <span class="toolbar-text">None</span>
+                    </button>
+                    <button class="pointer-apply-btn submenu-item min-w-[56px] shrink-0 flex flex-col items-center justify-center h-[56px] outline-none" data-pointer="svg-arrow">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
+                    </button>
+                    <button class="pointer-apply-btn submenu-item min-w-[56px] shrink-0 flex flex-col items-center justify-center h-[56px] outline-none" data-pointer="svg-check">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                    </button>
+                    <button class="pointer-apply-btn submenu-item min-w-[56px] shrink-0 flex flex-col items-center justify-center h-[56px] outline-none" data-pointer="svg-star">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
+                    </button>
+                    <button class="pointer-apply-btn submenu-item min-w-[56px] shrink-0 flex flex-col items-center justify-center h-[56px] outline-none" data-pointer="svg-diamond">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 22 12 12 22 2 12"></polygon></svg>
+                    </button>
+                </div>
+
+                <div id="pointers-state-bullet" class="hidden items-center gap-1 w-full h-full px-2 overflow-x-auto hide-scrollbar">
+                    <button id="btn-back-pointers-main-2" class="shrink-0 flex flex-col items-center justify-center h-[56px] w-[36px] outline-none text-gray-500 hover:text-gray-800 transition-colors">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"><path d="m15.583 4l-6.587 6.587a2.013 2.013 0 0 0 0 2.826L15.583 20"/></svg>
+                    </button>
+                    <div class="w-px h-8 bg-gray-300 mx-1 shrink-0"></div>
+                     <button class="pointer-apply-btn submenu-item min-w-[56px] shrink-0 flex flex-col items-center justify-center h-[56px] outline-none text-red-400 hover:text-red-600" data-pointer="none">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
+                        <span class="toolbar-text">None</span>
+                    </button>
+                    <button class="pointer-apply-btn submenu-item min-w-[56px] shrink-0 flex flex-col items-center justify-center h-[56px] outline-none text-xl font-bold" data-pointer="bullet-circle">●</button>
+                    <button class="pointer-apply-btn submenu-item min-w-[56px] shrink-0 flex flex-col items-center justify-center h-[56px] outline-none text-xl font-bold" data-pointer="bullet-ring">○</button>
+                    <button class="pointer-apply-btn submenu-item min-w-[56px] shrink-0 flex flex-col items-center justify-center h-[56px] outline-none text-xl font-bold" data-pointer="bullet-square">■</button>
+                    <button class="pointer-apply-btn submenu-item min-w-[56px] shrink-0 flex flex-col items-center justify-center h-[56px] outline-none text-xl font-bold" data-pointer="bullet-arrow">➤</button>
+                    <button class="pointer-apply-btn submenu-item min-w-[56px] shrink-0 flex flex-col items-center justify-center h-[56px] outline-none text-xl font-bold" data-pointer="bullet-dash">—</button>
+                </div>
+            </div>
+
+            <div id="submenu-insert" class="menu-panel submenu-panel overflow-x-auto hide-scrollbar px-2 gap-1">
+
     <button class="back-btn shrink-0 flex flex-col items-center justify-center h-[56px] w-[36px] outline-none">
         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"><path d="m15.583 4l-6.587 6.587a2.013 2.013 0 0 0 0 2.826L15.583 20"/></svg>
     </button>
@@ -2622,7 +2685,123 @@ effectBtns[1].addEventListener('click', () => {
     saveState();
 });
 
-        // ── Read-only Preview: Mobile Keyboard & Focus Block ────────────────
+                   // ==========================================
+            // 10. NEW: Pointers Submenu Functionalities
+            // ==========================================
+            const pointersStateMain = document.getElementById('pointers-state-main');
+            const pointersStateSvg = document.getElementById('pointers-state-svg');
+            const pointersStateBullet = document.getElementById('pointers-state-bullet');
+
+            // Switch to SVG Options
+            document.getElementById('btn-pointers-svg').addEventListener('click', () => {
+                pointersStateMain.classList.replace('flex', 'hidden');
+                pointersStateSvg.classList.replace('hidden', 'flex');
+            });
+
+            // Switch to Bullet Options
+            document.getElementById('btn-pointers-bullet').addEventListener('click', () => {
+                pointersStateMain.classList.replace('flex', 'hidden');
+                pointersStateBullet.classList.replace('hidden', 'flex');
+            });
+
+            // Back to Main Pointers Options
+            const backToPointersMain = () => {
+                pointersStateSvg.classList.replace('flex', 'hidden');
+                pointersStateBullet.classList.replace('flex', 'hidden');
+                pointersStateMain.classList.replace('hidden', 'flex');
+            };
+            document.getElementById('btn-back-pointers-main-1').addEventListener('click', backToPointersMain);
+            document.getElementById('btn-back-pointers-main-2').addEventListener('click', backToPointersMain);
+
+            // Reset state when opening Pointers Menu
+            document.querySelector('[data-target="submenu-pointers"]').addEventListener('click', () => {
+                backToPointersMain();
+            });
+
+            // Generate Pointer DOM Element
+            function getPointerElement(type) {
+                const span = document.createElement('span');
+                span.className = 'qa-pointer select-none pr-1.5 inline-flex items-center align-middle pointer-events-none';
+                span.contentEditable = 'false';
+
+                const svgBase = `<svg width="1.2em" height="1.2em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block; vertical-align:text-bottom;">`;
+
+                if (type === 'svg-arrow') span.innerHTML = `${svgBase}<polyline points="9 18 15 12 9 6"></polyline></svg>`;
+                else if (type === 'svg-check') span.innerHTML = `${svgBase}<polyline points="20 6 9 17 4 12"></polyline></svg>`;
+                else if (type === 'svg-star') span.innerHTML = `${svgBase}<polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>`;
+                else if (type === 'svg-diamond') span.innerHTML = `${svgBase}<polygon points="12 2 22 12 12 22 2 12"></polygon></svg>`;
+                else if (type === 'bullet-circle') span.innerHTML = `<span style="font-size:1.2em; line-height:1;">●</span>`;
+                else if (type === 'bullet-ring') span.innerHTML = `<span style="font-size:1.2em; line-height:1;">○</span>`;
+                else if (type === 'bullet-square') span.innerHTML = `<span style="font-size:1.2em; line-height:1;">■</span>`;
+                else if (type === 'bullet-arrow') span.innerHTML = `<span style="font-size:1.2em; line-height:1;">➤</span>`;
+                else if (type === 'bullet-dash') span.innerHTML = `<span style="font-size:1.2em; line-height:1;">—</span>`;
+
+                return span;
+            }
+
+            // Apply Pointer to Selected Text/Line
+            document.querySelectorAll('.pointer-apply-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const pointerType = btn.getAttribute('data-pointer');
+                    let targetBlocks = [];
+
+                    if (hasQaSelection()) {
+                        const sel = window.getSelection();
+                        if (!sel || sel.rangeCount === 0) return;
+
+                        const qInner = document.getElementById('qa-content-inner');
+                        const allParagraphs = Array.from(qInner.querySelectorAll('.qa-entry-block p'));
+                        const range = sel.getRangeAt(0);
+
+                        // Find all P tags that intersect with the current selection
+                        allParagraphs.forEach(p => {
+                            if (sel.containsNode(p, true)) {
+                                targetBlocks.push(p);
+                            }
+                        });
+
+                        // Fallback for direct node selection without full block selection
+                        if (targetBlocks.length === 0) {
+                            let node = range.startContainer;
+                            while (node && node !== qInner) {
+                                if (node.nodeType === 1 && node.tagName === 'P') {
+                                    targetBlocks.push(node);
+                                    break;
+                                }
+                                node = node.parentNode;
+                            }
+                        }
+                    } else if (activeElement && activeElement.tagName === 'DIV' && activeElement.id !== 'canvas-watermark') {
+                        // Canvas Element Selection
+                        targetBlocks.push(activeElement);
+                    } else {
+                        showToast("Select text or tap a text element first.", 'warning');
+                        return;
+                    }
+
+                    if (targetBlocks.length === 0) return;
+
+                    targetBlocks.forEach(block => {
+                        // Remove existing pointers in this block (prevents duplicates and cleans formatting)
+                        const existing = block.querySelectorAll('.qa-pointer');
+                        existing.forEach(el => el.remove());
+
+                        if (pointerType !== 'none') {
+                            // Insert the new pointer exactly at the beginning of the block
+                            const pointerEl = getPointerElement(pointerType);
+                            block.insertBefore(pointerEl, block.firstChild);
+                        }
+                    });
+
+                    // Clear selection to avoid visual clutter after applying pointer
+                    if (window.getSelection) {
+                        window.getSelection().removeAllRanges();
+                    }
+
+                    saveState();
+                    showToast("Pointers Updated", 'success');
+                });
+            });       // ── Read-only Preview: Mobile Keyboard & Focus Block ────────────────
             // QA zone-এ click বা touch করলে keyboard open হবে না
             // কিন্তু long-press বা drag দিয়ে text select করা যাবে
 
