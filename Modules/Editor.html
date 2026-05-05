@@ -471,6 +471,16 @@ span[data-qa-fmt="ul-wavy"]    { text-decoration: underline; text-decoration-sty
     </button>
     <div class="w-px h-8 bg-gray-300 mx-1 shrink-0"></div>
 
+    <!-- None / Remove -->
+    <button class="ul-style-btn submenu-item min-w-[72px] shrink-0 flex flex-col items-center justify-center h-[56px] outline-none text-red-400 hover:text-red-600" data-ul="ul-none">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M6 4v6a6 6 0 0 0 12 0V4"/>
+            <line x1="4" y1="20" x2="20" y2="20" stroke-width="2"/>
+            <line x1="4" y1="4" x2="20" y2="22" stroke="currentColor" stroke-width="1.5" class="text-red-500 opacity-80"/>
+        </svg>
+        <span class="toolbar-text text-inherit">None</span>
+    </button>
+
     <!-- Solid -->
     <button class="ul-style-btn submenu-item min-w-[72px] shrink-0 flex flex-col items-center justify-center h-[56px] outline-none" data-ul="ul-solid">
         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
@@ -2188,60 +2198,93 @@ textStyleBtns[6].addEventListener('click', () => {
 });
 
 // ==========================================
-// Underline Style Submenu — Selection-Based
+// Underline Style Submenu — Selection-Based (Layout Break Fix)
 // ==========================================
 document.querySelectorAll('.ul-style-btn').forEach(btn => {
     btn.addEventListener('click', () => {
-        const ulCommand = btn.getAttribute('data-ul'); // e.g. "ul-solid"
+        const ulCommand = btn.getAttribute('data-ul'); 
 
         if (hasQaSelection()) {
-            // ── QA zone: selected text-এ apply/toggle ──
             const sel = window.getSelection();
             if (!sel || sel.rangeCount === 0) return;
             const range = sel.getRangeAt(0);
             if (range.toString().trim() === '') return;
 
-            // Toggle check: selection শুরুর node-এ same ul-* span আছে কিনা
+            const qInner = document.getElementById('qa-content-inner');
+            const isRemove = (ulCommand === 'ul-none');
+
+            // Toggle check (যদি None না হয়, তাহলে আগের স্টাইল টগল হবে কিনা চেক)
             let checkNode = range.startContainer;
-            let isRemove = false;
-            while (checkNode && checkNode !== document.getElementById('qa-content-inner')) {
-                if (checkNode.nodeType === 1 && checkNode.getAttribute('data-qa-fmt') === ulCommand) {
-                    isRemove = true;
-                    break;
+            let shouldRemove = isRemove;
+            
+            if (!isRemove) {
+                while (checkNode && checkNode !== qInner) {
+                    if (checkNode.nodeType === 1 && checkNode.getAttribute('data-qa-fmt') === ulCommand) {
+                        shouldRemove = true;
+                        break;
+                    }
+                    checkNode = checkNode.parentNode;
                 }
-                checkNode = checkNode.parentNode;
             }
 
+            // Extract contents (এটি DOM থেকে টেক্সট সাময়িকভাবে সরিয়ে নেয়)
             const fragment = range.extractContents();
 
-            // Fragment-এ থাকা যেকোনো ul-* span unwrap করো (clean state)
+            // Fragment-এ থাকা যেকোনো পুরনো ul-* span আনর‍্যাপ (clean) করা
             fragment.querySelectorAll('span[data-qa-fmt^="ul-"]').forEach(s => {
                 const p = s.parentNode;
                 while (s.firstChild) p.insertBefore(s.firstChild, s);
                 p.removeChild(s);
             });
 
-            if (!isRemove) {
-                // Apply: নতুন wrapper দিয়ে wrap করো
+            const tempDiv = document.createElement('div');
+
+            if (!shouldRemove) {
+                // Apply: নির্দিষ্ট আন্ডারলাইন স্টাইল দিয়ে র‍্যাপ করা
                 const wrapper = document.createElement('span');
                 wrapper.setAttribute('data-qa-fmt', ulCommand);
                 wrapper.appendChild(fragment);
-                range.insertNode(wrapper);
+                tempDiv.appendChild(wrapper);
             } else {
-                // Remove: শুধু unwrapped fragment ঢোকাও
-                range.insertNode(fragment);
+                // Remove / None: একটি ক্লিন স্প্যান দিয়ে র‍্যাপ করে text-decoration none করে দেওয়া
+                // যেন আগের সব স্টাইল ক্লিনভাবে ওভাররাইড হয়ে যায়
+                const wrapper = document.createElement('span');
+                wrapper.setAttribute('data-qa-fmt', 'ul-none');
+                wrapper.style.textDecoration = 'none';
+                wrapper.appendChild(fragment);
+                tempDiv.appendChild(wrapper);
             }
 
+            // ── Fix Layout Breaking Issue ──
+            // insertNode() ম্যানুয়ালি ব্লক এলিমেন্ট নেস্ট করে ফেলে। তাই ব্রাউজারের নেটিভ 
+            // insertHTML ব্যবহার করা হলো, যা HTML পার্স করে সঠিক ফ্লো বজায় রাখে।
+            const wasEditable = qInner.contentEditable;
+            qInner.contentEditable = 'true'; // সাময়িকভাবে এডিটেবল করা হলো কমান্ড চালানোর জন্য
+            
+            sel.removeAllRanges();
+            sel.addRange(range);
+            
+            document.execCommand('insertHTML', false, tempDiv.innerHTML);
+            
+            qInner.contentEditable = wasEditable; // দ্রুত আগের অবস্থায় ফিরিয়ে আনা
+
             // Empty span cleanup
-            document.getElementById('qa-content-inner')
-                .querySelectorAll('span[data-qa-fmt^="ul-"]')
-                .forEach(s => { if (!s.textContent) s.remove(); });
+            qInner.querySelectorAll('span[data-qa-fmt^="ul-"]').forEach(s => { 
+                if (!s.textContent) s.remove(); 
+            });
 
             sel.removeAllRanges();
             saveState();
 
         } else if (activeElement && activeElement.tagName === 'DIV' && activeElement.id !== 'canvas-watermark') {
-            // ── Canvas inserted element: পুরো element-এ apply ──
+            if (ulCommand === 'ul-none') {
+                const curLine = activeElement.style.textDecorationLine || '';
+                activeElement.style.textDecorationLine = curLine.replace('underline', '').trim() || 'none';
+                activeElement.style.textDecorationStyle = '';
+                saveState();
+                return;
+            }
+
             const styleMap = {
                 'ul-solid':  { line: 'underline', style: 'solid' },
                 'ul-dotted': { line: 'underline', style: 'dotted' },
@@ -2255,7 +2298,6 @@ document.querySelectorAll('.ul-style-btn').forEach(btn => {
             const curLine  = activeElement.style.textDecorationLine || '';
             const curStyle = activeElement.style.textDecorationStyle || '';
 
-            // Toggle: same style আগে থেকে থাকলে সরাও
             if (curLine.includes('underline') && curStyle === s.style) {
                 activeElement.style.textDecorationLine  = curLine.replace('underline', '').trim() || 'none';
                 activeElement.style.textDecorationStyle = '';
