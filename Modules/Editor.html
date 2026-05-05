@@ -2213,6 +2213,33 @@ effectBtns[1].addEventListener('click', () => {
     let activeConfig = null;
     let renderedCount = 0;
 
+    // ─── Page.html Font Sync: selected font config Editor-এ apply করা ─────
+    function applyPageFontSync(fontConfig) {
+        if (!fontConfig) return;
+        const qInner = document.getElementById('qa-content-inner');
+        if (!qInner) return;
+
+        // qInner-এর base font — answer text inherit করবে
+        qInner.style.fontFamily = fontConfig.subFont;
+
+        // প্রতিটি entry-র p elements-এ সরাসরি apply করা
+        qInner.querySelectorAll('.qa-entry-block p').forEach(function (p) {
+            if (p.style.fontWeight === 'bold') {
+                // Question line → mainFont
+                p.style.fontFamily    = fontConfig.mainFont;
+                p.style.fontWeight    = fontConfig.mainWeight;
+                p.style.fontStyle     = 'normal';
+                p.style.letterSpacing = '';
+            } else {
+                // Answer line → subFont
+                p.style.fontFamily    = fontConfig.subFont;
+                p.style.fontWeight    = fontConfig.subWeight;
+                p.style.fontStyle     = fontConfig.subStyle;
+                p.style.letterSpacing = fontConfig.subLetterSpacing;
+            }
+        });
+    }
+
     // ─── Default fallback config (কোনো template select না করলে) ────────────
     const DEFAULT_CONFIG = {
         slideId: 1,
@@ -2410,6 +2437,12 @@ aEl.appendChild(document.createTextNode(item.a));
         } else if (config && templateActive === 'true') {
             applyTemplateStyles(config);
         }
+
+        // ── Font Sync: page load-এ Page.html-এর saved font apply করা ──
+        try {
+            const savedFont = localStorage.getItem('page_font_config');
+            if (savedFont) applyPageFontSync(JSON.parse(savedFont));
+        } catch (_) {}
     }
 
     // ─── Storage event: multi-tab sync ─────────────────────────────────────────
@@ -2461,6 +2494,11 @@ aEl.appendChild(document.createTextNode(item.a));
             applyTemplateStyles(cfg);
             localStorage.removeItem(getFormattedHtmlKey());
             renderAllEntries(entries, cfg, true);
+            // ── Template change-এর পরও Page font বজায় রাখা ──
+            try {
+                const savedFont = localStorage.getItem('page_font_config');
+                if (savedFont) applyPageFontSync(JSON.parse(savedFont));
+            } catch (_) {}
         }
 
         // Template বন্ধ করা হলো
@@ -2471,6 +2509,19 @@ aEl.appendChild(document.createTextNode(item.a));
             activeConfig = null;
             renderedCount = 0;
             localStorage.removeItem(getFormattedHtmlKey());
+        }
+
+        // ── Real-time Font Sync: Page.html থেকে font change হলো ──
+        if (e.key === 'page_font_config') {
+            if (e.newValue) {
+                try { applyPageFontSync(JSON.parse(e.newValue)); } catch (_) {}
+            } else {
+                // Font reset হলে template-এর original font ফিরিয়ে দাও
+                const cfg = getStoredConfig();
+                if (qInner && cfg) {
+                    qInner.style.fontFamily = cfg.fontFamily || "'Tiro Bangla', serif";
+                }
+            }
         }
     });
 
