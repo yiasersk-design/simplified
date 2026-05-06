@@ -2385,11 +2385,11 @@ textStyleBtns[6].addEventListener('click', () => {
 });
 
 // ==========================================
-// Underline Style Submenu — Selection-Based (Layout Break Fix)
+// Underline Style Submenu — Smart Switch (Split-based, No Nesting)
 // ==========================================
 document.querySelectorAll('.ul-style-btn').forEach(btn => {
     btn.addEventListener('click', () => {
-        const ulCommand = btn.getAttribute('data-ul'); 
+        const ulCommand = btn.getAttribute('data-ul');
 
         if (hasQaSelection()) {
             const sel = window.getSelection();
@@ -2400,66 +2400,130 @@ document.querySelectorAll('.ul-style-btn').forEach(btn => {
             const qInner = document.getElementById('qa-content-inner');
             const isRemove = (ulCommand === 'ul-none');
 
-            // Toggle check (যদি None না হয়, তাহলে আগের স্টাইল টগল হবে কিনা চেক)
-            let checkNode = range.startContainer;
-            let shouldRemove = isRemove;
-            
-            if (!isRemove) {
-                while (checkNode && checkNode !== qInner) {
-                    if (checkNode.nodeType === 1 && checkNode.getAttribute('data-qa-fmt') === ulCommand) {
-                        shouldRemove = true;
+            // ── STEP 1: Selection-এর start container থেকে ul-* ancestor খোঁজা ──
+            // এটি detect করে যে selection কোনো existing ul-* span-এর ভেতরে আছে কিনা
+            let ulWrapper = null;
+            {
+                let node = range.startContainer;
+                if (node.nodeType === 3) node = node.parentNode;
+                while (node && node !== qInner) {
+                    if (
+                        node.nodeType === 1 &&
+                        node.getAttribute &&
+                        node.getAttribute('data-qa-fmt') &&
+                        node.getAttribute('data-qa-fmt').startsWith('ul-')
+                    ) {
+                        ulWrapper = node;
                         break;
                     }
-                    checkNode = checkNode.parentNode;
+                    node = node.parentNode;
                 }
             }
 
-            // Extract contents (এটি DOM থেকে টেক্সট সাময়িকভাবে সরিয়ে নেয়)
+            // ── STEP 2: Toggle check ──
+            // একই style-এ আবার click করলে remove হবে (toggle off)
+            // ভিন্ন style-এ click করলে switch হবে (smart replace)
+            let shouldRemove = isRemove;
+            if (!isRemove && ulWrapper && ulWrapper.getAttribute('data-qa-fmt') === ulCommand) {
+                shouldRemove = true; // Same style → toggle off
+            }
+
+            // ── STEP 3: Selected content extract করা ──
             const fragment = range.extractContents();
 
-            // Fragment-এ থাকা যেকোনো পুরনো ul-* span আনর‍্যাপ (clean) করা
+            // Fragment-এর ভেতরে কোনো ul-* span থাকলে clean করা
             fragment.querySelectorAll('span[data-qa-fmt^="ul-"]').forEach(s => {
                 const p = s.parentNode;
                 while (s.firstChild) p.insertBefore(s.firstChild, s);
                 p.removeChild(s);
             });
 
-            const tempDiv = document.createElement('div');
-
+            // ── STEP 4: নতুন wrapper span তৈরি করা ──
+            const newWrapper = document.createElement('span');
             if (!shouldRemove) {
-                // Apply: নির্দিষ্ট আন্ডারলাইন স্টাইল দিয়ে র‍্যাপ করা
-                const wrapper = document.createElement('span');
-                wrapper.setAttribute('data-qa-fmt', ulCommand);
-                wrapper.appendChild(fragment);
-                tempDiv.appendChild(wrapper);
+                newWrapper.setAttribute('data-qa-fmt', ulCommand); // নতুন style apply
             } else {
-                // Remove / None: একটি ক্লিন স্প্যান দিয়ে র‍্যাপ করে text-decoration none করে দেওয়া
-                // যেন আগের সব স্টাইল ক্লিনভাবে ওভাররাইড হয়ে যায়
-                const wrapper = document.createElement('span');
-                wrapper.setAttribute('data-qa-fmt', 'ul-none');
-                wrapper.style.textDecoration = 'none';
-                wrapper.appendChild(fragment);
-                tempDiv.appendChild(wrapper);
+                newWrapper.setAttribute('data-qa-fmt', 'ul-none'); // underline remove
+                newWrapper.style.textDecoration = 'none';
+            }
+            newWrapper.appendChild(fragment);
+
+            // ── STEP 5: Insert strategy — ul-* ancestor থাকলে SPLIT, না থাকলে DOM Insert ──
+            if (ulWrapper) {
+                // Selection কোনো ul-* span-এর ভেতরে ছিল।
+                // Solution: সেই span-কে insertion point-এ split করে নতুন content ঢোকানো।
+                // এতে কোনো nesting হয় না, pre/post content নিজ নিজ style-এ থাকে।
+
+                const originalFmt = ulWrapper.getAttribute('data-qa-fmt');
+
+                // extractContents()-এর পরে collapsed range এখন ulWrapper-এর ভেতরে আছে।
+                // Insertion point থেকে ulWrapper-এর শেষ পর্যন্ত content extract (post-content)।
+                const afterRange = document.createRange();
+                afterRange.setStart(range.startContainer, range.startOffset);
+                afterRange.setEnd(ulWrapper, ulWrapper.childNodes.length);
+                const afterFragment = afterRange.extractContents();
+                // এখন ulWrapper-এ শুধু pre-content আছে (selection-এর আগের অংশ)।
+
+                const parent   = ulWrapper.parentNode;
+                const nextSib  = ulWrapper.nextSibling;
+
+                // নতুন styled content insert করো (ulWrapper-এর পরে, nextSib-এর আগে)
+                parent.insertBefore(newWrapper, nextSib);
+
+                // Post-content থাকলে পুরনো style-এ একটি নতুন span বানিয়ে insert করো
+                if (afterFragment.textContent) {
+                    const postSpan = document.createElement('span');
+                    postSpan.setAttribute('data-qa-fmt', originalFmt);
+                    postSpan.appendChild(afterFragment);
+                    parent.insertBefore(postSpan, nextSib);
+                }
+
+            } else {
+                // কোনো ul-* ancestor নেই — DOM Manipulation ব্যবহার করা
+                // (execCommand ব্যবহার করা হচ্ছে না, কারণ end-of-node এ এটি parent block-এর style modify করে ফেলে)
+
+                // Safety check: যদি selection-এর ভেতর <p> বা <div> থাকে (Multi-line selection)
+                const hasBlockElements = Array.from(newWrapper.childNodes).some(
+                    node => node.nodeType === 1 && (node.tagName === 'P' || node.tagName === 'DIV' || node.classList.contains('qa-entry-block'))
+                );
+
+                if (hasBlockElements) {
+                    // Block elements থাকলে <span>-এর ভেতর <p> ঢোকানো invalid HTML.
+                    // তাই প্রতিটা block-এর ভেতরের text-কে আলাদাভাবে <span> দিয়ে wrap করতে হবে।
+                    const docFrag = document.createDocumentFragment();
+                    while (newWrapper.firstChild) {
+                        const child = newWrapper.firstChild;
+                        if (child.nodeType === 1 && (child.tagName === 'P' || child.tagName === 'DIV' || child.classList.contains('qa-entry-block'))) {
+                            const innerSpan = document.createElement('span');
+                            if (!shouldRemove) {
+                                innerSpan.setAttribute('data-qa-fmt', ulCommand);
+                            } else {
+                                innerSpan.setAttribute('data-qa-fmt', 'ul-none');
+                                innerSpan.style.textDecoration = 'none';
+                            }
+                            
+                            while (child.firstChild) {
+                                innerSpan.appendChild(child.firstChild);
+                            }
+                            child.appendChild(innerSpan);
+                            docFrag.appendChild(child);
+                        } else {
+                            docFrag.appendChild(child);
+                        }
+                    }
+                    range.insertNode(docFrag);
+                } else {
+                    // Selection শুধুমাত্র text / inline, সরাসরি insert করা safe এবং accurate
+                    range.insertNode(newWrapper);
+                }
             }
 
-            // ── Fix Layout Breaking Issue ──
-            // insertNode() ম্যানুয়ালি ব্লক এলিমেন্ট নেস্ট করে ফেলে। তাই ব্রাউজারের নেটিভ 
-            // insertHTML ব্যবহার করা হলো, যা HTML পার্স করে সঠিক ফ্লো বজায় রাখে।
-            const wasEditable = qInner.contentEditable;
-            qInner.contentEditable = 'true'; // সাময়িকভাবে এডিটেবল করা হলো কমান্ড চালানোর জন্য
-            
-            sel.removeAllRanges();
-            sel.addRange(range);
-            
-            document.execCommand('insertHTML', false, tempDiv.innerHTML);
-            
-            qInner.contentEditable = wasEditable; // দ্রুত আগের অবস্থায় ফিরিয়ে আনা
-
-            // Empty span cleanup
-            qInner.querySelectorAll('span[data-qa-fmt^="ul-"]').forEach(s => { 
-                if (!s.textContent) s.remove(); 
+            // ── STEP 6: Empty ul-* span cleanup ──
+            qInner.querySelectorAll('span[data-qa-fmt^="ul-"]').forEach(s => {
+                if (!s.textContent) s.remove();
             });
 
+            // Clear selection and save state
             sel.removeAllRanges();
             saveState();
 
@@ -2486,9 +2550,11 @@ document.querySelectorAll('.ul-style-btn').forEach(btn => {
             const curStyle = activeElement.style.textDecorationStyle || '';
 
             if (curLine.includes('underline') && curStyle === s.style) {
+                // Same style → toggle off
                 activeElement.style.textDecorationLine  = curLine.replace('underline', '').trim() || 'none';
                 activeElement.style.textDecorationStyle = '';
             } else {
+                // Different style → direct switch (one click replace)
                 activeElement.style.textDecorationLine  = curLine.includes('underline')
                     ? curLine
                     : (curLine === 'none' ? 'underline' : curLine + ' underline').trim();
