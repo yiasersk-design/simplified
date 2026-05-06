@@ -551,7 +551,7 @@ function setupChatContextMenu() {
                 let newTitle = prompt("Rename note:", session.title);
                 if(newTitle && newTitle.trim() !== "") {
                     session.title = newTitle.trim();
-                    localStorage.setItem('metaAINotes_sessions', JSON.stringify(chatSessions));
+                    localStorage.setItem('aiNoteMaker_sessions', JSON.stringify(chatSessions));
                     updateSidebarList();
                     window.showToast('Renamed successfully', 'success');
                 }
@@ -569,7 +569,7 @@ function setupChatContextMenu() {
             if (sessionIndex !== -1) {
                 let deletedId = contextActiveSessionId;
                 chatSessions.splice(sessionIndex, 1);
-                localStorage.setItem('metaAINotes_sessions', JSON.stringify(chatSessions));
+                localStorage.setItem('aiNoteMaker_sessions', JSON.stringify(chatSessions));
                 window.showToast('Note deleted successfully', 'error');
                 
                 // === EDITOR SYNC ▶ Delete হওয়া session এর ডাটা মুছে ফেলা ===
