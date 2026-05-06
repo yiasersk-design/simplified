@@ -3138,7 +3138,27 @@ effectBtns[1].addEventListener('click', () => {
 
         const s = qInner.style;
         s.fontFamily    = config.fontFamily   || "'Tiro Bangla', serif";
-        s.fontSize      = config.fontSize     || '7.5px';
+        
+        // ── 1. Smart Layout-Based Font Size System ──
+        if (config.layout === 'double') {
+            // Two-column mode active হলে content fit এবং optimal readability-এর জন্য default size 7px
+            s.fontSize = '7px';
+        } else {
+            // Single column-এ original default বা user-defined size restore হবে
+            s.fontSize = config.fontSize || '7.5px';
+        }
+
+        // Layout পরিবর্তনের সময় আগের কোনো inline font-size override থাকলে তা clear করে দেওয়া
+        // (যাতে Two-Column-এর 7px rule ঠিকমতো priority পায় এবং text structure break না হয়)
+        qInner.querySelectorAll('span[style*="font-size"]').forEach(span => {
+            span.style.fontSize = '';
+        });
+        qInner.querySelectorAll('span[data-qa-fmt="fontSize"]').forEach(span => {
+            const parent = span.parentNode;
+            while (span.firstChild) parent.insertBefore(span.firstChild, span);
+            parent.removeChild(span);
+        });
+
         s.textAlign     = config.textAlign    || 'justify';
         s.lineHeight    = config.lineHeight   || '1.25';
         s.paddingTop    = config.paddingTop   || '2.5rem';
@@ -3151,6 +3171,7 @@ effectBtns[1].addEventListener('click', () => {
         s.height        = '100%';
         s.overflow      = 'hidden';
 
+        // ── 2. Column Structure Setting ──
         if (config.layout === 'double') {
             s.display      = 'block';
             s.columnCount  = '2';
@@ -3158,12 +3179,14 @@ effectBtns[1].addEventListener('click', () => {
             s.columnFill   = 'auto';
             s.flexDirection = '';
             s.gap           = '';
+            qInner.classList.add('layout-double'); // Add structural class
         } else {
             s.display       = 'flex';
             s.flexDirection = 'column';
             s.gap           = config.gap || '4px';
             s.columnCount   = '';
             s.columnGap     = '';
+            qInner.classList.remove('layout-double'); // Remove structural class
         }
 
         const existingDivider = qZone.querySelector('.qa-column-divider');
