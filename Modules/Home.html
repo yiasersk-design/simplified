@@ -108,6 +108,56 @@
         .toggle-btn svg { transition: none; }
         .toggle-btn#btn-notebook svg { fill: currentColor; }
         .toggle-btn#btn-meta-ai svg { stroke: currentColor; fill: none; }
+
+        /* Header Delete Button */
+        .delete-btn-header {
+            position: relative;
+            padding: 0.2em;
+            border: none;
+            background: transparent;
+            cursor: pointer;
+            font-size: 1em;
+            transition: transform 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+        }
+        .delete-btn-header:hover {
+            background: #f0fdf4;
+        }
+        .trash-svg-header {
+            width: 2.2em;
+            height: 2.2em;
+            transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+            filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.1));
+            overflow: visible;
+        }
+        #lid-group-header {
+            transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+        .delete-btn-header:hover #lid-group-header {
+            transform: rotate(-28deg) translateY(2px);
+        }
+        .delete-btn-header:active #lid-group-header {
+            transform: rotate(-12deg) scale(0.98);
+        }
+        .delete-btn-header:hover .trash-svg-header {
+            transform: scale(1.08) rotate(3deg);
+        }
+        .delete-btn-header:active .trash-svg-header {
+            transform: scale(0.96) rotate(-1deg);
+        }
+        .delete-btn-header.snap-open #lid-group-header {
+            animation: lidSnapOpen 0.35s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+        }
+        @keyframes lidSnapOpen {
+            0%   { transform: rotate(0deg) translateY(0px); }
+            40%  { transform: rotate(-32deg) translateY(3px); }
+            100% { transform: rotate(0deg) translateY(0px); }
+        }
     </style>
 </head>
 <body class="bg-gray-100 flex items-center justify-center w-full h-[100dvh] overflow-hidden overscroll-none">
@@ -128,7 +178,18 @@
                     </label>
                 </div>
             </div>
-            <div class="flex items-center gap-2">
+            <div class="flex items-center gap-1">
+                <button onclick="deleteCurrentNote()" class="delete-btn-header" aria-label="Delete current note">
+                    <svg class="trash-svg-header" viewBox="0 -10 64 74" xmlns="http://www.w3.org/2000/svg">
+                        <g id="trash-can-header">
+                            <rect x="16" y="24" width="32" height="30" rx="3" ry="3" fill="#16a34a" />
+                            <g transform-origin="12 18" id="lid-group-header">
+                                <rect x="12" y="12" width="40" height="6" rx="2" ry="2" fill="#15803d" />
+                                <rect x="26" y="8" width="12" height="4" rx="2" ry="2" fill="#15803d" />
+                            </g>
+                        </g>
+                    </svg>
+                </button>
                 <button onclick="createNewSession()" class="w-10 h-10 rounded-full bg-blue-50 flex items-center justify-center text-blue-600 hover:bg-blue-100 transition-colors focus:outline-none">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"></path></svg>
                 </button>
@@ -876,28 +937,21 @@ window.createNewSession = function() {
 
  
     window.deleteCurrentNote = function() {
-    
     if (!currentSessionId) return;
 
-    // ইউজারকে কনফার্ম করা
-    if (!confirm("Are you sure you want to delete this note?")) return;
+    const btn = document.querySelector('.delete-btn-header');
+    if (btn) {
+        btn.classList.add('snap-open');
+        setTimeout(() => btn.classList.remove('snap-open'), 350);
+    }
 
-    // বর্তমান সেশনের ইনডেক্স খুঁজে বের করা
     const sessionIndex = chatSessions.findIndex(s => s.id === currentSessionId);
-    
+
     if (sessionIndex !== -1) {
-        // অ্যারে থেকে সেশনটি রিমুভ করা
         chatSessions.splice(sessionIndex, 1);
-        
-        // লোকাল স্টোরেজ আপডেট করা
         localStorage.setItem('metaAINotes_sessions', JSON.stringify(chatSessions));
-        
-        // ডিলিট হওয়ার মেসেজ দেখানো
-        window.showToast('Note deleted successfully', 'error');
-        
-        // যদি আরও নোট থাকে, তবে অন্য একটি নোট ওপেন করা। আর না থাকলে নতুন নোট তৈরি করা।
+
         if (chatSessions.length > 0) {
-            // ডিলিট করার পর তার আগের নোটটি ওপেন হবে
             const nextIndex = sessionIndex > 0 ? sessionIndex - 1 : 0;
             window.loadSession(chatSessions[nextIndex].id, true);
         } else {
