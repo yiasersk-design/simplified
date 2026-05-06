@@ -2854,38 +2854,37 @@ effectBtns[1].addEventListener('click', () => {
                 hostBlock = hostBlock.parentNode;
             }
 
-            // পুরনো pointer ও তার <br> সরাও (শুধু সেই block থেকে)
-            if (hostBlock && hostBlock !== qInner) {
-                hostBlock.querySelectorAll('.qa-pointer').forEach(el => el.remove());
-                hostBlock.querySelectorAll('br.qa-pointer-br').forEach(el => el.remove());
-            }
+            // ── পুরনো pointer সরানো হচ্ছে না — multiple pointer support-এর জন্য ──
+            // None button-এ click করলে তখন সব সরাবে (নিচে none handler দেখো)
 
             // ── Pointer insert করা: selection start-এ ──
-            // যদি selection, block-এর একদম শুরুতে না হয়, তাহলে আগে <br> দাও
-            // এতে pointer আগের text থেকে নতুন line-এ যাবে এবং পরের text-ও
-            // নিজে নিজে wrap হয়ে pointer-এর পাশ থেকে শুরু হবে
             const pointerEl = getPointerElement(pointerType);
 
-            // block-এর শুরুতে কোনো text আছে কিনা চেক করো
+            // block-এর শুরুতে কোনো text/pointer আছে কিনা চেক করো
             // (insertionRange-এর আগে কোনো non-whitespace content আছে কিনা)
             let isAtBlockStart = false;
             if (hostBlock && hostBlock !== qInner) {
                 const beforeRange = document.createRange();
                 beforeRange.setStart(hostBlock, 0);
                 beforeRange.setEnd(activeRange.startContainer, activeRange.startOffset);
-                const textBefore = beforeRange.toString();
-                isAtBlockStart = textBefore.trim() === '';
+                // pointer span ও br বাদ দিয়ে শুধু text দেখো
+                const textBefore = beforeRange.toString().replace(/\s/g, '');
+                // আগে কোনো qa-pointer আছে কিনাও দেখো
+                const hasPointerBefore = (() => {
+                    const tempFrag = beforeRange.cloneContents();
+                    return tempFrag.querySelector('.qa-pointer') !== null;
+                })();
+                isAtBlockStart = textBefore === '' && !hasPointerBefore;
             }
 
             if (isAtBlockStart) {
                 // Block-এর একদম শুরুতে — সরাসরি insert, <br> দরকার নেই
                 insertionRange.insertNode(pointerEl);
             } else {
-                // মাঝখানে বা পরে — আগে <br> দাও যাতে pointer নতুন line-এ যায়
+                // মাঝখানে বা পরে — pointer-এর আগে <br> দাও যাতে নতুন line-এ যায়
                 const br = document.createElement('br');
-                br.className = 'qa-pointer-br'; // remove করার সময় identify করতে
+                br.className = 'qa-pointer-br';
                 insertionRange.insertNode(pointerEl);
-                // pointerEl-এর ঠিক আগে <br> insert করো
                 pointerEl.parentNode.insertBefore(br, pointerEl);
             }
 
