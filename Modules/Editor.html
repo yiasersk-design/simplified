@@ -2777,124 +2777,146 @@ effectBtns[1].addEventListener('click', () => {
 
             document.querySelectorAll('.pointer-apply-btn').forEach(btn => {
 
-                // mousedown-এ selection snapshot নেওয়া (desktop)
-                btn.addEventListener('mousedown', () => {
-                    if (hasQaSelection()) {
-                        const sel = window.getSelection();
-                        if (sel && sel.rangeCount > 0) {
-                            _savedPointerRange = sel.getRangeAt(0).cloneRange();
-                        }
-                    } else {
-                        _savedPointerRange = null;
+    // mousedown/touchstart-এ selection snapshot নেওয়া
+    // কারণ: button-এ click হওয়ার আগেই browser selection clear করে ফেলে
+    btn.addEventListener('mousedown', () => {
+        if (hasQaSelection()) {
+            const sel = window.getSelection();
+            if (sel && sel.rangeCount > 0) {
+                _savedPointerRange = sel.getRangeAt(0).cloneRange();
+            }
+        } else {
+            _savedPointerRange = null;
+        }
+    });
+
+    btn.addEventListener('touchstart', () => {
+        if (hasQaSelection()) {
+            const sel = window.getSelection();
+            if (sel && sel.rangeCount > 0) {
+                _savedPointerRange = sel.getRangeAt(0).cloneRange();
+            }
+        } else {
+            _savedPointerRange = null;
+        }
+    }, { passive: true });
+
+    btn.addEventListener('click', () => {
+        const pointerType = btn.getAttribute('data-pointer');
+        const qInner = document.getElementById('qa-content-inner');
+
+        // ── Path 1 & 2: QA zone-এ selection-based insertion (প্রধান path) ──
+        const activeRange = _savedPointerRange || (() => {
+            if (hasQaSelection()) {
+                const sel = window.getSelection();
+                return (sel && sel.rangeCount > 0) ? sel.getRangeAt(0).cloneRange() : null;
+            }
+            return null;
+        })();
+        _savedPointerRange = null;
+
+        if (activeRange && qInner && qInner.contains(activeRange.startContainer)) {
+
+            if (pointerType === 'none') {
+                // None: selected text-এর block থেকে সব pointer ও তাদের <br> সরাও
+                let container = activeRange.startContainer;
+                while (container && container !== qInner) {
+                    if (container.nodeType === 1 && (container.tagName === 'P' || container.classList?.contains('qa-entry-block'))) {
+                        // pointer span সরাও
+                        container.querySelectorAll('.qa-pointer').forEach(el => el.remove());
+                        // pointer-এর সাথে insert হওয়া <br> সরাও
+                        container.querySelectorAll('br.qa-pointer-br').forEach(el => el.remove());
+                        break;
                     }
-                });
+                    container = container.parentNode;
+                }
+                if (!container || container === qInner) {
+                    qInner.querySelectorAll('.qa-pointer').forEach(el => el.remove());
+                    qInner.querySelectorAll('br.qa-pointer-br').forEach(el => el.remove());
+                }
+                window.getSelection()?.removeAllRanges();
+                saveState();
+                showToast("Pointer Removed ✓", 'success');
+                return;
+            }
 
-                // touchstart-এ selection snapshot নেওয়া (mobile)
-                btn.addEventListener('touchstart', () => {
-                    if (hasQaSelection()) {
-                        const sel = window.getSelection();
-                        if (sel && sel.rangeCount > 0) {
-                            _savedPointerRange = sel.getRangeAt(0).cloneRange();
-                        }
-                    } else {
-                        _savedPointerRange = null;
-                    }
-                }, { passive: true });
+            // ── Selection start point বের করা ──
+            const insertionRange = document.createRange();
+            insertionRange.setStart(activeRange.startContainer, activeRange.startOffset);
+            insertionRange.collapse(true);
 
-                btn.addEventListener('click', () => {
-                    const pointerType = btn.getAttribute('data-pointer');
-                    let targetBlocks = [];
-                    const qInner = document.getElementById('qa-content-inner');
+            // যে <p> বা block-এ insert হবে সেটি বের করা
+            let hostBlock = activeRange.startContainer;
+            while (hostBlock && hostBlock !== qInner) {
+                if (hostBlock.nodeType === 1 && (hostBlock.tagName === 'P' || hostBlock.classList?.contains('qa-entry-block'))) {
+                    break;
+                }
+                hostBlock = hostBlock.parentNode;
+            }
 
-                    // ── Path 1: saved range থেকে কাজ করবে (প্রধান path) ──
-                    if (_savedPointerRange && qInner && qInner.contains(_savedPointerRange.startContainer)) {
-                        const range = _savedPointerRange;
-                        const allParagraphs = Array.from(qInner.querySelectorAll('.qa-entry-block p'));
+            // পুরনো pointer ও তার <br> সরাও (শুধু সেই block থেকে)
+            if (hostBlock && hostBlock !== qInner) {
+                hostBlock.querySelectorAll('.qa-pointer').forEach(el => el.remove());
+                hostBlock.querySelectorAll('br.qa-pointer-br').forEach(el => el.remove());
+            }
 
-                        // startContainer থেকে উপরে উঠে <p> খোঁজো
-                        let node = range.startContainer;
-                        while (node && node !== qInner) {
-                            if (node.nodeType === 1 && node.tagName === 'P') {
-                                targetBlocks.push(node);
-                                break;
-                            }
-                            node = node.parentNode;
-                        }
+            // ── Pointer insert করা: selection start-এ ──
+            // যদি selection, block-এর একদম শুরুতে না হয়, তাহলে আগে <br> দাও
+            // এতে pointer আগের text থেকে নতুন line-এ যাবে এবং পরের text-ও
+            // নিজে নিজে wrap হয়ে pointer-এর পাশ থেকে শুরু হবে
+            const pointerEl = getPointerElement(pointerType);
 
-                        // multi-line selection: সব intersecting <p> খোঁজো
-                        if (targetBlocks.length === 0) {
-                            allParagraphs.forEach(p => {
-                                const pRange = document.createRange();
-                                pRange.selectNodeContents(p);
-                                if (
-                                    range.compareBoundaryPoints(Range.END_TO_START, pRange) <= 0 &&
-                                    range.compareBoundaryPoints(Range.START_TO_END, pRange) >= 0
-                                ) {
-                                    targetBlocks.push(p);
-                                }
-                            });
-                        }
+            // block-এর শুরুতে কোনো text আছে কিনা চেক করো
+            // (insertionRange-এর আগে কোনো non-whitespace content আছে কিনা)
+            let isAtBlockStart = false;
+            if (hostBlock && hostBlock !== qInner) {
+                const beforeRange = document.createRange();
+                beforeRange.setStart(hostBlock, 0);
+                beforeRange.setEnd(activeRange.startContainer, activeRange.startOffset);
+                const textBefore = beforeRange.toString();
+                isAtBlockStart = textBefore.trim() === '';
+            }
 
-                        _savedPointerRange = null;
+            if (isAtBlockStart) {
+                // Block-এর একদম শুরুতে — সরাসরি insert, <br> দরকার নেই
+                insertionRange.insertNode(pointerEl);
+            } else {
+                // মাঝখানে বা পরে — আগে <br> দাও যাতে pointer নতুন line-এ যায়
+                const br = document.createElement('br');
+                br.className = 'qa-pointer-br'; // remove করার সময় identify করতে
+                insertionRange.insertNode(pointerEl);
+                // pointerEl-এর ঠিক আগে <br> insert করো
+                pointerEl.parentNode.insertBefore(br, pointerEl);
+            }
 
-                    // ── Path 2: live selection এখনো আছে (fallback) ──
-                    } else if (hasQaSelection()) {
-                        const sel = window.getSelection();
-                        if (sel && sel.rangeCount > 0) {
-                            const range = sel.getRangeAt(0);
-                            const allParagraphs = Array.from(qInner.querySelectorAll('.qa-entry-block p'));
-                            let node = range.startContainer;
-                            while (node && node !== qInner) {
-                                if (node.nodeType === 1 && node.tagName === 'P') {
-                                    targetBlocks.push(node);
-                                    break;
-                                }
-                                node = node.parentNode;
-                            }
-                            if (targetBlocks.length === 0) {
-                                allParagraphs.forEach(p => {
-                                    if (sel.containsNode(p, true)) targetBlocks.push(p);
-                                });
-                            }
-                        }
+            window.getSelection()?.removeAllRanges();
+            saveState();
+            showToast("Pointer Applied ✓", 'success');
+            return;
+        }
 
-                    // ── Path 3: Canvas inserted element ──
-                    } else if (activeElement && activeElement.tagName === 'DIV' && activeElement.id !== 'canvas-watermark') {
-                        targetBlocks.push(activeElement);
+        // ── Path 3: Canvas inserted element (QA zone-এর বাইরে) ──
+        if (activeElement && activeElement.tagName === 'DIV' && activeElement.id !== 'canvas-watermark') {
+            activeElement.querySelectorAll('.qa-pointer').forEach(el => el.remove());
 
-                    // ── Path 4: কিছুই নেই ──
-                    } else {
-                        showToast("প্রথমে text-এর একটি line select করুন।", 'warning');
-                        return;
-                    }
+            if (pointerType !== 'none') {
+                const pointerEl = getPointerElement(pointerType);
+                if (activeElement.firstChild) {
+                    activeElement.insertBefore(pointerEl, activeElement.firstChild);
+                } else {
+                    activeElement.appendChild(pointerEl);
+                }
+            }
 
-                    if (targetBlocks.length === 0) {
-                        showToast("Paragraph খুঁজে পাওয়া যায়নি, আবার select করুন।", 'warning');
-                        return;
-                    }
+            saveState();
+            showToast("Pointer Applied ✓", 'success');
+            return;
+        }
 
-                    targetBlocks.forEach(block => {
-                        // আগের pointer সরাও
-                        block.querySelectorAll('.qa-pointer').forEach(el => el.remove());
-
-                        if (pointerType !== 'none') {
-                            const pointerEl = getPointerElement(pointerType);
-                            if (block.firstChild) {
-                                block.insertBefore(pointerEl, block.firstChild);
-                            } else {
-                                block.appendChild(pointerEl);
-                            }
-                        }
-                    });
-
-                    if (window.getSelection) {
-                        window.getSelection().removeAllRanges();
-                    }
-
-                    saveState();
-                    showToast("Pointer Applied ✓", 'success');
-                });
-            });  // ── Read-only Preview: Mobile Keyboard & Focus Block ────────────────
+        // ── Path 4: কিছুই select করা নেই ──
+        showToast("প্রথমে text select করুন, তারপর pointer apply করুন।", 'warning');
+    });
+});  // ── Read-only Preview: Mobile Keyboard & Focus Block ────────────────
             // QA zone-এ click বা touch করলে keyboard open হবে না
             // কিন্তু long-press বা drag দিয়ে text select করা যাবে
 
