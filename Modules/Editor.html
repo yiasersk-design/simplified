@@ -9,7 +9,7 @@
     <!-- HTML2Canvas for Download Feature -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     
-    <style> /* ===== Export Modal Pushable Button Styles ===== */
+    <style> /* ================= EXPORT MODAL 3D BUTTON STYLES ================= */
 .pushable {
     position: relative;
     background: transparent;
@@ -49,10 +49,19 @@
     height: 100%;
     border: 1px solid #6ee7b7;
 }
-.pushable:hover { filter: brightness(105%); }
-.pushable:hover .front { transform: translateY(-6px); }
-.pushable:active .front { transform: translateY(-1px); transition: transform 34ms; }
-.pushable:focus:not(:focus-visible) { outline: none; } /* ===== Underline Style Spans ===== */
+.pushable:hover {
+    filter: brightness(105%);
+}
+.pushable:hover .front {
+    transform: translateY(-6px);
+}
+.pushable:active .front {
+    transform: translateY(-1px);
+    transition: transform 34ms;
+}
+.pushable:focus:not(:focus-visible) {
+    outline: none;
+} /* ===== Underline Style Spans ===== */
 span[data-qa-fmt^="ul-"] {
     display: inline;
     -webkit-box-decoration-break: clone;
@@ -1781,16 +1790,51 @@ toolboxBtns.forEach(btn => {
         });
 
             // ==========================================
-            // EXPORT POPUP & DOWNLOAD LOGIC (NEW)
+            // NEW EXPORT MODAL LOGIC (Download & Share)
             // ==========================================
+            const btnExport = document.getElementById('btn-export');
+            const exportModalOverlay = document.getElementById('export-modal-overlay');
+            const exportModalCard = document.getElementById('export-modal-card');
+            const btnCloseExportModal = document.getElementById('btn-close-export-modal');
+            
+            // 1. Open Modal with Animation
+            function openExportModal() {
+                setActive(null); // Deselect elements before exporting
+                exportModalOverlay.classList.remove('hidden');
+                exportModalOverlay.classList.add('flex');
+                
+                // Trigger reflow for smooth animation
+                void exportModalOverlay.offsetWidth;
+                exportModalOverlay.classList.replace('opacity-0', 'opacity-100');
+                exportModalCard.classList.replace('scale-95', 'scale-100');
+            }
 
-            // 1. Dropdown Utility (Global scope for inline onclick use)
+            // 2. Close Modal with Animation
+            function closeExportModal() {
+                exportModalOverlay.classList.replace('opacity-100', 'opacity-0');
+                exportModalCard.classList.replace('scale-100', 'scale-95');
+                setTimeout(() => {
+                    exportModalOverlay.classList.remove('flex');
+                    exportModalOverlay.classList.add('hidden');
+                }, 300); // match duration-300
+            }
+
+            btnExport.addEventListener('click', openExportModal);
+            btnCloseExportModal.addEventListener('click', closeExportModal);
+            
+            // Close on overlay click (Background blur click)
+            exportModalOverlay.addEventListener('click', (e) => {
+                if (e.target === exportModalOverlay) {
+                    closeExportModal();
+                }
+            });
+
+            // 3. Dropdown Handlers inside Modal
             window.toggleExportDropdown = function(dropdownId) {
                 document.querySelectorAll('.export-dropdown-menu').forEach(menu => {
                     if (menu.id !== dropdownId) menu.classList.add('hidden');
                 });
-                const dropdown = document.getElementById(dropdownId);
-                if (dropdown) dropdown.classList.toggle('hidden');
+                document.getElementById(dropdownId).classList.toggle('hidden');
             };
 
             window.selectExportOption = function(type, value) {
@@ -1799,120 +1843,109 @@ toolboxBtns.forEach(btn => {
             };
 
             document.addEventListener('click', function(event) {
-                const isClickInside = event.target.closest('.export-dropdown-container');
-                if (!isClickInside) {
+                if (!event.target.closest('.dropdown-container')) {
                     document.querySelectorAll('.export-dropdown-menu').forEach(menu => {
                         menu.classList.add('hidden');
                     });
                 }
             });
 
-            // 2. Export Panel Open/Close Logic
-            const exportPanel = document.getElementById('export-panel');
-            const exportBackdrop = document.getElementById('export-backdrop');
-            const exportContent = document.getElementById('export-content');
-            const closeExportPanelBtn = document.getElementById('close-export-panel');
-            const btnExport = document.getElementById('btn-export'); // Header export button
-
-            function openExportPanel() {
-                exportPanel.classList.remove('pointer-events-none');
-                exportBackdrop.classList.remove('opacity-0', 'pointer-events-none');
-                exportBackdrop.classList.add('opacity-100', 'pointer-events-auto');
-                exportContent.classList.remove('translate-y-full');
-            }
-
-            function closeExportPanel() {
-                exportBackdrop.classList.remove('opacity-100', 'pointer-events-auto');
-                exportBackdrop.classList.add('opacity-0', 'pointer-events-none');
-                exportContent.classList.add('translate-y-full');
-                setTimeout(() => {
-                    exportPanel.classList.add('pointer-events-none');
-                }, 300); // Wait for transition
-            }
-
-            // Bind Header button to open Slide-up Panel
-            btnExport.addEventListener('click', () => {
-                setActive(null); // Deselect any bounding box before export
-                openExportPanel();
-            });
-
-            closeExportPanelBtn.addEventListener('click', closeExportPanel);
-            exportBackdrop.addEventListener('click', closeExportPanel);
-
-            // 3. Core Export Process (html2canvas)
-            function processExport(actionType) {
-                const formatSelection = document.getElementById('format-value').innerText;
-                const qualitySelection = document.getElementById('quality-value').innerText;
+            // 4. Download Execution (SAVE Button)
+            document.getElementById('btn-execute-download').addEventListener('click', () => {
+                const formatText = document.getElementById('format-value').innerText;
+                const qualityText = document.getElementById('quality-value').innerText;
                 
-                // Format config
+                // Check quality multiplier
+                let scaleVal = 2; // Default
+                if (qualityText.includes('x3')) scaleVal = 3;
+                if (qualityText.includes('x1')) scaleVal = 1;
+                
+                // Check MimeType
                 let mimeType = 'image/jpeg';
                 let extension = 'jpg';
-                if (formatSelection.includes('PNG')) {
+                if (formatText.includes('PNG')) {
                     mimeType = 'image/png';
                     extension = 'png';
                 }
-                
-                // Quality config
-                let scale = 2; // High
-                if (qualitySelection.includes('Medium')) scale = 1.5;
-                else if (qualitySelection.includes('Low')) scale = 1;
 
-                const btnId = actionType === 'save' ? 'btn-confirm-export' : 'btn-share-export';
-                const actionBtn = document.getElementById(btnId);
-                const originalContent = actionBtn.innerHTML;
+                closeExportModal(); // Close modal immediately
+                btnExport.classList.add('animate-pulse'); // Loading effect on header
+                showToast("Generating image, please wait...", 'info');
                 
-                // Set Loading UI on Button
-                actionBtn.innerHTML = `<span class="edge"></span><span class="front gap-2"><svg class="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> PROCESSING...</span>`;
+                html2canvas(canvasContainer, { 
+                    useCORS: true, 
+                    allowTaint: true, 
+                    scale: scaleVal,
+                    backgroundColor: mimeType === 'image/png' ? null : '#ffffff' 
+                }).then(canvas => {
+                    const link = document.createElement('a');
+                    link.download = `My-Design-App.${extension}`;
+                    link.href = canvas.toDataURL(mimeType);
+                    link.click();
+                    btnExport.classList.remove('animate-pulse');
+                    showToast("Image exported successfully!", 'success');
+                }).catch(err => {
+                    showToast("Error exporting image!", 'error');
+                    btnExport.classList.remove('animate-pulse');
+                });
+            });
+
+            // 5. Share Execution (SHARE Button)
+            document.getElementById('btn-execute-share').addEventListener('click', () => {
+                const formatText = document.getElementById('format-value').innerText;
+                const qualityText = document.getElementById('quality-value').innerText;
                 
-                // If saving as JPG, force white background 
-                let bgColorOpt = mimeType === 'image/jpeg' ? '#ffffff' : null;
+                let scaleVal = 2;
+                if (qualityText.includes('x3')) scaleVal = 3;
+                if (qualityText.includes('x1')) scaleVal = 1;
+                
+                let mimeType = 'image/jpeg';
+                let extension = 'jpg';
+                if (formatText.includes('PNG')) {
+                    mimeType = 'image/png';
+                    extension = 'png';
+                }
+
+                if (!navigator.share || !navigator.canShare) {
+                    showToast("Sharing is not supported on this browser/device.", 'error');
+                    return;
+                }
+
+                closeExportModal();
+                btnExport.classList.add('animate-pulse');
+                showToast("Preparing image for sharing...", 'info');
 
                 html2canvas(canvasContainer, { 
                     useCORS: true, 
                     allowTaint: true, 
-                    scale: scale,
-                    backgroundColor: bgColorOpt
+                    scale: scaleVal,
+                    backgroundColor: mimeType === 'image/png' ? null : '#ffffff'
                 }).then(canvas => {
-                    if (actionType === 'save') {
-                        // Action: DOWNLOAD TO DEVICE
-                        const link = document.createElement('a');
-                        link.download = `My-Design-App.${extension}`;
-                        link.href = canvas.toDataURL(mimeType, 0.95); // 0.95 Quality for JPEG
-                        link.click();
-                        
-                        actionBtn.innerHTML = originalContent; // Revert Button
-                        showToast("Image saved successfully!", 'success');
-                        closeExportPanel();
-                        
-                    } else {
-                        // Action: SHARE VIA OS NATIVE SHARE
-                        canvas.toBlob((blob) => {
-                            const file = new File([blob], `My-Design-App.${extension}`, { type: mimeType });
-                            actionBtn.innerHTML = originalContent; // Revert Button
-                            
-                            if (navigator.canShare && navigator.canShare({ files: [file] })) {
-                                navigator.share({
+                    canvas.toBlob(async (blob) => {
+                        const file = new File([blob], `Shared-Design.${extension}`, { type: mimeType });
+                        try {
+                            if (navigator.canShare({ files: [file] })) {
+                                await navigator.share({
                                     title: 'My Design',
-                                    files:[file]
-                                }).then(() => {
-                                    closeExportPanel();
-                                }).catch(err => {
-                                    console.log("Share canceled or failed:", err);
+                                    text: 'Check out my new design!',
+                                    files: [file]
                                 });
+                                showToast("Shared successfully!", 'success');
                             } else {
-                                showToast("Direct sharing is not supported on your browser.", 'warning');
+                                showToast("Your system doesn't support sharing files.", 'error');
                             }
-                        }, mimeType, 0.95);
-                    }
+                        } catch (error) {
+                            if (error.name !== 'AbortError') {
+                                showToast("Error sharing image!", 'error');
+                            }
+                        }
+                        btnExport.classList.remove('animate-pulse');
+                    }, mimeType);
                 }).catch(err => {
-                    actionBtn.innerHTML = originalContent;
-                    showToast("Error processing image!", 'error');
+                    showToast("Error preparing image!", 'error');
+                    btnExport.classList.remove('animate-pulse');
                 });
-            }
-
-            // Assign Event Listeners for the Buttons inside Bottom Sheet
-            document.getElementById('btn-confirm-export').addEventListener('click', () => processExport('save'));
-            document.getElementById('btn-share-export').addEventListener('click', () => processExport('share')); 
+            });
 
             // ==========================================
             // 5. Main Toolbar Actions
@@ -3696,95 +3729,107 @@ aEl.appendChild(document.createTextNode(item.a));
                 </button>
             </div>
         </div>
-    </div> <!-- ================= EXPORT SLIDE-UP PANEL ================= -->
-    <div id="export-panel" class="fixed inset-0 z-[200] pointer-events-none flex flex-col justify-end">
-        <!-- Backdrop -->
-        <div id="export-backdrop" class="absolute inset-0 bg-black/40 opacity-0 transition-opacity duration-300 pointer-events-none"></div>
-        <!-- Panel Content -->
-        <div id="export-content" class="relative bg-white w-full max-w-[400px] mx-auto rounded-t-2xl shadow-[0_-5px_15px_rgba(0,0,0,0.1)] transform translate-y-full transition-transform duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] pointer-events-auto flex flex-col pb-[env(safe-area-inset-bottom)]">
-            <!-- Drag Handle Indicator -->
-            <div class="w-full flex justify-center py-3">
-                <div class="w-12 h-1.5 bg-gray-300 rounded-full"></div>
-            </div>
-            <!-- Header -->
-            <div class="px-5 pb-3 flex justify-between items-center border-b border-gray-200">
-                <div>
-                    <h3 class="font-bold text-gray-900 text-lg tracking-tight leading-tight">Export Settings</h3>
+    </div> <!-- ================= EXPORT IMAGE MODAL ================= -->
+    <div id="export-modal-overlay" class="fixed inset-0 z-[9999] hidden items-center justify-center bg-white/60 backdrop-blur-sm transition-opacity duration-300 opacity-0">
+        <!-- Main Modal Card -->
+        <div id="export-modal-card" class="bg-white w-[90%] max-w-[360px] shadow-2xl rounded-xl overflow-visible transform scale-95 transition-transform duration-300 relative border border-gray-100">
+            
+            <!-- Close Button -->
+            <button id="btn-close-export-modal" class="absolute top-3 right-3 text-gray-400 hover:text-gray-700 transition-colors outline-none z-10 p-1 rounded-full hover:bg-gray-100">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+            </button>
+
+            <div class="p-5"> 
+                <!-- Modal Title -->
+                <div class="mb-4 pr-6">
+                    <h1 class="text-lg font-bold text-gray-900 tracking-tight leading-tight">Export Settings</h1>
                     <p class="text-[11px] text-gray-500 mt-0.5">সেভ করার আগে বিস্তারিত কনফিগার করুন।</p>
                 </div>
-                <button id="close-export-panel" class="p-1.5 rounded-full text-gray-500 hover:bg-gray-200 transition-colors outline-none self-start">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
-                </button>
-            </div>
-            
-            <!-- Options Container -->
-            <div class="px-5 py-5 space-y-4">
                 
-                <!-- Format Option -->
-                <div class="export-dropdown-container relative">
-                    <label class="block text-[10px] font-bold text-[#10b981] uppercase tracking-wider mb-1">Image format</label>
-                    <div onclick="toggleExportDropdown('format-dropdown')" class="flex items-center justify-between p-2.5 bg-gray-50 hover:bg-gray-100 border border-gray-200 rounded-lg cursor-pointer transition-colors group">
-                        <div class="flex items-center gap-2.5">
-                            <div class="p-1.5 bg-white rounded-md shadow-sm text-[#10b981] group-hover:scale-105 transition-transform">
-                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+                <!-- Options Container -->
+                <div class="space-y-4 mb-5">
+                    
+                    <!-- Section 1: Image format -->
+                    <div class="dropdown-container relative">
+                        <label class="block text-[10px] font-bold text-emerald-500 uppercase tracking-wider mb-1.5">Image format</label>
+                        <div onclick="toggleExportDropdown('format-dropdown')" class="flex items-center justify-between p-2.5 bg-gray-50 hover:bg-gray-100 border border-gray-200 rounded-lg cursor-pointer transition-colors group">
+                            <div class="flex items-center gap-2.5">
+                                <div class="p-1.5 bg-white rounded-md shadow-sm text-emerald-500 group-hover:scale-105 transition-transform">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                                    </svg>
+                                </div>
+                                <div class="flex flex-col">
+                                    <span class="text-[11px] text-gray-500 font-medium leading-none">Format</span>
+                                    <span id="format-value" class="text-gray-900 font-semibold text-[13px] mt-1">JPG (no transparency)</span>
+                                </div>
                             </div>
-                            <div class="flex flex-col">
-                                <span class="text-[11px] text-gray-500 font-medium leading-none">Format</span>
-                                <span id="format-value" class="text-gray-900 font-semibold text-[13px] mt-0.5">JPG (no transparency)</span>
-                            </div>
+                            <svg class="w-4 h-4 text-gray-400 group-hover:text-gray-700 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                            </svg>
                         </div>
-                        <svg class="w-4 h-4 text-gray-400 group-hover:text-gray-900 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
-                    </div>
-                    <!-- Format Dropdown -->
-                    <div id="format-dropdown" class="export-dropdown-menu hidden absolute bottom-full mb-1 left-0 w-full bg-white border border-gray-200 rounded-lg shadow-xl z-20 overflow-hidden">
-                        <ul class="py-1 text-[13px] text-gray-900 font-medium">
-                            <li onclick="selectExportOption('format', 'JPG (no transparency)')" class="px-4 py-2.5 hover:bg-[#d1fae5] hover:text-[#10b981] cursor-pointer transition-colors">JPG (no transparency)</li>
-                            <li onclick="selectExportOption('format', 'PNG (transparent)')" class="px-4 py-2.5 hover:bg-[#d1fae5] hover:text-[#10b981] cursor-pointer transition-colors">PNG (transparent)</li>
-                        </ul>
-                    </div>
-                </div>
-                
-                <!-- Quality Option -->
-                <div class="export-dropdown-container relative">
-                    <label class="block text-[10px] font-bold text-[#10b981] uppercase tracking-wider mb-1">Quality</label>
-                    <div onclick="toggleExportDropdown('quality-dropdown')" class="flex items-center justify-between p-2.5 bg-gray-50 hover:bg-gray-100 border border-gray-200 rounded-lg cursor-pointer transition-colors group">
-                        <div class="flex items-center gap-2.5">
-                            <div class="p-1.5 bg-white rounded-md shadow-sm text-[#10b981] group-hover:scale-105 transition-transform">
-                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l5-5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"></path></svg>
-                            </div>
-                            <div class="flex flex-col">
-                                <span class="text-[11px] text-gray-500 font-medium leading-none">Dimensions</span>
-                                <span id="quality-value" class="text-gray-900 font-semibold text-[13px] mt-0.5">High (100%)</span>
-                            </div>
+                        
+                        <!-- Format Dropdown -->
+                        <div id="format-dropdown" class="export-dropdown-menu hidden absolute top-full left-0 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-xl z-20 overflow-hidden">
+                            <ul class="py-1 text-[13px] text-gray-800 font-medium">
+                                <li onclick="selectExportOption('format', 'JPG (no transparency)')" class="px-3 py-2.5 hover:bg-emerald-50 hover:text-emerald-600 cursor-pointer transition-colors">JPG (no transparency)</li>
+                                <li onclick="selectExportOption('format', 'PNG (transparent)')" class="px-3 py-2.5 hover:bg-emerald-50 hover:text-emerald-600 cursor-pointer transition-colors">PNG (transparent)</li>
+                            </ul>
                         </div>
-                        <svg class="w-4 h-4 text-gray-400 group-hover:text-gray-900 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
                     </div>
-                    <!-- Quality Dropdown -->
-                    <div id="quality-dropdown" class="export-dropdown-menu hidden absolute bottom-full mb-1 left-0 w-full bg-white border border-gray-200 rounded-lg shadow-xl z-20 overflow-hidden">
-                        <ul class="py-1 text-[13px] text-gray-900 font-medium">
-                            <li onclick="selectExportOption('quality', 'High (100%)')" class="px-4 py-2.5 hover:bg-[#d1fae5] hover:text-[#10b981] cursor-pointer transition-colors">High (100%)</li>
-                            <li onclick="selectExportOption('quality', 'Medium (75%)')" class="px-4 py-2.5 hover:bg-[#d1fae5] hover:text-[#10b981] cursor-pointer transition-colors">Medium (75%)</li>
-                            <li onclick="selectExportOption('quality', 'Low (50%)')" class="px-4 py-2.5 hover:bg-[#d1fae5] hover:text-[#10b981] cursor-pointer transition-colors">Low (50%)</li>
-                        </ul>
+                    
+                    <!-- Section 2: Quality -->
+                    <div class="dropdown-container relative">
+                        <label class="block text-[10px] font-bold text-emerald-500 uppercase tracking-wider mb-1.5">Quality</label>
+                        <div onclick="toggleExportDropdown('quality-dropdown')" class="flex items-center justify-between p-2.5 bg-gray-50 hover:bg-gray-100 border border-gray-200 rounded-lg cursor-pointer transition-colors group">
+                            <div class="flex items-center gap-2.5">
+                                <div class="p-1.5 bg-white rounded-md shadow-sm text-emerald-500 group-hover:scale-105 transition-transform">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"></path>
+                                    </svg>
+                                </div>
+                                <div class="flex flex-col">
+                                    <span class="text-[11px] text-gray-500 font-medium leading-none">Dimensions</span>
+                                    <span id="quality-value" class="text-gray-900 font-semibold text-[13px] mt-1">Default (x2)</span>
+                                </div>
+                            </div>
+                            <svg class="w-4 h-4 text-gray-400 group-hover:text-gray-700 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                            </svg>
+                        </div>
+                        
+                        <!-- Quality Dropdown -->
+                        <div id="quality-dropdown" class="export-dropdown-menu hidden absolute top-full left-0 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-xl z-20 overflow-hidden">
+                            <ul class="py-1 text-[13px] text-gray-800 font-medium">
+                                <li onclick="selectExportOption('quality', 'High (x3)')" class="px-3 py-2.5 hover:bg-emerald-50 hover:text-emerald-600 cursor-pointer transition-colors">High (x3)</li>
+                                <li onclick="selectExportOption('quality', 'Default (x2)')" class="px-3 py-2.5 hover:bg-emerald-50 hover:text-emerald-600 cursor-pointer transition-colors">Default (x2)</li>
+                                <li onclick="selectExportOption('quality', 'Standard (x1)')" class="px-3 py-2.5 hover:bg-emerald-50 hover:text-emerald-600 cursor-pointer transition-colors">Standard (x1)</li>
+                            </ul>
+                        </div>
                     </div>
+                    
                 </div>
                 
                 <!-- Action Buttons -->
-                <div class="flex gap-3 pt-2">
+                <div class="flex gap-2.5 relative z-0 mt-2">
                     <div class="flex-[1.7]">
-                        <button id="btn-confirm-export" class="pushable h-12">
+                        <button id="btn-execute-download" class="pushable h-[42px]">
                             <span class="edge"></span>
                             <span class="front gap-2">
-                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"></path></svg>
-                                SAVE TO DEVICE
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"></path>
+                                </svg>
+                                SAVE
                             </span>
                         </button>
                     </div>
                     <div class="flex-[1]">
-                        <button id="btn-share-export" class="pushable h-12">
+                        <button id="btn-execute-share" class="pushable h-[42px]">
                             <span class="edge"></span>
                             <span class="front gap-2">
-                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z"></path></svg>
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z"></path>
+                                </svg>
                                 SHARE
                             </span>
                         </button>
@@ -3793,5 +3838,5 @@ aEl.appendChild(document.createTextNode(item.a));
                 
             </div>
         </div>
-    </div> </body> 
+    </div>   </body>
 </html>
