@@ -218,25 +218,25 @@ span[data-qa-fmt="ul-wavy"]    { text-decoration: underline; text-decoration-sty
     z-index: 6;
 }
 
+        /* Casual Empty State Ribbon */
         #qa-empty-hint {
             position: absolute;
             inset: 0;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            gap: 8px;
             pointer-events: none;
             z-index: 4;
+            overflow: hidden; /* রিবন যেন ক্যানভাসের বাইরে না যায় */
         }
 
-        #qa-empty-hint span {
-            font-size: 11px;
-            color: #9ca3af;
-            font-family: 'Inter', sans-serif;
-            text-align: center;
-            padding: 0 16px;
-            line-height: 1.5;
+        .casual-ribbon {
+            position: absolute;
+            top: 35px;
+            left: -75px;
+            width: 320px;
+            height: 35px; /* একটু মোটা ও ক্যাজুয়াল লুক */
+            background: linear-gradient(90deg, rgba(99, 102, 241, 0.15) 0%, rgba(236, 72, 153, 0.15) 100%);
+            transform: rotate(-45deg);
+            box-shadow: inset 0 2px 10px rgba(255, 255, 255, 0.5), 0 4px 15px rgba(0, 0, 0, 0.03);
+            backdrop-filter: blur(2px);
         }
     /* ================= COLOR PICKER 3D STYLES (Inline) ================= */
         .color-picker-container {
@@ -408,10 +408,9 @@ span[data-qa-fmt="ul-wavy"]    { text-decoration: underline; text-decoration-sty
             <div id="qa-content-zone" style="display:none;">
                 <div id="qa-content-inner"></div>
             </div>
-            <!-- Empty state hint (shown when no entries yet but template is active) -->
-            <div id="qa-empty-hint" style="display:none;">
-                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#d1d5db" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
-                <span>Template applied.<br>Send a Q&amp;A from Notebook to see content here.</span>
+            <!-- Empty state hint (Casual Thick Ribbon) -->
+            <div id="qa-empty-hint" style="display:block;">
+                <div class="casual-ribbon"></div>
             </div>
         </div>
 
@@ -3474,7 +3473,7 @@ aEl.appendChild(document.createTextNode(item.a));
     function updateEmptyHint() {
         const emptyHint = document.getElementById('qa-empty-hint');
         if (!emptyHint) return;
-        emptyHint.style.display = (renderedCount === 0 && activeConfig) ? 'flex' : 'none';
+        emptyHint.style.display = (renderedCount === 0) ? 'block' : 'none';
     }
 
     function getStoredConfig() {
@@ -3572,7 +3571,7 @@ aEl.appendChild(document.createTextNode(item.a));
         // Template বন্ধ করা হলো
         if (e.key === 'editor_template_active' && e.newValue === 'false') {
             if (qZone) qZone.style.display = 'none';
-            if (emptyHint) emptyHint.style.display = 'none';
+            if (emptyHint) emptyHint.style.display = 'block';
             if (designCanvas) designCanvas.style.backgroundColor = '';
             activeConfig = null;
             renderedCount = 0;
