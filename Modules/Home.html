@@ -856,8 +856,6 @@ window.updateSidebarList = function() {
             
             pressTimer = setTimeout(() => {
                 isLongPress = true;
-                // Optional: Provide mobile haptic feedback if supported
-                if (window.navigator && window.navigator.vibrate) window.navigator.vibrate(50);
                 showChatContextMenu(clientX, clientY, session.id);
             }, 500); // Trigger menu after 500ms hold
         };
