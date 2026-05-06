@@ -2293,25 +2293,10 @@ function applyCommandToQaZone(command, value, customRange = null) {
     saveState();
 }
 
-            // ── Manual Font Size Control Logic (+ / -) ──
+            // ── Global Font Size Control Logic (+ / -) ──
             function adjustFontSize(isIncrease) {
-                if (hasQaSelection()) {
-                    // QA zone selected text
-                    const sel = window.getSelection();
-                    if (!sel || sel.rangeCount === 0) return;
-                    let node = sel.getRangeAt(0).startContainer;
-                    if (node.nodeType === 3) node = node.parentNode; // Get parent element of text node
-                    
-                    let currentSize = window.getComputedStyle(node).fontSize;
-                    let sizeNum = parseFloat(currentSize) || 16;
-                    
-                    // ২ পিক্সেল করে সাইজ পরিবর্তন হবে (Smooth control)
-                    let newSize = isIncrease ? sizeNum + 2 : sizeNum - 2;
-                    newSize = Math.max(8, Math.min(newSize, 72)); // Limit: min 8px, max 72px
-                    
-                    applyCommandToQaZone('fontSize', newSize + 'px');
-                } else if (activeElement && activeElement.tagName === 'DIV' && activeElement.id !== 'canvas-watermark') {
-                    // Canvas inserted text element
+                // ১. যদি Canvas-এর কোনো Inserted Text Element (floating) সিলেক্ট করা থাকে, তবে শুধু সেটার সাইজ চেঞ্জ হবে
+                if (activeElement && activeElement.tagName === 'DIV' && activeElement.id !== 'canvas-watermark') {
                     styleText(() => { 
                         let currentSize = window.getComputedStyle(activeElement).fontSize;
                         let sizeNum = parseFloat(currentSize) || 16;
@@ -2321,12 +2306,43 @@ function applyCommandToQaZone(command, value, customRange = null) {
                         
                         activeElement.style.fontSize = newSize + 'px';
                     });
-                } else {
-                    showToast("Select text or tap a text element first.", 'warning');
+                    return;
+                }
+
+                // ২. যদি কোনো floating element সিলেক্ট করা না থাকে, তবে গ্লোবাল QA Zone-এর সাইজ চেঞ্জ হবে (Selection প্রয়োজন নেই)
+                const qInner = document.getElementById('qa-content-inner');
+                if (qInner) {
+                    let currentSize = window.getComputedStyle(qInner).fontSize;
+                    let sizeNum = parseFloat(currentSize) || 16; // ডিফল্ট সাইজ
+
+                    // ১ পিক্সেল করে সাইজ পরিবর্তন হবে (পুরো কন্টেইনারের জন্য নিখুঁত ও smooth control)
+                    let newSize = isIncrease ? sizeNum + 1 : sizeNum - 1;
+                    
+                    // লিমিটেশন সেট করা (খুব ছোট বা খুব বড় যেন না হয়)
+                    newSize = Math.max(6, Math.min(newSize, 72)); 
+
+                    // কন্টেইনারে গ্লোবালি ফন্ট সাইজ অ্যাপ্লাই করা
+                    qInner.style.fontSize = newSize + 'px';
+
+                    // পূর্বে যদি সিলেকশনের মাধ্যমে কোনো নির্দিষ্ট টেক্সটে inline fontSize দেওয়া থাকে, 
+                    // সেগুলো রিমুভ করে দেওয়া হচ্ছে যাতে গ্লোবাল সাইজটি সব জায়গায় সমানভাবে কাজ করে।
+                    qInner.querySelectorAll('span[style*="font-size"]').forEach(span => {
+                        span.style.fontSize = '';
+                    });
+                    
+                    // পুরানো span ভিত্তিক data-qa-fmt="fontSize" থাকলে সেগুলো পরিষ্কার করা
+                    qInner.querySelectorAll('span[data-qa-fmt="fontSize"]').forEach(span => {
+                        const parent = span.parentNode;
+                        while (span.firstChild) parent.insertBefore(span.firstChild, span);
+                        parent.removeChild(span);
+                    });
+
+                    saveState(); // Undo/Redo হিস্ট্রিতে সেভ করা
+                    showToast(`Global Text Size: ${newSize}px`, 'success');
                 }
             }
 
-            // Bind new Size buttons
+            // Bind Size buttons
             document.getElementById('btn-text-size-minus').addEventListener('click', () => adjustFontSize(false));
             document.getElementById('btn-text-size-plus').addEventListener('click', () => adjustFontSize(true));
 
