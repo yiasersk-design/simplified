@@ -2036,6 +2036,7 @@ let colorPickerTarget = 'border'; // Track what we are coloring ('border' or 'te
 // ── QA zone-এর selection snapshot — picker খোলার সময় save করা হবে ──
 // কারণ: color picker button-এ click করলে browser selection হারিয়ে যায়
 let _savedQaRange = null;
+let _savedPointerRange = null; // pointer apply-এর আগে selection save করার জন্য
 
 // Toggle floating picker visibility
 function toggleFloatingPicker(e, target) {
@@ -2717,49 +2718,131 @@ effectBtns[1].addEventListener('click', () => {
             });
 
             // Generate Pointer DOM Element
+            // সব data-pointer value এখানে handle করা হয়েছে
             function getPointerElement(type) {
                 const span = document.createElement('span');
-                span.className = 'qa-pointer select-none pr-1.5 inline-flex items-center align-middle pointer-events-none';
+                span.className = 'qa-pointer select-none pr-1 inline-block align-middle pointer-events-none';
                 span.contentEditable = 'false';
+                span.style.cssText = 'display:inline-block; vertical-align:middle; line-height:1; margin-right:3px;';
 
-                const svgBase = `<svg width="1.2em" height="1.2em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block; vertical-align:text-bottom;">`;
+                // Unicode/emoji based pointers (bullet ও svg উভয়)
+                const unicodeMap = {
+                    // SVG panel-এর unicode pointers
+                    'svg-shamrock':   '☘',
+                    'svg-flower':     '✿',
+                    'svg-scissors':   '✄',
+                    'svg-biohazard':  '☣',
+                    'svg-star5':      '⚝',
+                    // Bullet panel-এর pointers
+                    'bullet-diamond':     '❖',
+                    'bullet-sparkle':     '✦',
+                    'bullet-square-open': '□',
+                    'bullet-asterisk':    '✱',
+                    'bullet-cjk1':        '⿻',
+                    'bullet-cjk2':        '⿴',
+                    'bullet-doc1':        '❐',
+                    'bullet-doc2':        '❏',
+                    // পুরনো type (backward compatibility)
+                    'bullet-circle':  '●',
+                    'bullet-ring':    '○',
+                    'bullet-square':  '■',
+                    'bullet-arrow':   '➤',
+                    'bullet-dash':    '—',
+                };
 
-                if (type === 'svg-arrow') span.innerHTML = `${svgBase}<polyline points="9 18 15 12 9 6"></polyline></svg>`;
-                else if (type === 'svg-check') span.innerHTML = `${svgBase}<polyline points="20 6 9 17 4 12"></polyline></svg>`;
-                else if (type === 'svg-star') span.innerHTML = `${svgBase}<polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>`;
-                else if (type === 'svg-diamond') span.innerHTML = `${svgBase}<polygon points="12 2 22 12 12 22 2 12"></polygon></svg>`;
-                else if (type === 'bullet-circle') span.innerHTML = `<span style="font-size:1.2em; line-height:1;">●</span>`;
-                else if (type === 'bullet-ring') span.innerHTML = `<span style="font-size:1.2em; line-height:1;">○</span>`;
-                else if (type === 'bullet-square') span.innerHTML = `<span style="font-size:1.2em; line-height:1;">■</span>`;
-                else if (type === 'bullet-arrow') span.innerHTML = `<span style="font-size:1.2em; line-height:1;">➤</span>`;
-                else if (type === 'bullet-dash') span.innerHTML = `<span style="font-size:1.2em; line-height:1;">—</span>`;
+                if (unicodeMap[type]) {
+                    span.textContent = unicodeMap[type];
+                    span.style.fontSize = '1.1em';
+                } else {
+                    // SVG-based pointers (পুরনো svg-arrow, svg-check ইত্যাদি)
+                    const svgBase = `<svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block; vertical-align:middle;">`;
+                    if (type === 'svg-arrow')   span.innerHTML = `${svgBase}<polyline points="9 18 15 12 9 6"></polyline></svg>`;
+                    else if (type === 'svg-check')   span.innerHTML = `${svgBase}<polyline points="20 6 9 17 4 12"></polyline></svg>`;
+                    else if (type === 'svg-star')    span.innerHTML = `${svgBase}<polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>`;
+                    else if (type === 'svg-diamond') span.innerHTML = `${svgBase}<polygon points="12 2 22 12 12 22 2 12"></polygon></svg>`;
+                    else {
+                        // কোনো match নেই — fallback: bullet
+                        span.textContent = '•';
+                        span.style.fontSize = '1.1em';
+                    }
+                }
 
                 return span;
             }
 
+            // ==========================================
             // Apply Pointer to Selected Text/Line
+            // mousedown/touchstart-এ selection save করা হয় কারণ
+            // click event fire হওয়ার আগেই browser selection clear করে দেয়
+
             document.querySelectorAll('.pointer-apply-btn').forEach(btn => {
+
+                // mousedown-এ selection snapshot নেওয়া (desktop)
+                btn.addEventListener('mousedown', () => {
+                    if (hasQaSelection()) {
+                        const sel = window.getSelection();
+                        if (sel && sel.rangeCount > 0) {
+                            _savedPointerRange = sel.getRangeAt(0).cloneRange();
+                        }
+                    } else {
+                        _savedPointerRange = null;
+                    }
+                });
+
+                // touchstart-এ selection snapshot নেওয়া (mobile)
+                btn.addEventListener('touchstart', () => {
+                    if (hasQaSelection()) {
+                        const sel = window.getSelection();
+                        if (sel && sel.rangeCount > 0) {
+                            _savedPointerRange = sel.getRangeAt(0).cloneRange();
+                        }
+                    } else {
+                        _savedPointerRange = null;
+                    }
+                }, { passive: true });
+
                 btn.addEventListener('click', () => {
                     const pointerType = btn.getAttribute('data-pointer');
                     let targetBlocks = [];
+                    const qInner = document.getElementById('qa-content-inner');
 
-                    if (hasQaSelection()) {
-                        const sel = window.getSelection();
-                        if (!sel || sel.rangeCount === 0) return;
-
-                        const qInner = document.getElementById('qa-content-inner');
+                    // ── Path 1: saved range থেকে কাজ করবে (প্রধান path) ──
+                    if (_savedPointerRange && qInner && qInner.contains(_savedPointerRange.startContainer)) {
+                        const range = _savedPointerRange;
                         const allParagraphs = Array.from(qInner.querySelectorAll('.qa-entry-block p'));
-                        const range = sel.getRangeAt(0);
 
-                        // Find all P tags that intersect with the current selection
-                        allParagraphs.forEach(p => {
-                            if (sel.containsNode(p, true)) {
-                                targetBlocks.push(p);
+                        // startContainer থেকে উপরে উঠে <p> খোঁজো
+                        let node = range.startContainer;
+                        while (node && node !== qInner) {
+                            if (node.nodeType === 1 && node.tagName === 'P') {
+                                targetBlocks.push(node);
+                                break;
                             }
-                        });
+                            node = node.parentNode;
+                        }
 
-                        // Fallback for direct node selection without full block selection
+                        // multi-line selection: সব intersecting <p> খোঁজো
                         if (targetBlocks.length === 0) {
+                            allParagraphs.forEach(p => {
+                                const pRange = document.createRange();
+                                pRange.selectNodeContents(p);
+                                if (
+                                    range.compareBoundaryPoints(Range.END_TO_START, pRange) <= 0 &&
+                                    range.compareBoundaryPoints(Range.START_TO_END, pRange) >= 0
+                                ) {
+                                    targetBlocks.push(p);
+                                }
+                            });
+                        }
+
+                        _savedPointerRange = null;
+
+                    // ── Path 2: live selection এখনো আছে (fallback) ──
+                    } else if (hasQaSelection()) {
+                        const sel = window.getSelection();
+                        if (sel && sel.rangeCount > 0) {
+                            const range = sel.getRangeAt(0);
+                            const allParagraphs = Array.from(qInner.querySelectorAll('.qa-entry-block p'));
                             let node = range.startContainer;
                             while (node && node !== qInner) {
                                 if (node.nodeType === 1 && node.tagName === 'P') {
@@ -2768,38 +2851,50 @@ effectBtns[1].addEventListener('click', () => {
                                 }
                                 node = node.parentNode;
                             }
+                            if (targetBlocks.length === 0) {
+                                allParagraphs.forEach(p => {
+                                    if (sel.containsNode(p, true)) targetBlocks.push(p);
+                                });
+                            }
                         }
+
+                    // ── Path 3: Canvas inserted element ──
                     } else if (activeElement && activeElement.tagName === 'DIV' && activeElement.id !== 'canvas-watermark') {
-                        // Canvas Element Selection
                         targetBlocks.push(activeElement);
+
+                    // ── Path 4: কিছুই নেই ──
                     } else {
-                        showToast("Select text or tap a text element first.", 'warning');
+                        showToast("প্রথমে text-এর একটি line select করুন।", 'warning');
                         return;
                     }
 
-                    if (targetBlocks.length === 0) return;
+                    if (targetBlocks.length === 0) {
+                        showToast("Paragraph খুঁজে পাওয়া যায়নি, আবার select করুন।", 'warning');
+                        return;
+                    }
 
                     targetBlocks.forEach(block => {
-                        // Remove existing pointers in this block (prevents duplicates and cleans formatting)
-                        const existing = block.querySelectorAll('.qa-pointer');
-                        existing.forEach(el => el.remove());
+                        // আগের pointer সরাও
+                        block.querySelectorAll('.qa-pointer').forEach(el => el.remove());
 
                         if (pointerType !== 'none') {
-                            // Insert the new pointer exactly at the beginning of the block
                             const pointerEl = getPointerElement(pointerType);
-                            block.insertBefore(pointerEl, block.firstChild);
+                            if (block.firstChild) {
+                                block.insertBefore(pointerEl, block.firstChild);
+                            } else {
+                                block.appendChild(pointerEl);
+                            }
                         }
                     });
 
-                    // Clear selection to avoid visual clutter after applying pointer
                     if (window.getSelection) {
                         window.getSelection().removeAllRanges();
                     }
 
                     saveState();
-                    showToast("Pointers Updated", 'success');
+                    showToast("Pointer Applied ✓", 'success');
                 });
-            });       // ── Read-only Preview: Mobile Keyboard & Focus Block ────────────────
+            });  // ── Read-only Preview: Mobile Keyboard & Focus Block ────────────────
             // QA zone-এ click বা touch করলে keyboard open হবে না
             // কিন্তু long-press বা drag দিয়ে text select করা যাবে
 
