@@ -693,7 +693,6 @@ window.updateSidebarList = function() {
             
             pressTimer = setTimeout(() => {
                 isLongPress = true;
-                if (window.navigator && window.navigator.vibrate) window.navigator.vibrate(50);
                 showChatContextMenu(clientX, clientY, session.id);
             }, 500);
         };
