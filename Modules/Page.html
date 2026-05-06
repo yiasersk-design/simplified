@@ -1017,17 +1017,7 @@
     <!-- Font Menu Popup Overlay & Container -->
     <div class="font-menu-overlay" id="fontMenuOverlay"></div>
     <div class="font-menu-popup" id="fontMenuPopup">
-        <button class="font-menu-item" onclick="applyFontPairing(0); closeFontMenu();">Default Fonts</button>
-        <div class="font-menu-divider"></div>
-        <button class="font-menu-item" onclick="applyFontPairing(1); closeFontMenu();">Times + Lato</button>
-        <div class="font-menu-divider"></div>
-        <button class="font-menu-item" onclick="applyFontPairing(2); closeFontMenu();">Times + Open Sans</button>
-        <div class="font-menu-divider"></div>
-        <button class="font-menu-item" onclick="applyFontPairing(3); closeFontMenu();">Times + C. Garamond</button>
-        <div class="font-menu-divider"></div>
-        <button class="font-menu-item" onclick="applyFontPairing(4); closeFontMenu();">Times + L. Baskerville</button>
-        <div class="font-menu-divider"></div>
-        <button class="font-menu-item" onclick="applyFontPairing(5); closeFontMenu();">Times + DM Sans</button>
+        <!-- Smart System automatically button inject korbe -->
     </div>
 
 </div>
@@ -1653,32 +1643,195 @@
     });
 
     // =============================================
-    // Dynamic Font Switching System
+    // SMART FONT COMBINATION SYSTEM (Auto-Managed)
     // =============================================
-
-    const fontPairings = {
-        1: { mainFont: "'Baloo Da 2', cursive", subFont: "'Hind Siliguri', sans-serif", mainWeight: "600", subWeight: "300", subStyle: "normal", subLetterSpacing: "0.01em" },
-        2: { mainFont: "'Noto Serif Bengali', serif", subFont: "'Anek Bangla', sans-serif", mainWeight: "600", subWeight: "300", subStyle: "normal", subLetterSpacing: "0em" },
-        3: { mainFont: "'Hind Siliguri', sans-serif", subFont: "'Noto Serif Bengali', serif", mainWeight: "700", subWeight: "400", subStyle: "italic", subLetterSpacing: "0em" },
-        4: { mainFont: "'Anek Bangla', sans-serif", subFont: "'Baloo Da 2', cursive", mainWeight: "600", subWeight: "400", subStyle: "normal", subLetterSpacing: "0em" },
-        5: { mainFont: "'Kalpurush', sans-serif", subFont: "'Hind Siliguri', sans-serif", mainWeight: "500", subWeight: "500", subStyle: "normal", subLetterSpacing: "0.03em" }
-    };
 
     let currentLang = 'bengali';
 
-    function getPairingForLang(fontId, lang) {
-        if (lang === 'english') {
-            const englishFontPairings = {
-                0: { mainFont: "'Times New Roman', Times, serif", subFont: "'Times New Roman', Times, serif", mainWeight: "700", subWeight: "400", subStyle: "normal",  subLetterSpacing: "0em" },
-                1: { mainFont: "'Times New Roman', Times, serif", subFont: "'Lato', sans-serif",              mainWeight: "700", subWeight: "300", subStyle: "normal",  subLetterSpacing: "0.01em" },
-                2: { mainFont: "'Times New Roman', Times, serif", subFont: "'Open Sans', sans-serif",         mainWeight: "700", subWeight: "400", subStyle: "normal",  subLetterSpacing: "0em" },
-                3: { mainFont: "'Times New Roman', Times, serif", subFont: "'Cormorant Garamond', serif",     mainWeight: "700", subWeight: "400", subStyle: "italic",  subLetterSpacing: "0em" },
-                4: { mainFont: "'Times New Roman', Times, serif", subFont: "'Libre Baskerville', serif",      mainWeight: "700", subWeight: "400", subStyle: "normal",  subLetterSpacing: "0em" },
-                5: { mainFont: "'Times New Roman', Times, serif", subFont: "'DM Sans', sans-serif",           mainWeight: "700", subWeight: "500", subStyle: "normal",  subLetterSpacing: "0.02em" }
-            };
-            return englishFontPairings[fontId] || englishFontPairings[0];
+    // 1. Pre-defined Font Pool (কোনো ম্যানুয়াল ইনপুট ছাড়াই সিস্টেম এখান থেকে ফন্ট নেবে)
+    const fontPool = {
+        english: {
+            headings:[
+                { name: 'Roboto', family: "'Roboto', sans-serif", weight: '700' },
+                { name: 'Poppins', family: "'Poppins', sans-serif", weight: '700' },
+                { name: 'Merriweather', family: "'Merriweather', serif", weight: '700' },
+                { name: 'Montserrat', family: "'Montserrat', sans-serif", weight: '700' },
+                { name: 'Oswald', family: "'Oswald', sans-serif", weight: '700' }
+            ],
+            bodies:[
+                { name: 'Lato', family: "'Lato', sans-serif", weight: '400', style: 'normal', spacing: '0.01em' },
+                { name: 'Open Sans', family: "'Open Sans', sans-serif", weight: '400', style: 'normal', spacing: '0em' },
+                { name: 'Lora', family: "'Lora', serif", weight: '400', style: 'normal', spacing: '0em' },
+                { name: 'Inter', family: "'Inter', sans-serif", weight: '400', style: 'normal', spacing: '0em' },
+                { name: 'DM Sans', family: "'DM Sans', sans-serif", weight: '400', style: 'normal', spacing: '0.02em' }
+            ]
+        },
+        bengali: {
+            headings:[
+                { name: 'Baloo Da 2', family: "'Baloo Da 2', cursive", weight: '600' },
+                { name: 'Noto Serif Bengali', family: "'Noto Serif Bengali', serif", weight: '600' },
+                { name: 'Hind Siliguri', family: "'Hind Siliguri', sans-serif", weight: '700' },
+                { name: 'Anek Bangla', family: "'Anek Bangla', sans-serif", weight: '600' },
+                { name: 'Tiro Bangla', family: "'Tiro Bangla', serif", weight: '700' }
+            ],
+            bodies:[
+                { name: 'Hind Siliguri', family: "'Hind Siliguri', sans-serif", weight: '300', style: 'normal', spacing: '0.01em' },
+                { name: 'Anek Bangla', family: "'Anek Bangla', sans-serif", weight: '300', style: 'normal', spacing: '0em' },
+                { name: 'Kalpurush', family: "'Kalpurush', sans-serif", weight: '400', style: 'normal', spacing: '0.03em' },
+                { name: 'Noto Serif Bengali', family: "'Noto Serif Bengali', serif", weight: '400', style: 'normal', spacing: '0em' },
+                { name: 'Mina', family: "'Mina', sans-serif", weight: '400', style: 'normal', spacing: '0em' }
+            ]
         }
-        return fontPairings[fontId] || null;
+    };
+
+    // 2. Smart Engine to generate combinations with Max 2 Usage Rule
+    function generateSmartCombinations(lang) {
+        const headings = fontPool[lang].headings;
+        const bodies = fontPool[lang].bodies;
+        
+        let usageTracker = {}; // Font usage count track korar jonne object
+        let combinations = {};
+        let comboIndex = 1; // 1 থেকে 5 পর্যন্ত combination তৈরি হবে
+        
+        const getUsage = (fontName) => usageTracker[fontName] || 0;
+        
+        // Default font structure (Index 0)
+        combinations[0] = { 
+            label: "Default Fonts",
+            mainFont: "inherit", subFont: "inherit", 
+            mainWeight: "inherit", subWeight: "inherit", 
+            subStyle: "inherit", subLetterSpacing: "inherit" 
+        };
+
+        let hIndex = 0;
+        let bIndex = 0;
+        
+        while (comboIndex <= 5) {
+            let selectedHeading = null;
+            let selectedBody = null;
+            
+            // Valid Heading Selection (Usage < 2)
+            for(let i=0; i < headings.length; i++) {
+                let h = headings[(hIndex + i) % headings.length];
+                if (getUsage(h.name) < 2) {
+                    selectedHeading = h;
+                    hIndex = (hIndex + i + 1) % headings.length;
+                    break;
+                }
+            }
+            
+            // Valid Body Selection (Usage < 2 && Heading theke alada)
+            for(let i=0; i < bodies.length; i++) {
+                let b = bodies[(bIndex + i) % bodies.length];
+                if (getUsage(b.name) < 2 && b.name !== selectedHeading.name) {
+                    selectedBody = b;
+                    bIndex = (bIndex + i + 1) % bodies.length;
+                    break;
+                }
+            }
+            
+            if (selectedHeading && selectedBody) {
+                // Tracking update
+                usageTracker[selectedHeading.name] = getUsage(selectedHeading.name) + 1;
+                usageTracker[selectedBody.name] = getUsage(selectedBody.name) + 1;
+                
+                combinations[comboIndex] = {
+                    label: `${selectedHeading.name} + ${selectedBody.name}`,
+                    mainFont: selectedHeading.family,
+                    subFont: selectedBody.family,
+                    mainWeight: selectedHeading.weight,
+                    subWeight: selectedBody.weight,
+                    subStyle: selectedBody.style,
+                    subLetterSpacing: selectedBody.spacing
+                };
+                comboIndex++;
+            } else {
+                break; // Failsafe
+            }
+        }
+        return combinations;
+    }
+
+    // 3. System Load হওয়ার সাথে সাথেই Combination তৈরি করে নেওয়া হলো
+    const autoFontCombinations = {
+        english: generateSmartCombinations('english'),
+        bengali: generateSmartCombinations('bengali')
+    };
+
+    // 4. Dynamic Inject Google Fonts in <head>
+    // User কে কোনো ফন্ট link করতে হবে না, সিস্টেম নিজে Google Fonts inject করবে
+    function injectRequiredFonts() {
+        const fontsToLoad = new Set();
+        ['english', 'bengali'].forEach(lang => {
+            fontPool[lang].headings.concat(fontPool[lang].bodies).forEach(f => {
+                if(!f.family.includes('serif') && !f.family.includes('sans-serif')) return; // skip default/inherit
+                const cleanName = f.name.replace(/ /g, '+');
+                fontsToLoad.add(cleanName);
+            });
+        });
+        
+        const link = document.createElement('link');
+        link.rel = 'stylesheet';
+        let url = 'https://fonts.googleapis.com/css2?';
+        fontsToLoad.forEach(font => {
+            url += `family=${font}:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&`;
+        });
+        url += 'display=swap';
+        document.head.appendChild(link);
+    }
+    injectRequiredFonts();
+
+    // 5. Dynamic Menu Renderer
+    // এই ফাংশনটি HTML এর খালি #fontMenuPopup-এ বাটন তৈরি করবে
+    function renderFontMenu() {
+        const popup = document.getElementById('fontMenuPopup');
+        popup.innerHTML = ''; 
+        
+        const combinations = autoFontCombinations[currentLang];
+        
+        // Active Font Id Track (Highlight korar jonne)
+        let activeFontId = 0;
+        const activeItem = document.querySelector('[data-font-id][style*="border-left"]');
+        if (activeItem) {
+            activeFontId = parseInt(activeItem.getAttribute('data-font-id'));
+        }
+
+        Object.keys(combinations).forEach((id, index) => {
+            const fontId = parseInt(id);
+            const combo = combinations[fontId];
+            
+            const btn = document.createElement('button');
+            btn.className = 'font-menu-item';
+            btn.setAttribute('data-font-id', fontId);
+            btn.textContent = combo.label;
+            
+            // Active style add kora
+            if (fontId === activeFontId && fontId !== 0) {
+                btn.style.borderLeft = '3px solid rgba(0,0,0,0.6)';
+                btn.style.background = 'rgba(0,0,0,0.08)';
+            }
+
+            btn.onclick = () => {
+                applyFontPairing(fontId);
+                closeFontMenu();
+            };
+            
+            popup.appendChild(btn);
+            
+            if (index < Object.keys(combinations).length - 1) {
+                const divider = document.createElement('div');
+                divider.className = 'font-menu-divider';
+                popup.appendChild(divider);
+            }
+        });
+    }
+
+    // Initialize initial menu rendering
+    renderFontMenu();
+
+    // 6. Old function Update
+    function getPairingForLang(fontId, lang) {
+        return autoFontCombinations[lang][fontId] || autoFontCombinations[lang][0];
     }
 
     function applyFontPairing(fontId) {
@@ -1772,6 +1925,9 @@
 
     function applyLanguageFont(lang) {
         currentLang = lang;
+        
+        // Language change hole dynamically menu update hobe
+        renderFontMenu(); 
 
         const activeItem = document.querySelector('[data-font-id][style*="border-left"]');
         let activeFontId = 0;
