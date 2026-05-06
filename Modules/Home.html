@@ -684,6 +684,9 @@ function setupChatContextMenu() {
             <button id="ctxCopyBtn" class="w-9 h-9 flex items-center justify-center text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-md transition-colors focus:outline-none">
                 <svg class="w-[18px] h-[18px]" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
             </button>
+            <button id="ctxPinBtn" class="w-9 h-9 flex items-center justify-center text-gray-500 hover:text-yellow-600 hover:bg-yellow-50 rounded-md transition-colors focus:outline-none">
+                <svg id="ctxPinIcon" class="w-[18px] h-[18px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="17" x2="12" y2="22"/><path d="M5 17h14v-1.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V6h1a2 2 0 0 0 0-4H8a2 2 0 0 0 0 4h1v4.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24Z"/></svg>
+            </button>
             <button id="ctxRenameBtn" class="w-9 h-9 flex items-center justify-center text-gray-500 hover:text-green-600 hover:bg-green-50 rounded-md transition-colors focus:outline-none">
                 <svg class="w-[18px] h-[18px]" viewBox="0 0 24 24" fill="none"><g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"><path d="M10.522 13.48a4.094 4.094 0 0 0 2.892 1.199a4.74 4.74 0 0 0 1.063-.136a4.176 4.176 0 0 0 1.828-1.063l.969-.968l2.878-2.888a4.085 4.085 0 0 0-2.922-6.873a4.095 4.095 0 0 0-2.862 1.096L11.49 6.736"/><path d="m12.445 17.336l-2.892 2.888a4.094 4.094 0 0 1-6.801-2.944a4.085 4.085 0 0 1 1.031-2.833l2.892-2.888l.969-.968A4.175 4.175 0 0 1 9.47 9.53a4.096 4.096 0 0 1 3.956 1.062"/></g></svg>
             </button>
@@ -707,6 +710,18 @@ function setupChatContextMenu() {
                 navigator.clipboard.writeText(session.title).then(() => {
                     window.showToast('Note title copied!', 'success');
                 });
+            }
+            hideChatContextMenu();
+        };
+
+        document.getElementById('ctxPinBtn').onclick = (e) => {
+            e.stopPropagation();
+            let session = chatSessions.find(s => s.id === contextActiveSessionId);
+            if (session) {
+                session.isPinned = !session.isPinned;
+                localStorage.setItem('metaAINotes_sessions', JSON.stringify(chatSessions));
+                updateSidebarList();
+                window.showToast(session.isPinned ? 'Chat pinned ✓' : 'Chat unpinned', session.isPinned ? 'success' : 'info');
             }
             hideChatContextMenu();
         };
@@ -757,7 +772,29 @@ function setupChatContextMenu() {
 function showChatContextMenu(clientX, clientY, sessionId) {
     setupChatContextMenu();
     contextActiveSessionId = sessionId;
-    
+
+    // Pin icon toggle: pinned হলে Unpin icon, না হলে Pin icon
+    const session = chatSessions.find(s => s.id === sessionId);
+    const pinIcon = document.getElementById('ctxPinIcon');
+    if (pinIcon && session) {
+        if (session.isPinned) {
+            // Unpin icon (pin with slash / filled pin)
+            pinIcon.setAttribute('fill', 'currentColor');
+            pinIcon.setAttribute('stroke', 'none');
+            pinIcon.innerHTML = `<path d="M15 4a1 1 0 0 0-1-1H10a1 1 0 0 0-1 1v1H8a1 1 0 0 0 0 2h.27l.44 4.38A3 3 0 0 0 7 14v1h4.28l.72 6h1l.72-6H18v-1a3 3 0 0 0-1.71-2.62L16.73 7H17a1 1 0 0 0 0-2h-1V4z"/>
+            <line x1="3" y1="3" x2="21" y2="21" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>`;
+            document.getElementById('ctxPinBtn').classList.add('text-yellow-500');
+            document.getElementById('ctxPinBtn').classList.remove('text-gray-500');
+        } else {
+            // Pin icon (outline)
+            pinIcon.setAttribute('fill', 'none');
+            pinIcon.setAttribute('stroke', 'currentColor');
+            pinIcon.innerHTML = `<line x1="12" y1="17" x2="12" y2="22"/><path d="M5 17h14v-1.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V6h1a2 2 0 0 0 0-4H8a2 2 0 0 0 0 4h1v4.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24Z"/>`;
+            document.getElementById('ctxPinBtn').classList.remove('text-yellow-500');
+            document.getElementById('ctxPinBtn').classList.add('text-gray-500');
+        }
+    }
+
     chatContextMenu.classList.remove('hidden');
     
     // Smooth transition
