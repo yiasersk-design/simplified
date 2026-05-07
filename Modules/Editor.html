@@ -6,8 +6,8 @@
     <title>Design Interface</title>
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- HTML2Canvas for Download Feature -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <!-- HTML to Image for Perfect WYSIWYD Export Feature -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html-to-image/1.11.11/html-to-image.min.js"></script>
     
     <!-- Import Core Engine (Fixed Path) -->
     <script src="../Core/E-Engine.js"></script>
@@ -1580,47 +1580,37 @@ toolboxBtns.forEach(btn => {
                 }
             });
 
-            // 4. Download Execution (SAVE Button)
+            // 4. Download Execution (SAVE Button) - Powered by E-Engine
             document.getElementById('btn-execute-download').addEventListener('click', () => {
                 const formatText = document.getElementById('format-value').innerText;
                 const qualityText = document.getElementById('quality-value').innerText;
                 
-                // Check quality multiplier
                 let scaleVal = 2; // Default
                 if (qualityText.includes('x3')) scaleVal = 3;
                 if (qualityText.includes('x1')) scaleVal = 1;
                 
-                // Check MimeType
-                let mimeType = 'image/jpeg';
-                let extension = 'jpg';
-                if (formatText.includes('PNG')) {
-                    mimeType = 'image/png';
-                    extension = 'png';
-                }
-
-                closeExportModal(); // Close modal immediately
-                btnExport.classList.add('animate-pulse'); // Loading effect on header
-                showToast("Generating image, please wait...", 'info');
+                closeExportModal();
                 
-                html2canvas(canvasContainer, { 
-                    useCORS: true, 
-                    allowTaint: true, 
-                    scale: scaleVal,
-                    backgroundColor: mimeType === 'image/png' ? null : '#ffffff' 
-                }).then(canvas => {
-                    const link = document.createElement('a');
-                    link.download = `My-Design-App.${extension}`;
-                    link.href = canvas.toDataURL(mimeType);
-                    link.click();
-                    btnExport.classList.remove('animate-pulse');
-                    showToast("Image exported successfully!", 'success');
-                }).catch(err => {
-                    showToast("Error exporting image!", 'error');
-                    btnExport.classList.remove('animate-pulse');
-                });
+                EEngine.Export.download('design-canvas', formatText, scaleVal, 
+                    () => {
+                        // onStart
+                        btnExport.classList.add('animate-pulse');
+                        showToast("Generating image, please wait...", 'info');
+                    },
+                    () => {
+                        // onSuccess
+                        btnExport.classList.remove('animate-pulse');
+                        showToast("Image exported successfully!", 'success');
+                    },
+                    (err) => {
+                        // onError
+                        btnExport.classList.remove('animate-pulse');
+                        showToast("Error exporting image!", 'error');
+                    }
+                );
             });
 
-            // 5. Share Execution (SHARE Button)
+            // 5. Share Execution (SHARE Button) - Powered by E-Engine
             document.getElementById('btn-execute-share').addEventListener('click', () => {
                 const formatText = document.getElementById('format-value').innerText;
                 const qualityText = document.getElementById('quality-value').innerText;
@@ -1629,52 +1619,32 @@ toolboxBtns.forEach(btn => {
                 if (qualityText.includes('x3')) scaleVal = 3;
                 if (qualityText.includes('x1')) scaleVal = 1;
                 
-                let mimeType = 'image/jpeg';
-                let extension = 'jpg';
-                if (formatText.includes('PNG')) {
-                    mimeType = 'image/png';
-                    extension = 'png';
-                }
-
                 if (!navigator.share || !navigator.canShare) {
                     showToast("Sharing is not supported on this browser/device.", 'error');
                     return;
                 }
 
                 closeExportModal();
-                btnExport.classList.add('animate-pulse');
-                showToast("Preparing image for sharing...", 'info');
 
-                html2canvas(canvasContainer, { 
-                    useCORS: true, 
-                    allowTaint: true, 
-                    scale: scaleVal,
-                    backgroundColor: mimeType === 'image/png' ? null : '#ffffff'
-                }).then(canvas => {
-                    canvas.toBlob(async (blob) => {
-                        const file = new File([blob], `Shared-Design.${extension}`, { type: mimeType });
-                        try {
-                            if (navigator.canShare({ files: [file] })) {
-                                await navigator.share({
-                                    title: 'My Design',
-                                    text: 'Check out my new design!',
-                                    files: [file]
-                                });
-                                showToast("Shared successfully!", 'success');
-                            } else {
-                                showToast("Your system doesn't support sharing files.", 'error');
-                            }
-                        } catch (error) {
-                            if (error.name !== 'AbortError') {
-                                showToast("Error sharing image!", 'error');
-                            }
-                        }
+                EEngine.Export.share('design-canvas', formatText, scaleVal, 
+                    () => {
+                        // onStart
+                        btnExport.classList.add('animate-pulse');
+                        showToast("Preparing image for sharing...", 'info');
+                    },
+                    () => {
+                        // onSuccess
                         btnExport.classList.remove('animate-pulse');
-                    }, mimeType);
-                }).catch(err => {
-                    showToast("Error preparing image!", 'error');
-                    btnExport.classList.remove('animate-pulse');
-                });
+                        showToast("Shared successfully!", 'success');
+                    },
+                    (err) => {
+                        // onError
+                        btnExport.classList.remove('animate-pulse');
+                        if (err.name !== 'AbortError' && err.message !== 'AbortError') {
+                            showToast("Error sharing image!", 'error');
+                        }
+                    }
+                );
             });
 
             // ==========================================
