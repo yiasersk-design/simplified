@@ -1287,6 +1287,132 @@ window.EEngine = (function () {
         }
     };
 
+    // ==========================================
+    // 8. EXPORT ENGINE (html-to-image implementation)
+    // ==========================================
+    const ExportEngine = {
+        async processExport(canvasElement, format, qualityScale) {
+            // ১. ক্যানভাসের অরিজিনাল সাইজ এবং পজিশন বের করা
+            const rect = canvasElement.getBoundingClientRect();
+            
+            // ২. ক্লোন কন্টেইনার তৈরি করা (যাতে UI break না হয় এবং identical render হয়)
+            const cloneWrapper = document.createElement('div');
+            cloneWrapper.style.position = 'absolute';
+            cloneWrapper.style.left = '-9999px';
+            cloneWrapper.style.top = '-9999px';
+            cloneWrapper.style.width = rect.width + 'px';
+            cloneWrapper.style.height = rect.height + 'px';
+            cloneWrapper.style.overflow = 'hidden';
+
+            // DOM ক্লোন করা
+            const targetNode = canvasElement.cloneNode(true);
+            
+            // Normalize Computed Styles: inline style set করে alignment ঠিক রাখা
+            targetNode.style.transform = 'none';
+            targetNode.style.margin = '0';
+            targetNode.style.boxShadow = 'none';
+            targetNode.style.width = rect.width + 'px';
+            targetNode.style.height = rect.height + 'px';
+            
+            // Active selection, border বা temporary handles মুছে ফেলা
+            targetNode.style.outline = 'none';
+            targetNode.querySelectorAll('#resize-handle, #delete-handle').forEach(el => el.remove());
+            
+            cloneWrapper.appendChild(targetNode);
+            document.body.appendChild(cloneWrapper);
+
+            // ৩. html-to-image options (WYSIWYD Settings)
+            const isPng = format.includes('PNG');
+            const options = {
+                quality: 1.0,
+                pixelRatio: qualityScale,
+                backgroundColor: isPng ? null : '#ffffff',
+                width: rect.width,
+                height: rect.height,
+                style: {
+                    transform: 'none' // Zoom/pan state clear করে default scale এ render করা
+                },
+                cacheBust: true // Font এবং Image properly load করার জন্য
+            };
+
+            let dataUrl = '';
+            let blob = null;
+
+            try {
+                if (isPng) {
+                    dataUrl = await window.htmlToImage.toPng(targetNode, options);
+                } else {
+                    dataUrl = await window.htmlToImage.toJpeg(targetNode, options);
+                }
+                
+                // Fetch API ব্যবহার করে dataUrl কে Blob এ কনভার্ট করা (Share এর জন্য)
+                const response = await fetch(dataUrl);
+                blob = await response.blob();
+            } catch (err) {
+                document.body.removeChild(cloneWrapper);
+                throw err;
+            }
+
+            document.body.removeChild(cloneWrapper);
+            return { dataUrl, blob, isPng };
+        },
+
+        async download(canvasId, format, scaleVal, onStart, onSuccess, onError) {
+            const canvas = document.getElementById(canvasId);
+            if (!canvas) {
+                if (onError) onError(new Error("Canvas not found"));
+                return;
+            }
+            
+            try {
+                if (onStart) onStart();
+                const result = await this.processExport(canvas, format, scaleVal);
+                const extension = result.isPng ? 'png' : 'jpg';
+
+                const link = document.createElement('a');
+                link.download = `My-Design-App.${extension}`;
+                link.href = result.dataUrl;
+                link.click();
+                
+                if (onSuccess) onSuccess();
+            } catch (err) {
+                console.error("Export Error:", err);
+                if (onError) onError(err);
+            }
+        },
+
+        async share(canvasId, format, scaleVal, onStart, onSuccess, onError) {
+            const canvas = document.getElementById(canvasId);
+            if (!canvas) {
+                if (onError) onError(new Error("Canvas not found"));
+                return;
+            }
+
+            try {
+                if (onStart) onStart();
+                const result = await this.processExport(canvas, format, scaleVal);
+                const extension = result.isPng ? 'png' : 'jpg';
+                const mimeType = result.isPng ? 'image/png' : 'image/jpeg';
+
+                const file = new File([result.blob], `Shared-Design.${extension}`, { type: mimeType });
+
+                if (navigator.canShare && navigator.canShare({ files: [file] })) {
+                    await navigator.share({
+                        title: 'My Design',
+                        text: 'Check out my new design!',
+                        files: [file]
+                    });
+                    if (onSuccess) onSuccess();
+                } else {
+                    throw new Error("Sharing is not supported on this browser.");
+                }
+            } catch (err) {
+                console.error("Share Error:", err);
+                if (onError) onError(err);
+            }
+        }
+    };
+
     return { 
         State, 
         Utils, 
@@ -1295,6 +1421,7 @@ window.EEngine = (function () {
         Sync, 
         Canvas: CanvasInteractions, 
         Label,
+        Export: ExportEngine,
         init() { 
             State.init(); 
             Sync.init(); 
