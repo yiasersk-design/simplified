@@ -1371,7 +1371,7 @@ window.EEngine = (function () {
     };
 
     // ==========================================
-    // 8. EXPORT ENGINE (Ultimate Crisp Text & Automatic Unique Filename)
+    // 8. EXPORT ENGINE (Layout Mismatch, Underline Overlap & Spacing Fix)
     // ==========================================
     const ExportEngine = {
         
@@ -1384,9 +1384,8 @@ window.EEngine = (function () {
             const ampm = hours >= 12 ? 'PM' : 'AM';
             
             hours = hours % 12;
-            hours = hours ? hours : 12; // 0 hour should be 12
+            hours = hours ? hours : 12; 
             
-            // Double digit formatting
             const hoursStr = hours < 10 ? '0' + hours : hours;
             const minutesStr = minutes < 10 ? '0' + minutes : minutes;
             const secondsStr = seconds < 10 ? '0' + seconds : seconds;
@@ -1395,40 +1394,44 @@ window.EEngine = (function () {
         },
 
         async processExport(canvasElement, format, qualityScale) {
+            // ১. Export-এর আগে সমস্ত Web Fonts সম্পূর্ণ Load হওয়ার জন্য অপেক্ষা করা
             await document.fonts.ready;
 
+            // ২. Text Wrapping এবং Layout Mismatch ফিক্স করার জন্য Exact Fractional Width নেওয়া
             const rect = canvasElement.getBoundingClientRect();
-            const exactWidth = Math.round(rect.width);
-            const exactHeight = Math.round(rect.height);
+            const domWidth = rect.width;
+            const domHeight = rect.height;
             
-            const scale = qualityScale; // Manual DOM scale to bypass tiny-text pixelation
+            // Canvas Render Size (Blur এড়ানোর জন্য Math.round করে Integer Pixel Size)
+            const canvasWidth = Math.round(domWidth);
+            const canvasHeight = Math.round(domHeight);
+            
+            const scale = qualityScale; 
             
             const cloneWrapper = document.createElement('div');
             cloneWrapper.style.position = 'fixed';
             cloneWrapper.style.left = '-9999px';
             cloneWrapper.style.top = '0';
-            // Scale the wrapper to hold the enlarged DOM smoothly
-            cloneWrapper.style.width = (exactWidth * scale) + 'px';
-            cloneWrapper.style.height = (exactHeight * scale) + 'px';
+            cloneWrapper.style.width = (canvasWidth * scale) + 'px';
+            cloneWrapper.style.height = (canvasHeight * scale) + 'px';
             cloneWrapper.style.overflow = 'hidden';
             cloneWrapper.style.zIndex = '-9999';
             cloneWrapper.style.pointerEvents = 'none';
 
             const targetNode = canvasElement.cloneNode(true);
             
-            // Layout Locking
+            // ৩. Layout Locking (Exact DOM width apply করে Text Wrapping Shift ঠেকানো)
             targetNode.style.transform = 'none';
             targetNode.style.margin = '0';
             targetNode.style.boxShadow = 'none';
-            targetNode.style.width = exactWidth + 'px';
-            targetNode.style.height = exactHeight + 'px';
-            targetNode.style.minWidth = exactWidth + 'px';
-            targetNode.style.maxWidth = exactWidth + 'px';
-            targetNode.style.minHeight = exactHeight + 'px';
-            targetNode.style.maxHeight = exactHeight + 'px';
+            targetNode.style.width = domWidth + 'px';
+            targetNode.style.height = domHeight + 'px';
+            targetNode.style.minWidth = domWidth + 'px';
+            targetNode.style.maxWidth = domWidth + 'px';
+            targetNode.style.minHeight = domHeight + 'px';
+            targetNode.style.maxHeight = domHeight + 'px';
             targetNode.style.boxSizing = 'border-box';
             
-            // EXTREME QUALITY ENFORCEMENT - CSS LEVEL
             targetNode.style.textRendering = 'geometricPrecision';
             targetNode.style.webkitFontSmoothing = 'antialiased';
             targetNode.style.mozOsxFontSmoothing = 'grayscale';
@@ -1437,40 +1440,64 @@ window.EEngine = (function () {
             targetNode.style.outline = 'none';
             targetNode.querySelectorAll('#resize-handle, #delete-handle').forEach(el => el.remove());
             
-            // DEEP NODE QUALITY ENFORCEMENT (All child elements)
+            // ৪. Clone DOM-কে body-তে যুক্ত করা যাতে getComputedStyle কাজ করে
+            cloneWrapper.appendChild(targetNode);
+            document.body.appendChild(cloneWrapper);
+
+            // ৫. Deep Node Quality, Spacing & Underline Overlap Fix
             targetNode.querySelectorAll('*').forEach(el => {
+                const compStyle = window.getComputedStyle(el);
+
+                // Line-Height Optimization: Relative height-কে Exact Pixel-এ কনভার্ট করে Lock করা
+                if (compStyle.lineHeight && compStyle.lineHeight !== 'normal' && compStyle.lineHeight.includes('px')) {
+                    el.style.lineHeight = compStyle.lineHeight;
+                }
+
+                // Underline & Squiggly Overlap Fix (লেখার নিচে নামানো এবং thickness সেট করা)
+                if ((compStyle.textDecorationLine && compStyle.textDecorationLine.includes('underline')) || 
+                    (el.style.textDecoration && el.style.textDecoration.includes('underline'))) {
+                    el.style.textUnderlineOffset = '4px'; 
+                    el.style.textDecorationThickness = '1px';
+                    // Safari & WebKit Compatibility for Underline Offset
+                    el.style.setProperty('text-underline-position', 'under');
+                    el.style.setProperty('-webkit-text-underline-position', 'under');
+                }
+
+                // Text Rendering & Font Scaling Fix
                 if (el.style) {
                     el.style.textRendering = 'geometricPrecision';
                     el.style.webkitFontSmoothing = 'antialiased';
                 }
+                
+                // Remove outlines from floating/inserted elements
                 if (el.classList && el.classList.contains('inserted-element')) {
                     el.style.outline = 'none';
                     el.style.border = 'none';
                 }
+
+                // Force high-quality image rendering
                 if (el.tagName === 'IMG') {
                     el.style.setProperty('image-rendering', 'high-quality', 'important');
                 }
             });
-            
-            cloneWrapper.appendChild(targetNode);
-            document.body.appendChild(cloneWrapper);
 
             await new Promise(resolve => requestAnimationFrame(resolve));
-            await new Promise(resolve => setTimeout(resolve, 300)); 
+            // 400ms delay দেওয়া হলো যাতে DOM Update, Computed Pixel Line-Height এবং Offset ঠিকভাবে অ্যাপ্লাই হতে পারে
+            await new Promise(resolve => setTimeout(resolve, 400)); 
 
             const isPng = format.includes('PNG');
             const options = {
                 quality: 1.0, 
-                pixelRatio: 1, // Reset pixelRatio to 1 because we are enforcing physical DOM scale below
+                pixelRatio: 1, 
                 backgroundColor: isPng ? null : '#ffffff',
-                width: exactWidth * scale,
-                height: exactHeight * scale,
+                width: canvasWidth * scale,
+                height: canvasHeight * scale,
                 cacheBust: true, 
                 style: {
-                    transform: `scale(${scale})`, // Fixes small text blur by natively rendering larger text
+                    transform: `scale(${scale})`, 
                     transformOrigin: 'top left',
-                    width: exactWidth + 'px',
-                    height: exactHeight + 'px'
+                    width: domWidth + 'px',   // Maintain fractional DOM width to stop wrapping shift
+                    height: domHeight + 'px'  // Maintain fractional DOM height
                 }
             };
 
@@ -1507,7 +1534,6 @@ window.EEngine = (function () {
                 const result = await this.processExport(canvas, format, scaleVal);
                 const extension = result.isPng ? 'png' : 'jpg';
 
-                // Automatically generate time-based unique filename
                 const uniqueFileName = this.generateUniqueFileName(extension);
 
                 const link = document.createElement('a');
@@ -1535,14 +1561,13 @@ window.EEngine = (function () {
                 const extension = result.isPng ? 'png' : 'jpg';
                 const mimeType = result.isPng ? 'image/png' : 'image/jpeg';
 
-                // Automatically generate time-based unique filename for sharing as well
                 const uniqueFileName = this.generateUniqueFileName(extension);
                 const file = new File([result.blob], uniqueFileName, { type: mimeType });
 
                 if (navigator.canShare && navigator.canShare({ files: [file] })) {
                     await navigator.share({
-                        title: uniqueFileName, // Set file name as title
-                        text: 'Check out this exported Ultra HD note!',
+                        title: uniqueFileName, 
+                        text: 'Check out this exported Note!',
                         files: [file]
                     });
                     if (onSuccess) onSuccess();
