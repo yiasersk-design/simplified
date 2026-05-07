@@ -1371,51 +1371,83 @@ window.EEngine = (function () {
     };
 
     // ==========================================
-    // 8. EXPORT ENGINE (html-to-image implementation)
+    // 8. EXPORT ENGINE (Extreme Print-Quality WYSIWYD Implementation)
     // ==========================================
     const ExportEngine = {
         async processExport(canvasElement, format, qualityScale) {
-            // ১. ক্যানভাসের অরিজিনাল সাইজ এবং পজিশন বের করা
-            const rect = canvasElement.getBoundingClientRect();
-            
-            // ২. ক্লোন কন্টেইনার তৈরি করা (যাতে UI break না হয় এবং identical render হয়)
-            const cloneWrapper = document.createElement('div');
-            cloneWrapper.style.position = 'absolute';
-            cloneWrapper.style.left = '-9999px';
-            cloneWrapper.style.top = '-9999px';
-            cloneWrapper.style.width = rect.width + 'px';
-            cloneWrapper.style.height = rect.height + 'px';
-            cloneWrapper.style.overflow = 'hidden';
+            await document.fonts.ready;
 
-            // DOM ক্লোন করা
+            const rect = canvasElement.getBoundingClientRect();
+            const exactWidth = Math.round(rect.width);
+            const exactHeight = Math.round(rect.height);
+            
+            const cloneWrapper = document.createElement('div');
+            cloneWrapper.style.position = 'fixed';
+            cloneWrapper.style.left = '-9999px';
+            cloneWrapper.style.top = '0';
+            cloneWrapper.style.width = exactWidth + 'px';
+            cloneWrapper.style.height = exactHeight + 'px';
+            cloneWrapper.style.overflow = 'hidden';
+            cloneWrapper.style.zIndex = '-9999';
+            cloneWrapper.style.pointerEvents = 'none';
+
             const targetNode = canvasElement.cloneNode(true);
             
-            // Normalize Computed Styles: inline style set করে alignment ঠিক রাখা
+            // Layout Locking
             targetNode.style.transform = 'none';
             targetNode.style.margin = '0';
             targetNode.style.boxShadow = 'none';
-            targetNode.style.width = rect.width + 'px';
-            targetNode.style.height = rect.height + 'px';
+            targetNode.style.width = exactWidth + 'px';
+            targetNode.style.height = exactHeight + 'px';
+            targetNode.style.minWidth = exactWidth + 'px';
+            targetNode.style.maxWidth = exactWidth + 'px';
+            targetNode.style.minHeight = exactHeight + 'px';
+            targetNode.style.maxHeight = exactHeight + 'px';
+            targetNode.style.boxSizing = 'border-box';
             
-            // Active selection, border বা temporary handles মুছে ফেলা
+            // EXTREME QUALITY ENFORCEMENT - CSS LEVEL
+            targetNode.style.textRendering = 'geometricPrecision';
+            targetNode.style.webkitFontSmoothing = 'antialiased';
+            targetNode.style.mozOsxFontSmoothing = 'grayscale';
+            targetNode.style.setProperty('image-rendering', 'high-quality', 'important');
+            
             targetNode.style.outline = 'none';
             targetNode.querySelectorAll('#resize-handle, #delete-handle').forEach(el => el.remove());
+            
+            // DEEP NODE QUALITY ENFORCEMENT (All child elements)
+            targetNode.querySelectorAll('*').forEach(el => {
+                if (el.style) {
+                    el.style.textRendering = 'geometricPrecision';
+                    el.style.webkitFontSmoothing = 'antialiased';
+                }
+                if (el.classList && el.classList.contains('inserted-element')) {
+                    el.style.outline = 'none';
+                    el.style.border = 'none';
+                }
+                if (el.tagName === 'IMG') {
+                    el.style.setProperty('image-rendering', 'high-quality', 'important');
+                }
+            });
             
             cloneWrapper.appendChild(targetNode);
             document.body.appendChild(cloneWrapper);
 
-            // ৩. html-to-image options (WYSIWYD Settings)
+            // Give browser slightly more time to apply sub-pixel antialiasing
+            await new Promise(resolve => requestAnimationFrame(resolve));
+            await new Promise(resolve => setTimeout(resolve, 300)); 
+
             const isPng = format.includes('PNG');
             const options = {
-                quality: 1.0,
-                pixelRatio: qualityScale,
+                quality: 1.0, 
+                pixelRatio: qualityScale, 
                 backgroundColor: isPng ? null : '#ffffff',
-                width: rect.width,
-                height: rect.height,
+                width: exactWidth,
+                height: exactHeight,
+                cacheBust: true, 
                 style: {
-                    transform: 'none' // Zoom/pan state clear করে default scale এ render করা
-                },
-                cacheBust: true // Font এবং Image properly load করার জন্য
+                    transform: 'none',
+                    transformOrigin: 'top left'
+                }
             };
 
             let dataUrl = '';
@@ -1428,7 +1460,6 @@ window.EEngine = (function () {
                     dataUrl = await window.htmlToImage.toJpeg(targetNode, options);
                 }
                 
-                // Fetch API ব্যবহার করে dataUrl কে Blob এ কনভার্ট করা (Share এর জন্য)
                 const response = await fetch(dataUrl);
                 blob = await response.blob();
             } catch (err) {
@@ -1453,7 +1484,7 @@ window.EEngine = (function () {
                 const extension = result.isPng ? 'png' : 'jpg';
 
                 const link = document.createElement('a');
-                link.download = `My-Design-App.${extension}`;
+                link.download = `Print-Quality-Note.${extension}`;
                 link.href = result.dataUrl;
                 link.click();
                 
@@ -1477,12 +1508,12 @@ window.EEngine = (function () {
                 const extension = result.isPng ? 'png' : 'jpg';
                 const mimeType = result.isPng ? 'image/png' : 'image/jpeg';
 
-                const file = new File([result.blob], `Shared-Design.${extension}`, { type: mimeType });
+                const file = new File([result.blob], `Shared-Print-Quality.${extension}`, { type: mimeType });
 
                 if (navigator.canShare && navigator.canShare({ files: [file] })) {
                     await navigator.share({
-                        title: 'My Design',
-                        text: 'Check out my new design!',
+                        title: 'My Print-Quality Note',
+                        text: 'Check out this exported Ultra HD note!',
                         files: [file]
                     });
                     if (onSuccess) onSuccess();
