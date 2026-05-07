@@ -1122,21 +1122,18 @@ function showToast(message, type = 'info', duration = 3000) {
         localStorage.setItem(canvasKey, currentState);
     } catch (e) {}
 
-    // ── [FIX] QA formatted HTML সবসময় save করো ──────────────────
-    // আগে condition ছিল: qInnerEl.innerHTML.trim() non-empty হলে
-    // সমস্যা: formatting এর মাঝে extractContents() এর পরে
-    // সাময়িক empty হলে saveState() stale key রেখে দিত।
-    // Fix: qInner আছে কিনা শুধু সেটাই check করো;
-    //      empty হলে key remove করো যাতে stale data না থাকে।
+    // ── [FIX] QA formatted HTML সবসময় save করো ──────────────────
     const qInnerEl = document.getElementById('qa-content-inner');
     try {
         const sessionId = localStorage.getItem('aiNoteMaker_currentId');
         const key = sessionId ? 'editor_qa_formatted_html_' + sessionId : 'editor_qa_formatted_html';
-        if (qInnerEl && qInnerEl.innerHTML.trim()) {
+        
+        // BUG FIX: Only save if innerHTML has actual content. 
+        // Do NOT use 'localStorage.removeItem(key)' here. 
+        // On page load, restoreCanvasFromStorage initially clears qInner to let the Sync Engine populate it.
+        // If we remove the key here, it deletes the saved formatting before the Sync Engine can load it!
+        if (qInnerEl && qInnerEl.innerHTML.trim() !== "") {
             localStorage.setItem(key, qInnerEl.innerHTML);
-        } else {
-            // Empty হলে stale key মুছে দাও — sync engine fresh render করবে
-            localStorage.removeItem(key);
         }
     } catch (e) {}
 
@@ -3654,8 +3651,32 @@ document.getElementById('btn-effects-watermark').addEventListener('click', () =>
                 qInner.innerHTML = '';
                 qInner.insertAdjacentHTML('beforeend', savedFormatted);
                 syncRenderedCount();
-                updateEmptyHint();
-                return;
+                
+                // ── [FIX] Editor বন্ধ থাকা অবস্থায় Notebook-এ নতুন Q&A যোগ হলে তা Sync করা ──
+                if (renderedCount < entries.length) {
+                    const newEntries = entries.slice(renderedCount);
+                    const fragment = document.createDocumentFragment();
+                    newEntries.forEach(item => {
+                        fragment.appendChild(createQaBlock(item, config));
+                    });
+                    qInner.appendChild(fragment);
+                    syncRenderedCount();
+                    
+                    // আপডেট করা DOM-টি আবার স্টোরেজে সেভ করে নেওয়া
+                    try {
+                        localStorage.setItem(getFormattedHtmlKey(), qInner.innerHTML);
+                    } catch (e) {}
+                } else if (renderedCount > entries.length) {
+                    // Q&A ডিলিট হয়ে থাকলে formatting বাদ দিয়ে fresh render করতে হবে
+                    qInner.innerHTML = '';
+                    renderedCount = 0;
+                }
+                
+                // যদি renderedCount এবং entries.length সমান হয়ে যায়, তাহলে এখানেই কাজ শেষ
+                if (renderedCount === entries.length && renderedCount > 0) {
+                    updateEmptyHint();
+                    return;
+                }
             }
         }
 
@@ -3669,6 +3690,10 @@ document.getElementById('btn-effects-watermark').addEventListener('click', () =>
         });
         qInner.appendChild(fragment);
         updateEmptyHint();
+        
+        try {
+            localStorage.setItem(getFormattedHtmlKey(), qInner.innerHTML);
+        } catch (e) {}
     }
 
     // ─── শুধু নতুন entry append করা — formatted content unaffected ──────────
