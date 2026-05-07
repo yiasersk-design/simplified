@@ -842,6 +842,32 @@ function saveCurrentChatState() {
         }
         localStorage.setItem('aiNoteMaker_sessions', JSON.stringify(chatSessions));
     }
+} // === ITEM DELETE HELPER: DOM থেকে Q&A entries rebuild করে localStorage sync করে ===
+function rebuildAndSyncQAEntries() {
+    try {
+        const _chatEl = document.getElementById('chatContainer');
+        const _bubbles = _chatEl.querySelectorAll('.user-msg-bubble');
+        const _rebuiltEntries = [];
+        let _pendingQ = null;
+
+        _bubbles.forEach(function (_bubble) {
+            const _wrap = _bubble.closest('.flex');
+            if (!_wrap) return;
+            const _isQue = _wrap.innerHTML.includes('>Que</span>');
+            const _isAns = _wrap.innerHTML.includes('>Ans</span>');
+            const _text = _bubble.getAttribute('data-raw') || _bubble.innerText.trim();
+
+            if (_isQue) {
+                _pendingQ = _text;
+            } else if (_isAns && _pendingQ !== null) {
+                _rebuiltEntries.push({ q: _pendingQ, a: _text, ts: Date.now() });
+                _pendingQ = null;
+            }
+        });
+
+        localStorage.setItem('nb_qa_entries_' + currentSessionId, JSON.stringify(_rebuiltEntries));
+        localStorage.setItem('nb_qa_pending', Date.now().toString());
+    } catch (_e) { /* silent fail */ }
 }
 
 // --- NEW EDIT FEATURE STATES & HELPER ---
@@ -860,6 +886,30 @@ window.formatText = function(text) {
 document.getElementById('chatContainer').addEventListener('click', function(e) {
     const target = e.target;
     
+    // === DELETE ITEM HANDLER ===
+    if (target.classList.contains('delete-item-btn')) {
+        const timeLabelDiv = target.parentElement;
+        const contentContainer = timeLabelDiv ? timeLabelDiv.parentElement : null;
+        const msgDiv = contentContainer ? contentContainer.parentElement : null;
+        if (!msgDiv) return;
+
+        const isAnswer = timeLabelDiv.innerHTML.includes('>Ans</span>');
+
+        // Answer delete করলে পরের zig-zag divider-ও সরাতে হবে
+        if (isAnswer) {
+            const nextSibling = msgDiv.nextElementSibling;
+            if (nextSibling && nextSibling.getAttribute('data-zig-zag') === 'true') {
+                nextSibling.remove();
+            }
+        }
+
+        msgDiv.remove();
+        rebuildAndSyncQAEntries();
+        saveCurrentChatState();
+        window.showToast('Deleted successfully', 'success');
+        return;
+    }
+
     // Check if clicked element is a SPAN
     if (target.tagName === 'SPAN') {
         const labelText = target.textContent.trim().toLowerCase();
@@ -935,9 +985,9 @@ function appendMessage(content) {
         contentContainer.className = 'flex flex-col items-start max-w-[90%] relative';
         innerDiv.className = 'user-msg-bubble select-none cursor-text bg-blue-50 border border-blue-200 shadow-sm text-blue-900 px-2.5 py-1.5 rounded-[6px] rounded-tl-[2px] text-[14px] font-medium leading-snug w-fit max-w-full inline-block break-words whitespace-pre-wrap overflow-hidden text-left transition-colors duration-200';
         
-        timeLabel.className = 'text-[10px] text-blue-500 flex items-center gap-1.5 font-bold tracking-wide mt-1 ml-1';
+        timeLabel.className = 'text-[10px] text-blue-500 flex items-center gap-1.5 font-bold tracking-wide mt-1 ml-1 w-full';
         // Added cursor-pointer & hover effect to signify interactivity
-        timeLabel.innerHTML = `<span class="bg-blue-100 text-blue-600 px-1.5 py-[1px] rounded-[4px] text-[9px] uppercase tracking-widest border border-blue-200 cursor-pointer hover:bg-blue-200 transition-colors" title="Click to Edit">Que</span> <span>${timeString}</span>`;
+        timeLabel.innerHTML = `<span class="bg-blue-100 text-blue-600 px-1.5 py-[1px] rounded-[4px] text-[9px] uppercase tracking-widest border border-blue-200 cursor-pointer hover:bg-blue-200 transition-colors" title="Click to Edit">Que</span> <span>${timeString}</span><span class="delete-item-btn ml-auto bg-red-50 text-red-400 px-1.5 py-[1px] rounded-[4px] text-[9px] uppercase tracking-widest border border-red-100 cursor-pointer hover:bg-red-100 hover:text-red-600 transition-colors select-none" title="Delete this Question">Delete</span>`;
     } else {
         msgDiv.className = 'flex justify-center w-full mt-0 fade-in relative px-2';
         contentContainer.className = 'flex flex-col items-start w-full relative';
@@ -945,7 +995,7 @@ function appendMessage(content) {
         
         timeLabel.className = 'text-[10px] text-gray-500 flex items-center gap-1.5 font-medium tracking-wide mt-1 ml-1 w-full';
         // Added cursor-pointer & hover effect to signify interactivity
-        timeLabel.innerHTML = `<span class="bg-gray-200 text-gray-600 px-1.5 py-[1px] rounded-[4px] text-[9px] uppercase tracking-widest border border-gray-300 cursor-pointer hover:bg-gray-300 transition-colors" title="Click to Edit">Ans</span> <span>${timeString}</span>`;
+        timeLabel.innerHTML = `<span class="bg-gray-200 text-gray-600 px-1.5 py-[1px] rounded-[4px] text-[9px] uppercase tracking-widest border border-gray-300 cursor-pointer hover:bg-gray-300 transition-colors" title="Click to Edit">Ans</span> <span>${timeString}</span><span class="delete-item-btn ml-auto bg-red-50 text-red-400 px-1.5 py-[1px] rounded-[4px] text-[9px] uppercase tracking-widest border border-red-100 cursor-pointer hover:bg-red-100 hover:text-red-600 transition-colors select-none" title="Delete this Answer">Delete</span>`;
     }
     
     // Save original raw string for easy retrieving in edit mode
@@ -961,6 +1011,7 @@ function appendMessage(content) {
     if (!isQuestionMode) {
         const dividerDiv = document.createElement('div');
         dividerDiv.className = 'w-full flex items-center justify-center fade-in select-none pointer-events-none mt-1.5 mb-1';
+        dividerDiv.setAttribute('data-zig-zag', 'true');
         dividerDiv.innerHTML = '<div class="w-full h-[4px] opacity-40" style="background-image: url(\'data:image/svg+xml,%3Csvg%20width%3D%2220%22%20height%3D%224%22%20viewBox%3D%220%200%2020%204%22%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%3E%3Cpath%20d%3D%22M0%204%20L5%200%20L10%204%20L15%200%20L20%204%22%20fill%3D%22none%22%20stroke%3D%22%239ca3af%22%20stroke-width%3D%221.2%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3C%2Fsvg%3E\'); background-repeat: repeat-x; background-size: 20px 4px; background-position: center;"></div>';
         chatContainer.appendChild(dividerDiv);
     }
