@@ -9,6 +9,9 @@
     <!-- HTML2Canvas for Download Feature -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     
+    <!-- Import Core Engine (Fixed Path) -->
+    <script src="../Core/E-Engine.js"></script>
+    
     <style> /* ================= EXPORT MODAL 3D BUTTON STYLES ================= */
 .pushable {
     position: relative;
@@ -1079,73 +1082,26 @@ function showToast(message, type = 'info', duration = 3000) {
             });
 
             // ==========================================
-            // 2. Undo / Redo / History State Management
+            // 2. Undo / Redo / History State Management (Powered By E-Engine)
             // ==========================================
-            let history =[];
-            let historyIndex = -1;
+            
+            // Engine Initialize
+            EEngine.init();
 
+            // Wrapper for UI state preservation (যাতে অন্যান্য UI code change করতে না হয়)
             function saveState() {
-    // Remove selection border before saving
-    let previouslyActive = activeElement;
-    setActive(null);
+                let previouslyActive = activeElement;
+                setActive(null);
+                EEngine.State.save(); 
+                if (previouslyActive) setActive(previouslyActive);
+            }
 
-    // ── [FIX] Canvas snapshot থেকে qa-content-zone exclude করে save করা ──
-    // কারণ: qa-content-inner এর content sync engine আলাদাভাবে manage করে।
-    // canvas HTML-এ embedded করলে restoreCanvasFromStorage-এ stale content
-    // ফিরে আসে এবং sync engine এর latest render overwrite হয়ে যায়।
-    const qZoneEl = document.getElementById('qa-content-zone');
-    let qZoneDisplay = '';
-    if (qZoneEl) {
-        qZoneDisplay = qZoneEl.style.display;
-        qZoneEl.style.display = 'none'; // temporarily hide
-    }
-
-    let currentState = canvasContainer.innerHTML;
-
-    if (qZoneEl) {
-        qZoneEl.style.display = qZoneDisplay; // restore
-    }
-
-    // If we are overriding undone history
-    if (historyIndex < history.length - 1) {
-        history = history.slice(0, historyIndex + 1);
-    }
-
-    history.push(currentState);
-    historyIndex++;
-    updateHeaderButtons();
-
-    // ── Persist canvas to localStorage (Session Specific) ─────────
-    try {
-        const sessionId = localStorage.getItem('aiNoteMaker_currentId');
-        const canvasKey = sessionId ? 'editor_canvas_html_' + sessionId : 'editor_canvas_html';
-        localStorage.setItem(canvasKey, currentState);
-    } catch (e) {}
-
-    // ── [FIX] QA formatted HTML সবসময় save করো ──────────────────
-    const qInnerEl = document.getElementById('qa-content-inner');
-    try {
-        const sessionId = localStorage.getItem('aiNoteMaker_currentId');
-        const key = sessionId ? 'editor_qa_formatted_html_' + sessionId : 'editor_qa_formatted_html';
-        
-        // BUG FIX: Only save if innerHTML has actual content. 
-        // Do NOT use 'localStorage.removeItem(key)' here. 
-        // On page load, restoreCanvasFromStorage initially clears qInner to let the Sync Engine populate it.
-        // If we remove the key here, it deletes the saved formatting before the Sync Engine can load it!
-        if (qInnerEl && qInnerEl.innerHTML.trim() !== "") {
-            localStorage.setItem(key, qInnerEl.innerHTML);
-        }
-    } catch (e) {}
-
-    // Reselect the element after saving
-    if (previouslyActive) setActive(previouslyActive);
-}
-
-            function updateHeaderButtons() {
+            // Connect Engine hooks to UI Buttons
+            EEngine.State.uiHooks.onHistoryChange = (canUndo, canRedo) => {
                 const btnUndo = document.getElementById('btn-undo');
                 const btnRedo = document.getElementById('btn-redo');
                 
-                if (historyIndex > 0) {
+                if (canUndo) {
                     btnUndo.classList.replace('opacity-50', 'opacity-100');
                     btnUndo.classList.add('hover:opacity-80', 'cursor-pointer');
                     btnUndo.disabled = false;
@@ -1155,7 +1111,7 @@ function showToast(message, type = 'info', duration = 3000) {
                     btnUndo.disabled = true;
                 }
 
-                if (historyIndex < history.length - 1) {
+                if (canRedo) {
                     btnRedo.classList.replace('opacity-50', 'opacity-100');
                     btnRedo.classList.add('hover:opacity-80', 'cursor-pointer');
                     btnRedo.disabled = false;
@@ -1164,108 +1120,15 @@ function showToast(message, type = 'info', duration = 3000) {
                     btnRedo.classList.remove('hover:opacity-80', 'cursor-pointer');
                     btnRedo.disabled = true;
                 }
-            }
+            };
 
-            // ── Page Load: localStorage থেকে canvas state restore করা ──────────
-(function restoreCanvasFromStorage() {
-    const sessionId = localStorage.getItem('aiNoteMaker_currentId');
-    const canvasKey = sessionId ? 'editor_canvas_html_' + sessionId : 'editor_canvas_html';
-    const savedHtml = localStorage.getItem(canvasKey);
+            // Connect Undo/Redo click to Engine
+            document.getElementById('btn-undo').addEventListener('click', () => EEngine.State.undo());
+            document.getElementById('btn-redo').addEventListener('click', () => EEngine.State.redo());
 
-    if (savedHtml) {
-        // ── [FIX] Canvas restore করার সময় qa-content-zone এর current DOM
-        // আলাদা করে রেখে দাও, restore-এর পরে ফিরিয়ে দাও।
-        // কারণ: canvasContainer.innerHTML = savedHtml করলে qa-content-zone
-        // destroy হয়ে নতুন তৈরি হয়। sync engine এর init() পরে এটা
-        // নিজেই populate করবে — তাই canvas snapshot-এর embedded content
-        // দিয়ে overwrite হওয়া ঠেকাতে হবে।
-        const existingQaZone = document.getElementById('qa-content-zone');
-        const existingQaHint = document.getElementById('qa-empty-hint');
-
-        // Current qa-content-zone এবং empty hint-এর reference ও display state save করো
-        let savedQaZoneOuterHTML = existingQaZone ? existingQaZone.outerHTML : null;
-        let savedQaHintOuterHTML = existingQaHint ? existingQaHint.outerHTML : null;
-
-        // Canvas HTML set করো
-        canvasContainer.innerHTML = savedHtml;
-
-        // ── Restore qa-content-zone: canvas snapshot-এ embedded যা আছে সেটা
-        // sync engine manage করবে — তাই canvas-restored zone সরিয়ে
-        // original blank zone রাখো যাতে sync engine init()-এ fresh populate করতে পারে
-        const restoredQaZone = document.getElementById('qa-content-zone');
-        const restoredQaHint = document.getElementById('qa-empty-hint');
-
-        if (restoredQaZone) {
-            // Content clear করো — sync engine init() এই zone populate করবে
-            const inner = restoredQaZone.querySelector('#qa-content-inner');
-            if (inner) inner.innerHTML = '';
-            // display:none রাখো — sync engine applyTemplateStyles() এ 'block' করবে
-            restoredQaZone.style.display = 'none';
-        }
-
-        if (restoredQaHint) {
-            restoredQaHint.style.display = 'block';
-        }
-
-        // Restored inserted elements-কে interactive করা
-        const elements = canvasContainer.querySelectorAll('.inserted-element');
-        elements.forEach(el => makeInteractive(el));
-    }
-
-    // ── Background image restore করো (persistent image system) ──
-    try {
-        const bgKey = sessionId ? 'editor_bg_image_' + sessionId : 'editor_bg_image';
-        const savedBg = localStorage.getItem(bgKey);
-        if (savedBg) {
-            const bgImage = document.getElementById('main-bg-image');
-            if (bgImage) {
-                bgImage.src = savedBg;
-            }
-        }
-    } catch (e) {}
-})();
-
-// Save Initial State (localStorage restore-এর পরে)
-saveState();
-            document.getElementById('btn-undo').addEventListener('click', () => {
-                if (historyIndex > 0) {
-                    historyIndex--;
-                    restoreState(history[historyIndex]);
-                }
-            });
-
-            document.getElementById('btn-redo').addEventListener('click', () => {
-                if (historyIndex < history.length - 1) {
-                    historyIndex++;
-                    restoreState(history[historyIndex]);
-                }
-            });
-
-            function restoreState(content) {
-                setActive(null);
-                canvasContainer.innerHTML = content;
-                // Re-bind dragging and clicking events to elements restored from string
-                const elements = canvasContainer.querySelectorAll('.inserted-element');
-                elements.forEach(el => makeInteractive(el));
-                updateHeaderButtons();
-
-                // ── Undo/Redo করলে localStorage-ও update হবে (Session Specific) ──
-                try {
-                    const sessionId = localStorage.getItem('aiNoteMaker_currentId');
-                    const canvasKey = sessionId ? 'editor_canvas_html_' + sessionId : 'editor_canvas_html';
-                    localStorage.setItem(canvasKey, content);
-                } catch (e) {}
-
-                // QA zone undo/redo-তে current session ID অনুযায়ী formatted HTML sync করা
-                const qInnerEl = document.getElementById('qa-content-inner');
-                if (qInnerEl && qInnerEl.innerHTML.trim()) {
-                    try {
-                        const sessionId = localStorage.getItem('aiNoteMaker_currentId');
-                        const key = sessionId ? 'editor_qa_formatted_html_' + sessionId : 'editor_qa_formatted_html';
-                        localStorage.setItem(key, qInnerEl.innerHTML);
-                    } catch (e) {}
-                }
-            }
+            // Connect UI Interactive functions to Engine
+            EEngine.Canvas.setActive = setActive;
+            EEngine.Canvas.makeInteractive = makeInteractive;
 
             // ==========================================
             // 3. Selection, Drag/Drop & Resize Logic
@@ -2045,163 +1908,20 @@ toolboxBtns.forEach(btn => {
             // 5. Main Toolbar Actions
             // ==========================================
 
-            // Template — Online Image option
-// ⚠️ submenu এখানে auto-close হবে না — user manually back button দিয়ে বন্ধ করবে
-document.getElementById('btn-template-online').addEventListener('click', () => {
-    const bgImage = document.getElementById('main-bg-image');
+            // Template — Online/None option (Powered by E-Engine)
+            document.getElementById('btn-template-online').addEventListener('click', () => {
+                EEngine.Storage.setOnlineTemplate();
+            });
 
-    // Loading state দেখাও
-    bgImage.style.opacity = '0.4';
+            document.getElementById('btn-template-none').addEventListener('click', () => {
+                EEngine.Storage.removeTemplate();
+                document.querySelectorAll('.submenu-panel').forEach(p => p.classList.remove('active-state'));
+            });
 
-    // Random online image load করো (picsum.photos)
-    const randomId = Math.floor(Math.random() * 1000);
-    const newSrc = `https://picsum.photos/840/1160?random=${randomId}`;
-
-    const tempImg = new Image();
-    tempImg.onload = () => {
-        // ── Image টিকে base64-এ convert করে localStorage-এ save করো ──
-        const canvas = document.createElement('canvas');
-        canvas.width = tempImg.naturalWidth || 840;
-        canvas.height = tempImg.naturalHeight || 1160;
-        const ctx = canvas.getContext('2d');
-        ctx.drawImage(tempImg, 0, 0);
-        let base64Data;
-        try {
-            base64Data = canvas.toDataURL('image/jpeg', 0.85);
-        } catch (e) {
-            // CORS বা অন্য কারণে toDataURL fail করলে URL-ই save করো
-            base64Data = newSrc;
-        }
-
-        bgImage.src = base64Data;
-        bgImage.style.opacity = '1';
-        bgImage.style.display = '';
-
-        // ── localStorage-এ persist করো ──
-        try {
-            const sessionId = localStorage.getItem('aiNoteMaker_currentId');
-            const bgKey = sessionId ? 'editor_bg_image_' + sessionId : 'editor_bg_image';
-            localStorage.setItem(bgKey, base64Data);
-        } catch (e) {
-            // localStorage full হলে (quota exceeded) URL দিয়ে চেষ্টা করো
-            try {
-                const sessionId = localStorage.getItem('aiNoteMaker_currentId');
-                const bgKey = sessionId ? 'editor_bg_image_' + sessionId : 'editor_bg_image';
-                localStorage.setItem(bgKey, newSrc);
-                bgImage.src = newSrc;
-            } catch (e2) {}
-        }
-
-        saveState();
-    };
-    tempImg.onerror = () => {
-        bgImage.style.opacity = '1';
-        showToast("Image load করা যায়নি। Internet connection check করুন।", 'error');
-    };
-    tempImg.crossOrigin = 'anonymous'; // base64 conversion-এর জন্য CORS header চাই
-    tempImg.src = newSrc;
-
-    // ✅ Auto-close সরানো হয়েছে — submenu open থাকবে
-    // user back button দিয়ে manually close করবে
-});
-
-// Template — None option (background image সরিয়ে দাও)
-// None click করলে submenu বন্ধ হবে — কারণ কাজ শেষ
-document.getElementById('btn-template-none').addEventListener('click', () => {
-    const bgImage = document.getElementById('main-bg-image');
-
-    // Image-টিকে blank/transparent placeholder-এ reset করো
-    bgImage.src = 'https://placehold.co/840x1160/ffffff/ffffff?text=+';
-    bgImage.style.opacity = '1';
-    bgImage.style.display = '';
-
-    // ── localStorage থেকে saved image মুছে দাও ──
-    try {
-        const sessionId = localStorage.getItem('aiNoteMaker_currentId');
-        const bgKey = sessionId ? 'editor_bg_image_' + sessionId : 'editor_bg_image';
-        localStorage.removeItem(bgKey);
-    } catch (e) {}
-
-    saveState();
-
-    // None select করলে submenu বন্ধ করো
-    document.querySelectorAll('.submenu-panel').forEach(p => p.classList.remove('active-state'));
-});
-
-            // Reset — Smart Toggle: formatting remove ↔ restore
-let _resetFormattingSnapshot = null; // formatted state store করার জন্য
-let _isFormattingRemoved = false;    // toggle state
-
-document.getElementById('btn-reset').addEventListener('click', () => {
-    const qInner = document.getElementById('qa-content-inner');
-
-    if (!_isFormattingRemoved) {
-        // ── First click: formatting snapshot নেও এবং plain করো ──
-        if (qInner) {
-            // সম্পূর্ণ inner HTML (formatting সহ) store করো
-            _resetFormattingSnapshot = {
-                qaHtml: qInner.innerHTML,
-                qaTextAlign: qInner.style.textAlign || ''
-            };
-
-            // সব span-এর inline style সরিয়ে plain text রাখো
-            // প্রতিটি formatted span unwrap করে শুধু text রাখা হবে
-            function stripFormattingNodes(el) {
-                const spans = el.querySelectorAll('span[data-qa-fmt], span[style]');
-                spans.forEach(span => {
-                    const parent = span.parentNode;
-                    while (span.firstChild) parent.insertBefore(span.firstChild, span);
-                    parent.removeChild(span);
-                });
-                // inline style-এ থাকা bold, italic, color, background সরানো
-                const allEls = el.querySelectorAll('*');
-                allEls.forEach(node => {
-                    node.style.fontWeight = '';
-                    node.style.fontStyle = '';
-                    node.style.textDecoration = '';
-                    node.style.textDecorationLine = '';
-                    node.style.color = '';
-                    node.style.backgroundColor = '';
-                    node.style.fontSize = '';
-                });
-                // container-এর alignment ও সরাও
-                el.style.textAlign = '';
-            }
-
-            stripFormattingNodes(qInner);
-        }
-
-        _isFormattingRemoved = true;
-
-        // Reset button-কে "restore" indicator দাও (optional visual feedback)
-        const resetBtn = document.getElementById('btn-reset');
-        const resetLabel = resetBtn.querySelector('.toolbar-text');
-        if (resetLabel) resetLabel.textContent = 'Restore';
-        resetBtn.classList.remove('text-red-500', 'hover:text-red-700');
-        resetBtn.classList.add('text-green-600', 'hover:text-green-800');
-
-        saveState();
-
-    } else {
-        // ── Second click: stored snapshot থেকে formatting restore করো ──
-        if (qInner && _resetFormattingSnapshot) {
-            qInner.innerHTML = _resetFormattingSnapshot.qaHtml;
-            qInner.style.textAlign = _resetFormattingSnapshot.qaTextAlign;
-            _resetFormattingSnapshot = null;
-        }
-
-        _isFormattingRemoved = false;
-
-        // Button আবার "Reset" state-এ ফিরিয়ে দাও
-        const resetBtn = document.getElementById('btn-reset');
-        const resetLabel = resetBtn.querySelector('.toolbar-text');
-        if (resetLabel) resetLabel.textContent = 'Reset';
-        resetBtn.classList.add('text-red-500', 'hover:text-red-700');
-        resetBtn.classList.remove('text-green-600', 'hover:text-green-800');
-
-        saveState();
-    }
-});
+            // Reset — Smart Toggle: formatting remove ↔ restore (Powered by E-Engine)
+            document.getElementById('btn-reset').addEventListener('click', () => {
+                EEngine.Format.toggleResetFormatting();
+            });
 
             // ==========================================
             // 6. Layout Submenu Functionalities
@@ -2487,148 +2207,15 @@ colorItems.forEach(item => {
                 }
             }
 
-            // Read-only mode-এ QA zone-এ span-wrap দিয়ে styling apply/toggle করা
-function applyCommandToQaZone(command, value, customRange = null) {
-    let range;
-    let sel = null;
-    
-    if (customRange) {
-        range = customRange; // Color picker থেকে আসলে saved range ব্যবহার হবে
-    } else {
-        sel = window.getSelection();
-        if (!sel || sel.rangeCount === 0 || sel.isCollapsed) return;
-        range = sel.getRangeAt(0);
-    }
-
-    if (range.toString().trim() === '') return;
-
-    let isRemove = false;
-    let node = range.startContainer;
-    
-    while (node && node !== document.getElementById('qa-content-inner')) {
-        if (node.nodeType === 1 && node.getAttribute('data-qa-fmt') === command) {
-            if (command === 'backColor' || command === 'foreColor') {
-                const temp = document.createElement('div');
-                if (command === 'backColor') temp.style.backgroundColor = value;
-                else temp.style.color = value;
-                document.body.appendChild(temp);
-                const normalizedValue = command === 'backColor' ? getComputedStyle(temp).backgroundColor : getComputedStyle(temp).color;
-                temp.remove();
-
-                const currentNodeColor = command === 'backColor' ? node.style.backgroundColor : node.style.color;
-                if (currentNodeColor === normalizedValue) isRemove = true;
-            } else if (command === 'fontSize') {
-                if (node.style.fontSize === value) isRemove = true;
-            } else {
-                isRemove = true;
+            // Wrapper function: Heavy logic moved to Engine
+            function applyCommandToQaZone(command, value, customRange = null) {
+                EEngine.Format.applyCommandToQaZone(command, value, customRange);
             }
-            break;
-        }
-        node = node.parentNode;
-    }
 
-    const fragment = range.extractContents();
-
-    if (isRemove) {
-        const matchingSpans = fragment.querySelectorAll(`span[data-qa-fmt="${command}"]`);
-        matchingSpans.forEach(span => {
-            const parent = span.parentNode;
-            while (span.firstChild) parent.insertBefore(span.firstChild, span);
-            parent.removeChild(span);
-        });
-        range.insertNode(fragment);
-    } else {
-        const matchingSpans = fragment.querySelectorAll(`span[data-qa-fmt="${command}"]`);
-        matchingSpans.forEach(span => {
-            const parent = span.parentNode;
-            while (span.firstChild) parent.insertBefore(span.firstChild, span);
-            parent.removeChild(span);
-        });
-
-        const wrapper = document.createElement('span');
-        wrapper.setAttribute('data-qa-fmt', command);
-
-        if (command === 'bold') wrapper.style.fontWeight = 'bold';
-        else if (command === 'italic') wrapper.style.fontStyle = 'italic';
-        else if (command === 'underline') wrapper.style.textDecoration = 'underline';
-        else if (command === 'strikeThrough') wrapper.style.textDecoration = 'line-through';
-        else if (command === 'backColor') wrapper.style.backgroundColor = value || 'rgba(253, 224, 71, 0.7)';
-        else if (command === 'foreColor') wrapper.style.color = value;
-        else if (command === 'fontSize') wrapper.style.fontSize = value;
-        // ul-* commands-এর জন্য CSS class দিয়ে style control হবে (CSS-এ defined)
-        // wrapper-এ data-qa-fmt="ul-solid" ইত্যাদি set হবে, বাকি CSS করবে
-
-        wrapper.appendChild(fragment);
-        range.insertNode(wrapper);
-    }
-
-    const qaInner = document.getElementById('qa-content-inner');
-    if (qaInner) {
-        const allSpans = qaInner.querySelectorAll('span[data-qa-fmt]');
-        allSpans.forEach(s => {
-            if (s.innerHTML === '') s.remove();
-        });
-    }
-
-    if (sel) sel.removeAllRanges();
-    saveState();
-}
-
-            // ── Global Font Size Control Logic (+ / -) ──
-function adjustFontSize(isIncrease) {
-    // ১. যদি Canvas-এর কোনো Inserted Text Element (floating) সিলেক্ট করা থাকে, তবে শুধু সেটার সাইজ চেঞ্জ হবে
-    if (activeElement && activeElement.tagName === 'DIV' && activeElement.id !== 'canvas-watermark') {
-        styleText(() => { 
-            let currentSize = window.getComputedStyle(activeElement).fontSize;
-            let sizeNum = parseFloat(currentSize) || 16;
-            
-            let newSize = isIncrease ? sizeNum + 2 : sizeNum - 2;
-            newSize = Math.max(8, Math.min(newSize, 120)); // Limit for canvas elements
-            
-            activeElement.style.fontSize = newSize + 'px';
-        });
-        return;
-    }
-
-    // ২. যদি কোনো floating element সিলেক্ট করা না থাকে, তবে গ্লোবাল QA Zone-এর সাইজ চেঞ্জ হবে (Selection প্রয়োজন নেই)
-    const qInner = document.getElementById('qa-content-inner');
-    if (qInner) {
-        let currentSize = window.getComputedStyle(qInner).fontSize;
-        let sizeNum = parseFloat(currentSize) || 16; // ডিফল্ট সাইজ
-
-        // ১ পিক্সেল করে সাইজ পরিবর্তন হবে (পুরো কন্টেইনারের জন্য নিখুঁত ও smooth control)
-        let newSize = isIncrease ? sizeNum + 1 : sizeNum - 1;
-        
-        // লিমিটেশন সেট করা (খুব ছোট বা খুব বড় যেন না হয়)
-        newSize = Math.max(6, Math.min(newSize, 72)); 
-
-        // কন্টেইনারে গ্লোবালি ফন্ট সাইজ অ্যাপ্লাই করা
-        qInner.style.fontSize = newSize + 'px';
-
-        // ── [NEW] Save custom font size to localStorage (Session Specific) ──
-        try {
-            const sessionId = localStorage.getItem('aiNoteMaker_currentId');
-            const fontKey = sessionId ? 'editor_custom_font_size_' + sessionId : 'editor_custom_font_size';
-            localStorage.setItem(fontKey, newSize + 'px');
-        } catch (e) {}
-
-        // পূর্বে যদি সিলেকশনের মাধ্যমে কোনো নির্দিষ্ট টেক্সটে inline fontSize দেওয়া থাকে, 
-        // সেগুলো রিমুভ করে দেওয়া হচ্ছে যাতে গ্লোবাল সাইজটি সব জায়গায় সমানভাবে কাজ করে।
-        qInner.querySelectorAll('span[style*="font-size"]').forEach(span => {
-            span.style.fontSize = '';
-        });
-        
-        // পুরানো span ভিত্তিক data-qa-fmt="fontSize" থাকলে সেগুলো পরিষ্কার করা
-        qInner.querySelectorAll('span[data-qa-fmt="fontSize"]').forEach(span => {
-            const parent = span.parentNode;
-            while (span.firstChild) parent.insertBefore(span.firstChild, span);
-            parent.removeChild(span);
-        });
-
-        saveState(); // Undo/Redo হিস্ট্রিতে সেভ করা
-        showToast(`Global Text Size: ${newSize}px`, 'success');
-    }
-}
+            // Wrapper function: Text size logic moved to Engine
+            function adjustFontSize(isIncrease) {
+                EEngine.Format.adjustGlobalFontSize(isIncrease);
+            }
 
 // Bind Size buttons
 document.getElementById('btn-text-size-minus').addEventListener('click', () => adjustFontSize(false));
@@ -2689,148 +2276,14 @@ textStyleBtns[6].addEventListener('click', () => {
 });
 
 // ==========================================
-// Underline Style Submenu — Smart Switch (Split-based, No Nesting)
+// Underline Style Submenu (Managed by Engine)
 // ==========================================
 document.querySelectorAll('.ul-style-btn').forEach(btn => {
     btn.addEventListener('click', () => {
         const ulCommand = btn.getAttribute('data-ul');
 
         if (hasQaSelection()) {
-            const sel = window.getSelection();
-            if (!sel || sel.rangeCount === 0) return;
-            const range = sel.getRangeAt(0);
-            if (range.toString().trim() === '') return;
-
-            const qInner = document.getElementById('qa-content-inner');
-            const isRemove = (ulCommand === 'ul-none');
-
-            // ── STEP 1: Selection-এর start container থেকে ul-* ancestor খোঁজা ──
-            // এটি detect করে যে selection কোনো existing ul-* span-এর ভেতরে আছে কিনা
-            let ulWrapper = null;
-            {
-                let node = range.startContainer;
-                if (node.nodeType === 3) node = node.parentNode;
-                while (node && node !== qInner) {
-                    if (
-                        node.nodeType === 1 &&
-                        node.getAttribute &&
-                        node.getAttribute('data-qa-fmt') &&
-                        node.getAttribute('data-qa-fmt').startsWith('ul-')
-                    ) {
-                        ulWrapper = node;
-                        break;
-                    }
-                    node = node.parentNode;
-                }
-            }
-
-            // ── STEP 2: Toggle check ──
-            // একই style-এ আবার click করলে remove হবে (toggle off)
-            // ভিন্ন style-এ click করলে switch হবে (smart replace)
-            let shouldRemove = isRemove;
-            if (!isRemove && ulWrapper && ulWrapper.getAttribute('data-qa-fmt') === ulCommand) {
-                shouldRemove = true; // Same style → toggle off
-            }
-
-            // ── STEP 3: Selected content extract করা ──
-            const fragment = range.extractContents();
-
-            // Fragment-এর ভেতরে কোনো ul-* span থাকলে clean করা
-            fragment.querySelectorAll('span[data-qa-fmt^="ul-"]').forEach(s => {
-                const p = s.parentNode;
-                while (s.firstChild) p.insertBefore(s.firstChild, s);
-                p.removeChild(s);
-            });
-
-            // ── STEP 4: নতুন wrapper span তৈরি করা ──
-            const newWrapper = document.createElement('span');
-            if (!shouldRemove) {
-                newWrapper.setAttribute('data-qa-fmt', ulCommand); // নতুন style apply
-            } else {
-                newWrapper.setAttribute('data-qa-fmt', 'ul-none'); // underline remove
-                newWrapper.style.textDecoration = 'none';
-            }
-            newWrapper.appendChild(fragment);
-
-            // ── STEP 5: Insert strategy — ul-* ancestor থাকলে SPLIT, না থাকলে DOM Insert ──
-            if (ulWrapper) {
-                // Selection কোনো ul-* span-এর ভেতরে ছিল।
-                // Solution: সেই span-কে insertion point-এ split করে নতুন content ঢোকানো।
-                // এতে কোনো nesting হয় না, pre/post content নিজ নিজ style-এ থাকে।
-
-                const originalFmt = ulWrapper.getAttribute('data-qa-fmt');
-
-                // extractContents()-এর পরে collapsed range এখন ulWrapper-এর ভেতরে আছে।
-                // Insertion point থেকে ulWrapper-এর শেষ পর্যন্ত content extract (post-content)।
-                const afterRange = document.createRange();
-                afterRange.setStart(range.startContainer, range.startOffset);
-                afterRange.setEnd(ulWrapper, ulWrapper.childNodes.length);
-                const afterFragment = afterRange.extractContents();
-                // এখন ulWrapper-এ শুধু pre-content আছে (selection-এর আগের অংশ)।
-
-                const parent   = ulWrapper.parentNode;
-                const nextSib  = ulWrapper.nextSibling;
-
-                // নতুন styled content insert করো (ulWrapper-এর পরে, nextSib-এর আগে)
-                parent.insertBefore(newWrapper, nextSib);
-
-                // Post-content থাকলে পুরনো style-এ একটি নতুন span বানিয়ে insert করো
-                if (afterFragment.textContent) {
-                    const postSpan = document.createElement('span');
-                    postSpan.setAttribute('data-qa-fmt', originalFmt);
-                    postSpan.appendChild(afterFragment);
-                    parent.insertBefore(postSpan, nextSib);
-                }
-
-            } else {
-                // কোনো ul-* ancestor নেই — DOM Manipulation ব্যবহার করা
-                // (execCommand ব্যবহার করা হচ্ছে না, কারণ end-of-node এ এটি parent block-এর style modify করে ফেলে)
-
-                // Safety check: যদি selection-এর ভেতর <p> বা <div> থাকে (Multi-line selection)
-                const hasBlockElements = Array.from(newWrapper.childNodes).some(
-                    node => node.nodeType === 1 && (node.tagName === 'P' || node.tagName === 'DIV' || node.classList.contains('qa-entry-block'))
-                );
-
-                if (hasBlockElements) {
-                    // Block elements থাকলে <span>-এর ভেতর <p> ঢোকানো invalid HTML.
-                    // তাই প্রতিটা block-এর ভেতরের text-কে আলাদাভাবে <span> দিয়ে wrap করতে হবে।
-                    const docFrag = document.createDocumentFragment();
-                    while (newWrapper.firstChild) {
-                        const child = newWrapper.firstChild;
-                        if (child.nodeType === 1 && (child.tagName === 'P' || child.tagName === 'DIV' || child.classList.contains('qa-entry-block'))) {
-                            const innerSpan = document.createElement('span');
-                            if (!shouldRemove) {
-                                innerSpan.setAttribute('data-qa-fmt', ulCommand);
-                            } else {
-                                innerSpan.setAttribute('data-qa-fmt', 'ul-none');
-                                innerSpan.style.textDecoration = 'none';
-                            }
-                            
-                            while (child.firstChild) {
-                                innerSpan.appendChild(child.firstChild);
-                            }
-                            child.appendChild(innerSpan);
-                            docFrag.appendChild(child);
-                        } else {
-                            docFrag.appendChild(child);
-                        }
-                    }
-                    range.insertNode(docFrag);
-                } else {
-                    // Selection শুধুমাত্র text / inline, সরাসরি insert করা safe এবং accurate
-                    range.insertNode(newWrapper);
-                }
-            }
-
-            // ── STEP 6: Empty ul-* span cleanup ──
-            qInner.querySelectorAll('span[data-qa-fmt^="ul-"]').forEach(s => {
-                if (!s.textContent) s.remove();
-            });
-
-            // Clear selection and save state
-            sel.removeAllRanges();
-            saveState();
-
+            EEngine.Format.applyUnderlineStyle(ulCommand);
         } else if (activeElement && activeElement.tagName === 'DIV' && activeElement.id !== 'canvas-watermark') {
             if (ulCommand === 'ul-none') {
                 const curLine = activeElement.style.textDecorationLine || '';
@@ -2854,18 +2307,15 @@ document.querySelectorAll('.ul-style-btn').forEach(btn => {
             const curStyle = activeElement.style.textDecorationStyle || '';
 
             if (curLine.includes('underline') && curStyle === s.style) {
-                // Same style → toggle off
                 activeElement.style.textDecorationLine  = curLine.replace('underline', '').trim() || 'none';
                 activeElement.style.textDecorationStyle = '';
             } else {
-                // Different style → direct switch (one click replace)
                 activeElement.style.textDecorationLine  = curLine.includes('underline')
                     ? curLine
                     : (curLine === 'none' ? 'underline' : curLine + ' underline').trim();
                 activeElement.style.textDecorationStyle = s.style;
             }
             saveState();
-
         } else {
             showToast("Select text or tap a text element first.", 'warning');
         }
@@ -2912,88 +2362,10 @@ let _activeAlignColumn = null; // 'left' | 'right' | null
     qInner.addEventListener('touchstart', detectAndSetColumn, { passive: true, capture: true });
 })();
 
-// ── Core Alignment Apply Function ──────────────────────────────────────────
-function applyContainerAlignment(alignValue) {
-    const qInner = document.getElementById('qa-content-inner');
-    if (!qInner) return;
-
-    // Layout detect: double column কিনা
-    const isDouble = qInner.classList.contains('layout-double') ||
-                     window.getComputedStyle(qInner).columnCount === '2' ||
-                     qInner.style.columnCount === '2';
-
-    if (!isDouble) {
-        // ── Single Column: পুরো container-এ apply ──────────────────────────
-        qInner.style.textAlign = alignValue;
-
-        // সব paragraph ও block-এ explicitly set করা (inherit override এড়াতে)
-        qInner.querySelectorAll('.qa-entry-block, .qa-entry-block p').forEach(el => {
-            el.style.textAlign = alignValue;
-        });
-
-        showToast(`Text aligned: ${alignValue}`, 'success');
-
-    } else {
-        // ── Double Column: active column-এর সব block-এ apply ───────────────
-        // column detect: user interaction না থাকলে left column default
-        const side = _activeAlignColumn || 'left';
-
-        const allBlocks = Array.from(qInner.querySelectorAll('.qa-entry-block'));
-        const totalBlocks = allBlocks.length;
-
-        if (totalBlocks === 0) {
-            // Block না থাকলে পুরো container-এ apply
-            qInner.style.textAlign = alignValue;
-            showToast(`Text aligned: ${alignValue}`, 'success');
-            return;
-        }
-
-        // CSS column layout-এ DOM order = visual order
-        // প্রথম ~50% block → left column, বাকি → right column (approximate)
-        // সঠিক split: getBoundingClientRect দিয়ে visually detect করা
-        const qRect = qInner.getBoundingClientRect();
-        const midX  = qRect.left + qRect.width / 2;
-
-        let appliedCount = 0;
-        allBlocks.forEach(block => {
-            const bRect = block.getBoundingClientRect();
-            // block-এর horizontal center দিয়ে column determine করা
-            const blockCenterX = bRect.left + bRect.width / 2;
-
-            // column-count layout-এ left column: blockCenterX < midX
-            const blockSide = blockCenterX < midX ? 'left' : 'right';
-
-            if (blockSide === side) {
-                block.style.textAlign = alignValue;
-                block.querySelectorAll('p').forEach(p => {
-                    p.style.textAlign = alignValue;
-                });
-                appliedCount++;
+// ── Core Alignment Apply Function (Powered by E-Engine) ───────────────────
+            function applyContainerAlignment(alignValue) {
+                EEngine.Format.applyContainerAlignment(alignValue, _activeAlignColumn);
             }
-        });
-
-        // যদি কোনো block visually detect না হয় (content hidden/zero-height),
-        // fallback: DOM order দিয়ে প্রথম/দ্বিতীয় অর্ধেকে apply করা
-        if (appliedCount === 0) {
-            const half = Math.ceil(totalBlocks / 2);
-            const targetBlocks = side === 'left'
-                ? allBlocks.slice(0, half)
-                : allBlocks.slice(half);
-
-            targetBlocks.forEach(block => {
-                block.style.textAlign = alignValue;
-                block.querySelectorAll('p').forEach(p => {
-                    p.style.textAlign = alignValue;
-                });
-            });
-        }
-
-        const columnName = side === 'left' ? 'Left Column' : 'Right Column';
-        showToast(`${columnName} aligned: ${alignValue}`, 'success');
-    }
-
-    saveState();
-}
 
 // ── Alignment Buttons Click Handler ────────────────────────────────────────
 document.querySelectorAll('.align-btn').forEach(btn => {
@@ -3197,205 +2569,39 @@ document.getElementById('btn-effects-watermark').addEventListener('click', () =>
                 backToPointersMain();
             });
 
-            // Generate Pointer DOM Element
-            // সব data-pointer value এখানে handle করা হয়েছে
-            function getPointerElement(type) {
-                const span = document.createElement('span');
-                span.className = 'qa-pointer select-none pr-1 inline-block align-middle pointer-events-none';
-                span.contentEditable = 'false';
-                span.style.cssText = 'display:inline-block; vertical-align:middle; line-height:1; margin-right:3px;';
-
-                // Unicode/emoji based pointers (bullet ও svg উভয়)
-                const unicodeMap = {
-                    // SVG panel-এর unicode pointers
-                    'svg-shamrock':   '☘',
-                    'svg-flower':     '✿',
-                    'svg-scissors':   '✄',
-                    'svg-biohazard':  '☣',
-                    'svg-star5':      '⚝',
-                    // Bullet panel-এর pointers
-                    'bullet-diamond':     '❖',
-                    'bullet-sparkle':     '✦',
-                    'bullet-square-open': '□',
-                    'bullet-asterisk':    '✱',
-                    'bullet-cjk1':        '⿻',
-                    'bullet-cjk2':        '⿴',
-                    'bullet-doc1':        '❐',
-                    'bullet-doc2':        '❏',
-                    // পুরনো type (backward compatibility)
-                    'bullet-circle':  '●',
-                    'bullet-ring':    '○',
-                    'bullet-square':  '■',
-                    'bullet-arrow':   '➤',
-                    'bullet-dash':    '—',
-                };
-
-                if (unicodeMap[type]) {
-                    span.textContent = unicodeMap[type];
-                    span.style.fontSize = '1.1em';
-                } else {
-                    // SVG-based pointers (পুরনো svg-arrow, svg-check ইত্যাদি)
-                    const svgBase = `<svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block; vertical-align:middle;">`;
-                    if (type === 'svg-arrow')   span.innerHTML = `${svgBase}<polyline points="9 18 15 12 9 6"></polyline></svg>`;
-                    else if (type === 'svg-check')   span.innerHTML = `${svgBase}<polyline points="20 6 9 17 4 12"></polyline></svg>`;
-                    else if (type === 'svg-star')    span.innerHTML = `${svgBase}<polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>`;
-                    else if (type === 'svg-diamond') span.innerHTML = `${svgBase}<polygon points="12 2 22 12 12 22 2 12"></polygon></svg>`;
-                    else {
-                        // কোনো match নেই — fallback: bullet
-                        span.textContent = '•';
-                        span.style.fontSize = '1.1em';
-                    }
-                }
-
-                return span;
-            }
-
             // ==========================================
-            // Apply Pointer to Selected Text/Line
-            // mousedown/touchstart-এ selection save করা হয় কারণ
-            // click event fire হওয়ার আগেই browser selection clear করে দেয়
-
+            // Apply Pointer to Selected Text/Line (Powered by E-Engine)
+            // ==========================================
             document.querySelectorAll('.pointer-apply-btn').forEach(btn => {
+                btn.addEventListener('mousedown', () => {
+                    if (hasQaSelection()) {
+                        const sel = window.getSelection();
+                        if (sel && sel.rangeCount > 0) _savedPointerRange = sel.getRangeAt(0).cloneRange();
+                    } else _savedPointerRange = null;
+                });
 
-    // mousedown/touchstart-এ selection snapshot নেওয়া
-    // কারণ: button-এ click হওয়ার আগেই browser selection clear করে ফেলে
-    btn.addEventListener('mousedown', () => {
-        if (hasQaSelection()) {
-            const sel = window.getSelection();
-            if (sel && sel.rangeCount > 0) {
-                _savedPointerRange = sel.getRangeAt(0).cloneRange();
-            }
-        } else {
-            _savedPointerRange = null;
-        }
-    });
+                btn.addEventListener('touchstart', () => {
+                    if (hasQaSelection()) {
+                        const sel = window.getSelection();
+                        if (sel && sel.rangeCount > 0) _savedPointerRange = sel.getRangeAt(0).cloneRange();
+                    } else _savedPointerRange = null;
+                }, { passive: true });
 
-    btn.addEventListener('touchstart', () => {
-        if (hasQaSelection()) {
-            const sel = window.getSelection();
-            if (sel && sel.rangeCount > 0) {
-                _savedPointerRange = sel.getRangeAt(0).cloneRange();
-            }
-        } else {
-            _savedPointerRange = null;
-        }
-    }, { passive: true });
+                btn.addEventListener('click', () => {
+                    const pointerType = btn.getAttribute('data-pointer');
+                    
+                    const activeRange = _savedPointerRange || (() => {
+                        if (hasQaSelection()) {
+                            const sel = window.getSelection();
+                            return (sel && sel.rangeCount > 0) ? sel.getRangeAt(0).cloneRange() : null;
+                        }
+                        return null;
+                    })();
+                    _savedPointerRange = null;
 
-    btn.addEventListener('click', () => {
-        const pointerType = btn.getAttribute('data-pointer');
-        const qInner = document.getElementById('qa-content-inner');
-
-        // ── Path 1 & 2: QA zone-এ selection-based insertion (প্রধান path) ──
-        const activeRange = _savedPointerRange || (() => {
-            if (hasQaSelection()) {
-                const sel = window.getSelection();
-                return (sel && sel.rangeCount > 0) ? sel.getRangeAt(0).cloneRange() : null;
-            }
-            return null;
-        })();
-        _savedPointerRange = null;
-
-        if (activeRange && qInner && qInner.contains(activeRange.startContainer)) {
-
-            if (pointerType === 'none') {
-                // None: selected text-এর block থেকে সব pointer ও তাদের <br> সরাও
-                let container = activeRange.startContainer;
-                while (container && container !== qInner) {
-                    if (container.nodeType === 1 && (container.tagName === 'P' || container.classList?.contains('qa-entry-block'))) {
-                        // pointer span সরাও
-                        container.querySelectorAll('.qa-pointer').forEach(el => el.remove());
-                        // pointer-এর সাথে insert হওয়া <br> সরাও
-                        container.querySelectorAll('br.qa-pointer-br').forEach(el => el.remove());
-                        break;
-                    }
-                    container = container.parentNode;
-                }
-                if (!container || container === qInner) {
-                    qInner.querySelectorAll('.qa-pointer').forEach(el => el.remove());
-                    qInner.querySelectorAll('br.qa-pointer-br').forEach(el => el.remove());
-                }
-                window.getSelection()?.removeAllRanges();
-                saveState();
-                showToast("Pointer Removed ✓", 'success');
-                return;
-            }
-
-            // ── Selection start point বের করা ──
-            const insertionRange = document.createRange();
-            insertionRange.setStart(activeRange.startContainer, activeRange.startOffset);
-            insertionRange.collapse(true);
-
-            // যে <p> বা block-এ insert হবে সেটি বের করা
-            let hostBlock = activeRange.startContainer;
-            while (hostBlock && hostBlock !== qInner) {
-                if (hostBlock.nodeType === 1 && (hostBlock.tagName === 'P' || hostBlock.classList?.contains('qa-entry-block'))) {
-                    break;
-                }
-                hostBlock = hostBlock.parentNode;
-            }
-
-            // ── পুরনো pointer সরানো হচ্ছে না — multiple pointer support-এর জন্য ──
-            // None button-এ click করলে তখন সব সরাবে (নিচে none handler দেখো)
-
-            // ── Pointer insert করা: selection start-এ ──
-            const pointerEl = getPointerElement(pointerType);
-
-            // block-এর শুরুতে কোনো text/pointer আছে কিনা চেক করো
-            // (insertionRange-এর আগে কোনো non-whitespace content আছে কিনা)
-            let isAtBlockStart = false;
-            if (hostBlock && hostBlock !== qInner) {
-                const beforeRange = document.createRange();
-                beforeRange.setStart(hostBlock, 0);
-                beforeRange.setEnd(activeRange.startContainer, activeRange.startOffset);
-                // pointer span ও br বাদ দিয়ে শুধু text দেখো
-                const textBefore = beforeRange.toString().replace(/\s/g, '');
-                // আগে কোনো qa-pointer আছে কিনাও দেখো
-                const hasPointerBefore = (() => {
-                    const tempFrag = beforeRange.cloneContents();
-                    return tempFrag.querySelector('.qa-pointer') !== null;
-                })();
-                isAtBlockStart = textBefore === '' && !hasPointerBefore;
-            }
-
-            if (isAtBlockStart) {
-                // Block-এর একদম শুরুতে — সরাসরি insert, <br> দরকার নেই
-                insertionRange.insertNode(pointerEl);
-            } else {
-                // মাঝখানে বা পরে — pointer-এর আগে <br> দাও যাতে নতুন line-এ যায়
-                const br = document.createElement('br');
-                br.className = 'qa-pointer-br';
-                insertionRange.insertNode(pointerEl);
-                pointerEl.parentNode.insertBefore(br, pointerEl);
-            }
-
-            window.getSelection()?.removeAllRanges();
-            saveState();
-            showToast("Pointer Applied ✓", 'success');
-            return;
-        }
-
-        // ── Path 3: Canvas inserted element (QA zone-এর বাইরে) ──
-        if (activeElement && activeElement.tagName === 'DIV' && activeElement.id !== 'canvas-watermark') {
-            activeElement.querySelectorAll('.qa-pointer').forEach(el => el.remove());
-
-            if (pointerType !== 'none') {
-                const pointerEl = getPointerElement(pointerType);
-                if (activeElement.firstChild) {
-                    activeElement.insertBefore(pointerEl, activeElement.firstChild);
-                } else {
-                    activeElement.appendChild(pointerEl);
-                }
-            }
-
-            saveState();
-            showToast("Pointer Applied ✓", 'success');
-            return;
-        }
-
-        // ── Path 4: কিছুই select করা নেই ──
-        showToast("প্রথমে text select করুন, তারপর pointer apply করুন।", 'warning');
-    });
-});  // ── Read-only Preview: Mobile Keyboard & Focus Block ────────────────
+                    EEngine.Format.applyPointer(pointerType, activeRange, activeElement);
+                });
+            });  // ── Read-only Preview: Mobile Keyboard & Focus Block ────────────────
             // QA zone-এ click বা touch করলে keyboard open হবে না
             // কিন্তু long-press বা drag দিয়ে text select করা যাবে
 
@@ -3442,455 +2648,8 @@ document.getElementById('btn-effects-watermark').addEventListener('click', () =>
                 }, true);
             }
 
-        });
-    </script>
-
-<!-- ===== Notebook → Editor → Template: Cross-Module Sync Engine ===== -->
-<script>
-(function () {
-    'use strict';
-
-    // ─── State ───────────────────────────────────────────────────────────────
-    let activeConfig = null;
-    let renderedCount = 0;
-
-    // ─── [NEW] Same-tab sync-এর জন্য last seen nb_qa_pending value ───────────
-    // localStorage storage event same-tab-এ fire হয় না,
-    // তাই আমরা নিজেই poll করে check করবো
-    let _lastSeenQaPending = null;
-    let _lastSeenSessionId = null;
-
-    // ─── Page.html Font Sync ─────────────────────────────────────────────────
-    function applyPageFontSync(fontConfig) {
-        if (!fontConfig) return;
-        const qInner = document.getElementById('qa-content-inner');
-        if (!qInner) return;
-        qInner.style.fontFamily = fontConfig.subFont;
-        qInner.querySelectorAll('.qa-entry-block p').forEach(function (p) {
-            if (p.style.fontWeight === 'bold') {
-                p.style.fontFamily    = fontConfig.mainFont;
-                p.style.fontWeight    = fontConfig.mainWeight;
-                p.style.fontStyle     = 'normal';
-                p.style.letterSpacing = '';
-            } else {
-                p.style.fontFamily    = fontConfig.subFont;
-                p.style.fontWeight    = fontConfig.subWeight;
-                p.style.fontStyle     = fontConfig.subStyle;
-                p.style.letterSpacing = fontConfig.subLetterSpacing;
-            }
-        });
-    }
-
-    // ─── Default config ───────────────────────────────────────────────────────
-    const DEFAULT_CONFIG = {
-        slideId: 1,
-        bgColor: '#ffffff',
-        fontFamily: "'Tiro Bangla', serif",
-        fontSize: '7.5px',
-        layout: 'single',
-        paddingTop: '2.5rem', paddingRight: '0.8rem',
-        paddingBottom: '0.8rem', paddingLeft: '0.8rem',
-        gap: '4px', textAlign: 'justify', lineHeight: '1.25',
-        useSeparator: false
-    };
-
-    function getFormattedHtmlKey() {
-        const sessionId = localStorage.getItem('aiNoteMaker_currentId');
-        return sessionId ? 'editor_qa_formatted_html_' + sessionId : 'editor_qa_formatted_html';
-    }
-
-    function getStoredEntries() {
-        try {
-            const sessionId = localStorage.getItem('aiNoteMaker_currentId');
-            if (sessionId) {
-                return JSON.parse(localStorage.getItem('nb_qa_entries_' + sessionId) || '[]');
-            }
-            return [];
-        } catch (_) { return []; }
-    }
-
-    // ─── DOM থেকে actual rendered block count sync করা ───────────────────────
-    function syncRenderedCount() {
-        const qInner = document.getElementById('qa-content-inner');
-        if (!qInner) { renderedCount = 0; return; }
-        renderedCount = qInner.querySelectorAll('.qa-entry-block').length;
-    }
-
-    // ─── Template styles apply ────────────────────────────────────────────────
-    function applyTemplateStyles(config) {
-        const qZone = document.getElementById('qa-content-zone');
-        const qInner = document.getElementById('qa-content-inner');
-        const designCanvas = document.getElementById('design-canvas');
-
-        if (!config || !qZone || !qInner) return;
-        activeConfig = config;
-
-        if (designCanvas) {
-            designCanvas.style.backgroundColor = config.bgColor || '#ffffff';
-            if (config.aspectRatio) {
-                designCanvas.classList.remove(
-                    'aspect-square', 'aspect-video',
-                    'aspect-[3/4]', 'aspect-[4/5]',
-                    'aspect-[9/16]', 'aspect-[21/29]'
-                );
-                designCanvas.classList.add(config.aspectRatio);
-            }
-        }
-
-        qZone.style.display = 'block';
-
-        const s = qInner.style;
-        s.fontFamily = config.fontFamily || "'Tiro Bangla', serif";
-
-        let savedFontSize = null;
-        try {
-            const sessionId = localStorage.getItem('aiNoteMaker_currentId');
-            const fontKey = sessionId ? 'editor_custom_font_size_' + sessionId : 'editor_custom_font_size';
-            savedFontSize = localStorage.getItem(fontKey);
-        } catch (e) {}
-
-        if (savedFontSize) {
-            s.fontSize = savedFontSize;
-        } else if (config.layout === 'double') {
-            s.fontSize = '7px';
-        } else {
-            s.fontSize = config.fontSize || '7.5px';
-        }
-
-        qInner.querySelectorAll('span[style*="font-size"]').forEach(span => {
-            span.style.fontSize = '';
-        });
-        qInner.querySelectorAll('span[data-qa-fmt="fontSize"]').forEach(span => {
-            const parent = span.parentNode;
-            while (span.firstChild) parent.insertBefore(span.firstChild, span);
-            parent.removeChild(span);
-        });
-
-        s.textAlign     = config.textAlign    || 'justify';
-        s.lineHeight    = config.lineHeight   || '1.25';
-        s.paddingTop    = config.paddingTop   || '2.5rem';
-        s.paddingRight  = config.paddingRight || '0.8rem';
-        s.paddingBottom = config.paddingBottom|| '0.8rem';
-        s.paddingLeft   = config.paddingLeft  || '0.8rem';
-        s.color         = '#1f2937';
-        s.boxSizing     = 'border-box';
-        s.width         = '100%';
-        s.height        = '100%';
-        s.overflow      = 'hidden';
-
-        if (config.layout === 'double') {
-            s.display       = 'block';
-            s.columnCount   = '2';
-            s.columnGap     = '0.8rem';
-            s.columnFill    = 'auto';
-            s.flexDirection = '';
-            s.gap           = '';
-            qInner.classList.add('layout-double');
-        } else {
-            s.display       = 'flex';
-            s.flexDirection = 'column';
-            s.gap           = config.gap || '4px';
-            s.columnCount   = '';
-            s.columnGap     = '';
-            qInner.classList.remove('layout-double');
-        }
-
-        const existingDivider = qZone.querySelector('.qa-column-divider');
-        if (existingDivider) existingDivider.remove();
-
-        if (config.useSeparator && config.layout === 'double') {
-            const divEl = document.createElement('div');
-            divEl.className = 'qa-column-divider';
-            divEl.style.top    = config.paddingTop    || '2.5rem';
-            divEl.style.bottom = config.paddingBottom || '0.8rem';
-            qZone.appendChild(divEl);
-        }
-
-        updateEmptyHint();
-    }
-
-    // ─── একটি Q&A entry-র DOM element তৈরি করা ──────────────────────────────
-    function createQaBlock(item, cfg) {
-        const c = cfg || activeConfig || DEFAULT_CONFIG;
-        const block = document.createElement('div');
-        block.className = 'qa-entry-block';
-        block.style.breakInside  = 'avoid';
-        block.style.marginBottom = c.gap || '4px';
-
-        const qEl = document.createElement('p');
-        qEl.style.fontWeight = 'bold';
-        qEl.style.margin = '0';
-        qEl.textContent = item.q;
-
-        const aEl = document.createElement('p');
-        aEl.style.marginTop = '1px';
-        aEl.style.margin    = '1px 0 0 0';
-        aEl.appendChild(document.createTextNode(item.a));
-
-        block.appendChild(qEl);
-        block.appendChild(aEl);
-        return block;
-    }
-
-    // ─── সব entry re-render করা ───────────────────────────────────────────────
-    function renderAllEntries(entries, config, forceRaw) {
-        const qInner = document.getElementById('qa-content-inner');
-        if (!qInner) return;
-
-        if (!entries || entries.length === 0) {
-            qInner.innerHTML = '';
-            renderedCount = 0;
-            localStorage.removeItem(getFormattedHtmlKey());
-            updateEmptyHint();
-            return;
-        }
-
-        if (!forceRaw) {
-            const savedFormatted = localStorage.getItem(getFormattedHtmlKey());
-            if (savedFormatted && savedFormatted.trim()) {
-                qInner.innerHTML = '';
-                qInner.insertAdjacentHTML('beforeend', savedFormatted);
-                syncRenderedCount();
-                
-                // ── [FIX] Editor বন্ধ থাকা অবস্থায় Notebook-এ নতুন Q&A যোগ হলে তা Sync করা ──
-                if (renderedCount < entries.length) {
-                    const newEntries = entries.slice(renderedCount);
-                    const fragment = document.createDocumentFragment();
-                    newEntries.forEach(item => {
-                        fragment.appendChild(createQaBlock(item, config));
-                    });
-                    qInner.appendChild(fragment);
-                    syncRenderedCount();
-                    
-                    // আপডেট করা DOM-টি আবার স্টোরেজে সেভ করে নেওয়া
-                    try {
-                        localStorage.setItem(getFormattedHtmlKey(), qInner.innerHTML);
-                    } catch (e) {}
-                } else if (renderedCount > entries.length) {
-                    // Q&A ডিলিট হয়ে থাকলে formatting বাদ দিয়ে fresh render করতে হবে
-                    qInner.innerHTML = '';
-                    renderedCount = 0;
-                }
-                
-                // যদি renderedCount এবং entries.length সমান হয়ে যায়, তাহলে এখানেই কাজ শেষ
-                if (renderedCount === entries.length && renderedCount > 0) {
-                    updateEmptyHint();
-                    return;
-                }
-            }
-        }
-
-        qInner.innerHTML = '';
-        renderedCount = 0;
-
-        const fragment = document.createDocumentFragment();
-        entries.forEach(item => {
-            fragment.appendChild(createQaBlock(item, config));
-            renderedCount++;
-        });
-        qInner.appendChild(fragment);
-        updateEmptyHint();
-        
-        try {
-            localStorage.setItem(getFormattedHtmlKey(), qInner.innerHTML);
-        } catch (e) {}
-    }
-
-    // ─── শুধু নতুন entry append করা — formatted content unaffected ──────────
-    function appendNewEntry(item) {
-        const qInner = document.getElementById('qa-content-inner');
-        if (!qInner) return;
-
-        if (!activeConfig) {
-            const cfgJson = localStorage.getItem('editor_template_config');
-            let cfg = DEFAULT_CONFIG;
-            if (cfgJson) { try { cfg = JSON.parse(cfgJson); } catch (_) {} }
-            applyTemplateStyles(cfg);
-        }
-
-        const newBlock = createQaBlock(item);
-        qInner.appendChild(newBlock);
-
-        syncRenderedCount();
-        updateEmptyHint();
-
-        try {
-            localStorage.setItem(getFormattedHtmlKey(), qInner.innerHTML);
-        } catch (e) {}
-    }
-
-    function updateEmptyHint() {
-        const emptyHint = document.getElementById('qa-empty-hint');
-        if (!emptyHint) return;
-        emptyHint.style.display = (renderedCount === 0) ? 'block' : 'none';
-    }
-
-    function getStoredConfig() {
-        try {
-            const raw = localStorage.getItem('editor_template_config');
-            return raw ? JSON.parse(raw) : null;
-        } catch (_) { return null; }
-    }
-
-    // ─── [NEW] nb_qa_pending change হলে entry sync করার central handler ───────
-    // storage event (cross-tab) এবং poll (same-tab) উভয়ই এই function call করবে
-    function handleQaPendingChange() {
-        const qInner = document.getElementById('qa-content-inner');
-        const entries = getStoredEntries();
-
-        if (entries.length === 0) {
-            if (qInner) qInner.innerHTML = '';
-            renderedCount = 0;
-            localStorage.removeItem(getFormattedHtmlKey());
-            updateEmptyHint();
-            return;
-        }
-
-        syncRenderedCount();
-
-        if (renderedCount < entries.length) {
-            if (entries.length - renderedCount === 1) {
-                appendNewEntry(entries[entries.length - 1]);
-            } else {
-                const savedFormatted = localStorage.getItem(getFormattedHtmlKey());
-                if (savedFormatted && savedFormatted.trim()) {
-                    const newEntries = entries.slice(renderedCount);
-                    newEntries.forEach(item => {
-                        if (qInner) qInner.appendChild(createQaBlock(item));
-                    });
-                    syncRenderedCount();
-                    updateEmptyHint();
-                    try {
-                        localStorage.setItem(getFormattedHtmlKey(), qInner ? qInner.innerHTML : '');
-                    } catch (_) {}
-                } else {
-                    renderAllEntries(entries, activeConfig, true);
-                }
-            }
-        } else if (renderedCount > entries.length) {
-            localStorage.removeItem(getFormattedHtmlKey());
-            renderAllEntries(entries, activeConfig, true);
-        }
-    }
-
-    // ─── Init ────────────────────────────────────────────────────────────────
-    function init() {
-        const qInner = document.getElementById('qa-content-inner');
-        const templateActive = localStorage.getItem('editor_template_active');
-        const config  = getStoredConfig();
-        const entries = getStoredEntries();
-
-        // same-tab polling-এর জন্য initial state record করো
-        _lastSeenQaPending = localStorage.getItem('nb_qa_pending');
-        _lastSeenSessionId = localStorage.getItem('aiNoteMaker_currentId');
-
-        if (!entries || entries.length === 0) {
-            if (qInner) qInner.innerHTML = '';
-            renderedCount = 0;
-            localStorage.removeItem(getFormattedHtmlKey());
-            updateEmptyHint();
-        }
-
-        if (entries.length > 0) {
-            const cfg = config || DEFAULT_CONFIG;
-            applyTemplateStyles(cfg);
-            renderAllEntries(entries, cfg, false);
-        } else if (config && templateActive === 'true') {
-            applyTemplateStyles(config);
-        }
-
-        try {
-            const savedFont = localStorage.getItem('page_font_config');
-            if (savedFont) applyPageFontSync(JSON.parse(savedFont));
-        } catch (_) {}
-
-        // ─── [NEW] Same-tab polling: 800ms interval-এ nb_qa_pending check ────
-        // কারণ: same tab-এ Notebook → Editor navigate করলে storage event আসে না
-        setInterval(function () {
-            const currentPending  = localStorage.getItem('nb_qa_pending');
-            const currentSession  = localStorage.getItem('aiNoteMaker_currentId');
-
-            // Session switch হলে reload
-            if (currentSession !== _lastSeenSessionId) {
-                _lastSeenSessionId  = currentSession;
-                _lastSeenQaPending  = currentPending;
-                window.location.reload();
-                return;
-            }
-
-            // nb_qa_pending value নতুন হলে entry sync করো
-            if (currentPending !== _lastSeenQaPending) {
-                _lastSeenQaPending = currentPending;
-                handleQaPendingChange();
-            }
-        }, 800);
-    }
-
-    // ─── Storage event: cross-tab sync ─────────────────────────────────────
-    window.addEventListener('storage', function (e) {
-        const qZone       = document.getElementById('qa-content-zone');
-        const emptyHint   = document.getElementById('qa-empty-hint');
-        const designCanvas = document.getElementById('design-canvas');
-        const qInner      = document.getElementById('qa-content-inner');
-
-        // Session switch হলে full reload
-        if (e.key === 'nb_session_switched') {
-            window.location.reload();
-            return;
-        }
-
-        // nb_qa_pending — cross-tab entry update
-        if (e.key === 'nb_qa_pending') {
-            _lastSeenQaPending = e.newValue; // poll-এর সাথে sync রাখো
-            handleQaPendingChange();
-        }
-
-        // Template পরিবর্তন হলো
-        if (e.key === 'editor_template_config' && e.newValue) {
-            let cfg = null;
-            try { cfg = JSON.parse(e.newValue); } catch (_) {}
-            if (!cfg) return;
-            const entries = getStoredEntries();
-            applyTemplateStyles(cfg);
-            localStorage.removeItem(getFormattedHtmlKey());
-            renderAllEntries(entries, cfg, true);
-            try {
-                const savedFont = localStorage.getItem('page_font_config');
-                if (savedFont) applyPageFontSync(JSON.parse(savedFont));
-            } catch (_) {}
-        }
-
-        // Template বন্ধ
-        if (e.key === 'editor_template_active' && e.newValue === 'false') {
-            if (qZone) qZone.style.display = 'none';
-            if (emptyHint) emptyHint.style.display = 'block';
-            if (designCanvas) designCanvas.style.backgroundColor = '';
-            activeConfig = null;
-            renderedCount = 0;
-            localStorage.removeItem(getFormattedHtmlKey());
-        }
-
-        // Font sync
-        if (e.key === 'page_font_config') {
-            if (e.newValue) {
-                try { applyPageFontSync(JSON.parse(e.newValue)); } catch (_) {}
-            } else {
-                const cfg = getStoredConfig();
-                if (qInner && cfg) {
-                    qInner.style.fontFamily = cfg.fontFamily || "'Tiro Bangla', serif";
-                }
-            }
-        }
-    });
-
-    if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', init);
-    } else {
-        init();
-    }
-
-})();
-</script>
+                });
+            </script>
 
 <!-- ================= MARGIN SLIDE-UP PANEL ================= -->
     <div id="margin-panel" class="fixed inset-0 z-[100] pointer-events-none flex flex-col justify-end">
