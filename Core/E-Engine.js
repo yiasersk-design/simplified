@@ -1016,7 +1016,7 @@ window.EEngine = (function () {
     };
 
     // ==========================================
-    // 6. CANVAS INTERACTIONS
+    // 6. CANVAS INTERACTIONS (Smart Drag & Invisible Resize)
     // ==========================================
     const CanvasInteractions = {
         setActive(el) {
@@ -1025,6 +1025,7 @@ window.EEngine = (function () {
                 State.activeElement.style.boxShadow = 'none';
             }
             
+            // Cleanup old manual visual handles if they exist in history
             const handle = document.getElementById('resize-handle');
             if (handle) handle.remove();
             const deleteHandle = document.getElementById('delete-handle');
@@ -1033,58 +1034,160 @@ window.EEngine = (function () {
             State.activeElement = el;
             
             if (State.activeElement) {
-                State.activeElement.style.outline = '2px dashed #3b82f6';
-                State.activeElement.style.outlineOffset = '4px';
+                // 1px solid line (সরু সুতোর মতো)
+                State.activeElement.style.outline = '1px solid #3b82f6';
+                State.activeElement.style.outlineOffset = '0px';
             }
         },
 
         makeInteractive(el) {
             el.classList.add('inserted-element');
+            const isImage = el.tagName === 'IMG';
+
+            // Selection
             el.addEventListener('click', (e) => {
                 e.stopPropagation();
                 this.setActive(el);
             });
 
+            // Auto-save on text blur
             if(el.contentEditable === 'true') {
                 el.addEventListener('blur', () => State.save());
             }
 
-            let pos1 = 0, pos2 = 0, pos3 = 0, pos4 = 0;
-            const dragMouseDown = (e) => {
-                if (e.target.id === 'resize-handle' || e.target.closest('#resize-handle')) return;
+            let isDragging = false;
+            let isResizing = false;
+            let resizeCorner = ''; // 'br', 'bl', 'tr', 'tl'
+            let startX, startY, startWidth, startHeight, startLeft, startTop;
+
+            const handleDown = (e) => {
                 if (e.target !== el && !el.contains(e.target)) return;
                 e.stopPropagation();
                 this.setActive(el);
-                
-                let evt = e.type.includes('touch') ? e.touches[0] : e;
-                pos3 = evt.clientX; pos4 = evt.clientY;
-                document.onmouseup = closeDragElement;
-                document.ontouchend = closeDragElement;
-                document.onmousemove = elementDrag;
-                document.ontouchmove = elementDrag;
-            };
 
-            const elementDrag = (e) => {
-                if (e.cancelable) e.preventDefault(); 
+                let evt = e.type.includes('touch') ? e.touches[0] : e;
+                startX = evt.clientX;
+                startY = evt.clientY;
+                
+                // Get accurate relative position based on zoom scale
                 let scale = typeof window.currentScale !== 'undefined' ? window.currentScale : 1;
+                let rect = el.getBoundingClientRect();
+                let relX = evt.clientX - rect.left;
+                let relY = evt.clientY - rect.top;
+                
+                // 35px scaled invisible hit zone for corners
+                let threshold = 35 * scale; 
+
+                if (relX > rect.width - threshold && relY > rect.height - threshold) resizeCorner = 'br';
+                else if (relX < threshold && relY > rect.height - threshold) resizeCorner = 'bl';
+                else if (relX > rect.width - threshold && relY < threshold) resizeCorner = 'tr';
+                else if (relX < threshold && relY < threshold) resizeCorner = 'tl';
+                else resizeCorner = '';
+
+                if (isImage && resizeCorner !== '') {
+                    isResizing = true;
+                    startWidth = el.offsetWidth;
+                    startHeight = el.offsetHeight;
+                    startLeft = el.offsetLeft;
+                    startTop = el.offsetTop;
+                } else {
+                    isDragging = true;
+                    startLeft = el.offsetLeft;
+                    startTop = el.offsetTop;
+                }
+
+                document.addEventListener('mouseup', handleUp);
+                document.addEventListener('touchend', handleUp);
+                document.addEventListener('mousemove', handleMove);
+                document.addEventListener('touchmove', handleMove, { passive: false });
+            };
+
+            const handleMove = (e) => {
+                if (!isDragging && !isResizing) return;
+                if (e.cancelable) e.preventDefault(); 
+                
                 let evt = e.type.includes('touch') ? e.touches[0] : e;
+                let scale = typeof window.currentScale !== 'undefined' ? window.currentScale : 1;
                 
-                pos1 = (pos3 - evt.clientX) / scale;
-                pos2 = (pos4 - evt.clientY) / scale;
-                pos3 = evt.clientX; pos4 = evt.clientY;
-                
-                el.style.top = (el.offsetTop - pos2) + "px";
-                el.style.left = (el.offsetLeft - pos1) + "px";
+                let dx = (evt.clientX - startX) / scale;
+                let dy = (evt.clientY - startY) / scale;
+
+                if (isResizing && isImage) {
+                    let newWidth = startWidth;
+                    let newHeight = startHeight;
+                    let newLeft = startLeft;
+                    let newTop = startTop;
+                    let ratio = startWidth / startHeight;
+
+                    if (resizeCorner === 'br') {
+                        newWidth = Math.max(40, startWidth + dx);
+                        newHeight = newWidth / ratio;
+                    } else if (resizeCorner === 'bl') {
+                        newWidth = Math.max(40, startWidth - dx);
+                        newHeight = newWidth / ratio;
+                        newLeft = startLeft + (startWidth - newWidth);
+                    } else if (resizeCorner === 'tr') {
+                        newWidth = Math.max(40, startWidth + dx);
+                        newHeight = newWidth / ratio;
+                        newTop = startTop + (startHeight - newHeight);
+                    } else if (resizeCorner === 'tl') {
+                        newWidth = Math.max(40, startWidth - dx);
+                        newHeight = newWidth / ratio;
+                        newLeft = startLeft + (startWidth - newWidth);
+                        newTop = startTop + (startHeight - newHeight);
+                    }
+
+                    el.style.width = newWidth + 'px';
+                    el.style.height = newHeight + 'px';
+                    el.style.left = newLeft + 'px';
+                    el.style.top = newTop + 'px';
+                } else if (isDragging) {
+                    el.style.left = (startLeft + dx) + "px";
+                    el.style.top = (startTop + dy) + "px";
+                }
             };
 
-            const closeDragElement = () => {
-                document.onmouseup = null; document.onmousemove = null;
-                document.ontouchend = null; document.ontouchmove = null;
-                State.save();
+            const handleUp = () => {
+                let wasInteracting = isDragging || isResizing;
+                isDragging = false;
+                isResizing = false;
+                document.removeEventListener('mouseup', handleUp);
+                document.removeEventListener('mousemove', handleMove);
+                document.removeEventListener('touchend', handleUp);
+                document.removeEventListener('touchmove', handleMove);
+                
+                if (wasInteracting) {
+                    State.save();
+                }
             };
 
-            el.onmousedown = dragMouseDown;
-            el.ontouchstart = dragMouseDown;
+            el.addEventListener('mousedown', handleDown);
+            el.addEventListener('touchstart', handleDown, { passive: false });
+
+            // Dynamic Desktop Hover Cursor System
+            el.addEventListener('mousemove', (e) => {
+                if (isDragging || isResizing) return;
+                if (!isImage) {
+                    el.style.cursor = 'move';
+                    return;
+                }
+                
+                let scale = typeof window.currentScale !== 'undefined' ? window.currentScale : 1;
+                let rect = el.getBoundingClientRect();
+                let relX = e.clientX - rect.left;
+                let relY = e.clientY - rect.top;
+                let threshold = 35 * scale;
+                
+                if (relX > rect.width - threshold && relY > rect.height - threshold) el.style.cursor = 'nwse-resize';
+                else if (relX < threshold && relY > rect.height - threshold) el.style.cursor = 'nesw-resize';
+                else if (relX > rect.width - threshold && relY < threshold) el.style.cursor = 'nesw-resize';
+                else if (relX < threshold && relY < threshold) el.style.cursor = 'nwse-resize';
+                else el.style.cursor = 'move';
+            });
+            
+            el.addEventListener('mouseleave', () => {
+                if (!isDragging && !isResizing) el.style.cursor = 'default';
+            });
         }
     };
 
