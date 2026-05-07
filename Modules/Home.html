@@ -1368,14 +1368,127 @@ Goal: Make every response Clean, Structured, Compact, and Easy to read.`;
     }
 }
 
-document.getElementById('sendBtn').addEventListener('click', handleSendMessage);
+// --- START OF VOICE TYPING IMPLEMENTATION ---
+window.isListening = false;
+const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+let recognition = null;
+let originalText = "";
+
+if (SpeechRecognition) {
+    recognition = new SpeechRecognition();
+    recognition.lang = 'bn-BD'; // ডিফল্ট ভাষা: বাংলা (বাংলাদেশ)। ভারতের জন্য 'bn-IN' ব্যবহার করতে পারেন।
+    recognition.continuous = true; // একটানা শোনার জন্য
+    recognition.interimResults = true; // কথা বলার সাথে সাথে রিয়েল-টাইম টেক্সট দেখানোর জন্য
+
+    recognition.onstart = function() {
+        window.isListening = true;
+        const chatInput = document.getElementById('chatInput');
+        originalText = chatInput.value;
+        if (originalText && !originalText.endsWith(' ')) {
+            originalText += ' '; // আগের টেক্সট থাকলে একটা স্পেস যোগ করবে
+        }
+        
+        // Microphone বাটনে Active/Pulse Animation যুক্ত করা
+        const sendBtn = document.getElementById('sendBtn');
+        sendBtn.classList.remove('bg-[#f4f4f5]', 'text-gray-900', 'hover:bg-gray-200');
+        sendBtn.classList.add('bg-red-100', 'text-red-500', 'animate-pulse');
+        
+        // Force Audio Icon Show (যাতে টাইপিং অবস্থায় আইকন পরিবর্তন না হয়)
+        document.getElementById('audioIcon').classList.remove('hidden');
+        document.getElementById('sendIcon').classList.add('hidden');
+    };
+
+    recognition.onresult = function(event) {
+        let interimTranscript = '';
+        let finalTranscript = '';
+
+        for (let i = event.resultIndex; i < event.results.length; ++i) {
+            if (event.results[i].isFinal) {
+                finalTranscript += event.results[i][0].transcript;
+            } else {
+                interimTranscript += event.results[i][0].transcript;
+            }
+        }
+
+        if (finalTranscript) {
+            originalText += finalTranscript + ' ';
+        }
+
+        const chatInput = document.getElementById('chatInput');
+        chatInput.value = originalText + interimTranscript;
+        
+        // টেক্সট অনুযায়ী Input Field-এর Height ঠিক করা
+        chatInput.style.height = 'auto';
+        chatInput.style.height = (chatInput.scrollHeight) + 'px';
+    };
+
+    recognition.onerror = function(event) {
+        console.error("Speech recognition error", event.error);
+        if (event.error === 'not-allowed') {
+            window.showToast('Microphone Permission Denied!', 'error');
+        } else if (event.error !== 'aborted') {
+            window.showToast('Voice Error: ' + event.error, 'error');
+        }
+        stopListeningVisuals();
+    };
+
+    recognition.onend = function() {
+        stopListeningVisuals();
+    };
+}
+
+function stopListeningVisuals() {
+    window.isListening = false;
+    const sendBtn = document.getElementById('sendBtn');
+    
+    // Animation রিমুভ করে আগের অবস্থায় ফিরিয়ে আনা
+    sendBtn.classList.remove('bg-red-100', 'text-red-500', 'animate-pulse');
+    sendBtn.classList.add('bg-[#f4f4f5]', 'text-gray-900', 'hover:bg-gray-200');
+    
+    // Input ইভেন্ট ট্রিগার করা যাতে টেক্সট থাকলে Send আইকন শো করে
+    document.getElementById('chatInput').dispatchEvent(new Event('input'));
+}
+
+// Update sendBtn click behavior for Microphone Toggle
+document.getElementById('sendBtn').addEventListener('click', function(e) {
+    if (window.isListening) {
+        // যদি ভয়েস টাইপিং চলতে থাকে, তবে ক্লিক করলে তা বন্ধ হবে
+        if (recognition) recognition.stop();
+        return;
+    }
+
+    const chatInput = document.getElementById('chatInput');
+    const message = chatInput.value.trim();
+
+    if (!message) {
+        // যদি ইনপুট ফাঁকা থাকে, তখন ক্লিক করলে Microphone Start হবে
+        if (!recognition) {
+            window.showToast('আপনার ব্রাউজার Voice Typing সাপোর্ট করে না।', 'error');
+            return;
+        }
+        try {
+            recognition.start();
+        } catch (err) {
+            console.error(err);
+        }
+        return;
+    }
+
+    // ইনপুট বক্সে টেক্সট থাকলে এবং Listening অফ থাকলে Message Send হবে
+    handleSendMessage();
+});
 
 document.getElementById('chatInput').addEventListener('keydown', function(e) {
     // মেসেজ ম্যানুয়ালি সেন্ড করার জন্য Enter বাটনের অটো-সেন্ড লজিক রিমুভ করা হয়েছে।
-    // এখন কীবোর্ডের Enter বাটন চাপলে শুধু নতুন লাইন (New Line) তৈরি হবে।
 });
 
 document.getElementById('chatInput').addEventListener('input', function() {
+    this.style.height = 'auto';
+    this.style.height = (this.scrollHeight) + 'px';
+
+    // যদি ভয়েস টাইপিং রানিং থাকে, তবে Send আইকনে পরিবর্তন হবে না (স্টপ করার জন্য Mic আইকনই থাকবে)
+    if (window.isListening) return;
+
     const audioIcon = document.getElementById('audioIcon');
     const sendIcon = document.getElementById('sendIcon');
     if (this.value.trim().length > 0) {
@@ -1385,9 +1498,8 @@ document.getElementById('chatInput').addEventListener('input', function() {
         audioIcon.classList.remove('hidden');
         sendIcon.classList.add('hidden');
     }
-    this.style.height = 'auto';
-    this.style.height = (this.scrollHeight) + 'px';
 });
+// --- END OF VOICE TYPING IMPLEMENTATION ---
 
 window.switchTab = function(tab) {
     const slider = document.getElementById('active-slider');
