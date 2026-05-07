@@ -329,24 +329,7 @@ span[data-qa-fmt="ul-wavy"]    { text-decoration: underline; text-decoration-sty
     line-height: inherit;
     padding: 0;
     margin: 0;
-}       /* ===== Q&A Labeling System (Auto & Custom) ===== */
-#qa-content-inner.label-auto {
-    counter-reset: qa-counter;
-}
-#qa-content-inner.label-auto .qa-entry-block p:first-child::before {
-    counter-increment: qa-counter;
-    content: counter(qa-counter, bengali) ". ";
-}
-#qa-content-inner.label-auto .qa-entry-block p:last-child::before {
-    content: "উত্তর: ";
-}
-
-#qa-content-inner.label-custom .qa-entry-block p:first-child::before {
-    content: var(--q-label, "Q:") " ";
-}
-#qa-content-inner.label-custom .qa-entry-block p:last-child::before {
-    content: var(--a-label, "Ans:") " ";
-} </style>
+}       Pornhub  </style>
 </head>
 <body class="h-[100dvh] w-full flex flex-col font-sans overflow-hidden relative">
 
@@ -977,81 +960,53 @@ function showToast(message, type = 'info', duration = 3000) {
     // নির্দিষ্ট সময় পর auto dismiss
     setTimeout(dismissToast, duration);
 }      document.addEventListener('DOMContentLoaded', () => { // ==========================================
-// Q&A Label System (Auto / Custom / None)
+// Q&A Label System (UI Trigger Only)
 // ==========================================
-(function initLabelSystem() {
-    const qInner = document.getElementById('qa-content-inner');
-    const labelBtns = document.querySelectorAll('.label-btn');
+const labelBtns = document.querySelectorAll('.label-btn');
 
-    // Restore state from LocalStorage on load
-    function restoreLabelState() {
-        if (!qInner) return;
-        const mode = localStorage.getItem('qa_label_mode') || 'none';
-        
-        if (mode === 'auto') {
-            qInner.classList.add('label-auto');
-            document.querySelector('.label-btn[data-label="auto"]')?.classList.add('text-blue-600');
-        } else if (mode === 'custom') {
-            const customQ = localStorage.getItem('qa_custom_q_label') || 'প্রশ্ন:';
-            const customA = localStorage.getItem('qa_custom_a_label') || 'উত্তর:';
-            qInner.style.setProperty('--q-label', `"${customQ}"`);
-            qInner.style.setProperty('--a-label', `"${customA}"`);
-            qInner.classList.add('label-custom');
-            document.querySelector('.label-btn[data-label="custom"]')?.classList.add('text-blue-600');
-        }
+// UI State Restore function
+function restoreLabelUI() {
+    const mode = EEngine.Label.getMode();
+    labelBtns.forEach(b => b.classList.remove('text-blue-600'));
+    if (mode !== 'none') {
+        document.querySelector(`.label-btn[data-label="${mode}"]`)?.classList.add('text-blue-600');
     }
+}
 
-    restoreLabelState();
+// On load, update UI to match Engine State
+restoreLabelUI();
 
-    labelBtns.forEach(btn => {
-        btn.addEventListener('click', () => {
-            if (!qInner) return;
-            const mode = btn.getAttribute('data-label');
+// Event Delegation for Label Buttons
+labelBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+        const mode = btn.getAttribute('data-label');
 
-            // Reset current visual and CSS states
-            qInner.classList.remove('label-auto', 'label-custom');
-            labelBtns.forEach(b => b.classList.remove('text-blue-600'));
+        if (mode === 'auto') {
+            EEngine.Label.setMode('auto');
+            restoreLabelUI();
+            showToast("Auto Labeling Applied", 'success');
+        } 
+        else if (mode === 'custom') {
+            const existingQ = localStorage.getItem('qa_custom_q_label') || 'প্রশ্ন:';
+            const existingA = localStorage.getItem('qa_custom_a_label') || 'উত্তর:';
 
-            if (mode === 'auto') {
-                qInner.classList.add('label-auto');
-                localStorage.setItem('qa_label_mode', 'auto');
-                btn.classList.add('text-blue-600');
-                showToast("Auto Labeling Applied", 'success');
-            } 
-            else if (mode === 'custom') {
-                const existingQ = localStorage.getItem('qa_custom_q_label') || 'প্রশ্ন:';
-                const existingA = localStorage.getItem('qa_custom_a_label') || 'উত্তর:';
+            const customQ = window.prompt("Enter custom label for Question:", existingQ);
+            if (customQ === null) return; 
 
-                const customQ = window.prompt("Enter custom label for Question:", existingQ);
-                if (customQ === null) { restoreLabelState(); return; } // User Cancelled
+            const customA = window.prompt("Enter custom label for Answer:", existingA);
+            if (customA === null) return;
 
-                const customA = window.prompt("Enter custom label for Answer:", existingA);
-                if (customA === null) { restoreLabelState(); return; }
-
-                // Sanitize quotes to prevent CSS breakage
-                const safeQ = customQ.replace(/"/g, '\\"');
-                const safeA = customA.replace(/"/g, '\\"');
-
-                localStorage.setItem('qa_custom_q_label', customQ);
-                localStorage.setItem('qa_custom_a_label', customA);
-
-                qInner.style.setProperty('--q-label', `"${safeQ}"`);
-                qInner.style.setProperty('--a-label', `"${safeA}"`);
-                qInner.classList.add('label-custom');
-                localStorage.setItem('qa_label_mode', 'custom');
-                
-                btn.classList.add('text-blue-600');
-                showToast("Custom Labeling Applied", 'success');
-            } 
-            else if (mode === 'none') {
-                localStorage.setItem('qa_label_mode', 'none');
-                showToast("Labels Removed", 'info');
-            }
-
-            saveState(); // Update Editor History so undo/redo works
-        });
+            EEngine.Label.setMode('custom', customQ, customA);
+            restoreLabelUI();
+            showToast("Custom Labeling Applied", 'success');
+        } 
+        else if (mode === 'none') {
+            EEngine.Label.setMode('none');
+            restoreLabelUI();
+            showToast("Labels Removed", 'info');
+        }
     });
-})();
+});
             
             const canvasContainer = document.getElementById('design-canvas');
             let activeElement = null; 
