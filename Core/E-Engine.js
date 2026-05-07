@@ -1,7 +1,7 @@
 /**
  * ============================================================================
  * FILE: /Modules/Core/E-Engine.js
- * PURPOSE: Core Engine for Editor (State, Formatting, Sync, Rendering, Storage)
+ * PURPOSE: Core Engine for Editor (State, Formatting, Sync, Rendering, Storage, Labeling)
  * ============================================================================
  */
 
@@ -882,7 +882,6 @@ window.EEngine = (function () {
             s.paddingBottom = config.paddingBottom || '0.8rem';
             s.paddingLeft = config.paddingLeft || '0.8rem';
             
-            // Critical CSS rules restored
             s.color = '#1f2937';
             s.boxSizing = 'border-box';
             s.width = '100%';
@@ -936,6 +935,8 @@ window.EEngine = (function () {
                         newEntries.forEach(item => fragment.appendChild(this.createQaBlock(item, config)));
                         qInner.appendChild(fragment);
                         this.syncRenderedCount();
+                        
+                        Label.updateAll(true);
                         try { localStorage.setItem(this.getFormattedHtmlKey(), qInner.innerHTML); } catch (e) {}
                     } else if (State.renderedCount > entries.length) {
                         qInner.innerHTML = '';
@@ -958,6 +959,8 @@ window.EEngine = (function () {
             });
             qInner.appendChild(fragment);
             this.updateEmptyHint();
+            
+            Label.updateAll(true);
             try { localStorage.setItem(this.getFormattedHtmlKey(), qInner.innerHTML); } catch (e) {}
         },
 
@@ -968,6 +971,8 @@ window.EEngine = (function () {
             qInner.appendChild(newBlock);
             this.syncRenderedCount();
             this.updateEmptyHint();
+            
+            Label.updateAll(true);
             try { localStorage.setItem(this.getFormattedHtmlKey(), qInner.innerHTML); } catch (e) {}
         },
 
@@ -996,6 +1001,8 @@ window.EEngine = (function () {
                         if (qInner) qInner.appendChild(fragment);
                         this.syncRenderedCount();
                         this.updateEmptyHint();
+                        
+                        Label.updateAll(true);
                         try { localStorage.setItem(this.getFormattedHtmlKey(), qInner ? qInner.innerHTML : ''); } catch (_) {}
                     } else {
                         this.renderAllEntries(entries, State.activeConfig, true);
@@ -1081,6 +1088,102 @@ window.EEngine = (function () {
         }
     };
 
+    // ==========================================
+    // 7. LABEL ENGINE (DOM Based Labeling)
+    // ==========================================
+    const Label = {
+        init() {
+            // Initial render if needed
+            this.updateAll(true);
+        },
+
+        getMode() {
+            return localStorage.getItem('qa_label_mode') || 'none';
+        },
+
+        getCustomLabels() {
+            return {
+                q: localStorage.getItem('qa_custom_q_label') || 'প্রশ্ন:',
+                a: localStorage.getItem('qa_custom_a_label') || 'উত্তর:'
+            };
+        },
+
+        setMode(mode, qText, aText) {
+            localStorage.setItem('qa_label_mode', mode);
+            if (qText) localStorage.setItem('qa_custom_q_label', qText);
+            if (aText) localStorage.setItem('qa_custom_a_label', aText);
+            
+            this.updateAll(false); // Update DOM and trigger State.save()
+        },
+
+        _toBengaliNum(num) {
+            const eng =['0','1','2','3','4','5','6','7','8','9'];
+            const ben =['০','১','২','৩','৪','৫','৬','৭','৮','৯'];
+            return num.toString().split('').map(c => {
+                let idx = eng.indexOf(c);
+                return idx !== -1 ? ben[idx] : c;
+            }).join('');
+        },
+
+        updateAll(skipStateSave = false) {
+            const qInner = document.getElementById('qa-content-inner');
+            if (!qInner) return;
+
+            const mode = this.getMode();
+            const { q: customQ, a: customA } = this.getCustomLabels();
+            const blocks = qInner.querySelectorAll('.qa-entry-block');
+
+            // 1. Remove all existing labels (to prevent duplicate stacking)
+            qInner.querySelectorAll('.qa-text-label').forEach(el => el.remove());
+
+            if (mode === 'none') {
+                if (!skipStateSave) State.save();
+                return;
+            }
+
+            // 2. Inject fresh labels dynamically
+            blocks.forEach((block, index) => {
+                const pElements = block.querySelectorAll('p');
+                if (pElements.length < 2) return; 
+
+                const qP = pElements[0];
+                const aP = pElements[pElements.length - 1];
+
+                let qLabelStr = '';
+                let aLabelStr = '';
+
+                if (mode === 'auto') {
+                    qLabelStr = this._toBengaliNum(index + 1) + '. ';
+                    aLabelStr = 'উত্তর: ';
+                } else if (mode === 'custom') {
+                    qLabelStr = customQ + ' ';
+                    aLabelStr = customA + ' ';
+                }
+
+                // Helper to insert label AFTER any pointer dots (so formatting stays intact)
+                const insertLabel = (targetP, text) => {
+                    if (!text.trim()) return;
+                    const span = document.createElement('span');
+                    span.className = 'qa-text-label select-none font-bold mr-1';
+                    span.contentEditable = 'false';
+                    span.textContent = text;
+                    
+                    let insertRef = targetP.firstChild;
+                    // Skip pointer elements if they exist at the start
+                    while (insertRef && (insertRef.classList?.contains('qa-pointer') || insertRef.className === 'qa-pointer-br')) {
+                        insertRef = insertRef.nextSibling;
+                    }
+                    targetP.insertBefore(span, insertRef);
+                };
+
+                insertLabel(qP, qLabelStr);
+                insertLabel(aP, aLabelStr);
+            });
+
+            if (!skipStateSave) State.save();
+        }
+    };
+
     return { 
         State, 
         Utils, 
@@ -1088,9 +1191,11 @@ window.EEngine = (function () {
         Format: Formatting, 
         Sync, 
         Canvas: CanvasInteractions, 
+        Label,
         init() { 
             State.init(); 
-            Sync.init(); // 👈 This was missing and is now restored!
+            Sync.init(); 
+            Label.init(); 
         } 
     };
 })();
