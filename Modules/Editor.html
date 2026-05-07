@@ -743,7 +743,8 @@ span[data-qa-fmt="ul-wavy"]    { text-decoration: underline; text-decoration-sty
         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"><path d="m15.583 4l-6.587 6.587a2.013 2.013 0 0 0 0 2.826L15.583 20"/></svg>
     </button>
     <div class="w-px h-8 bg-gray-300 mx-1 shrink-0"></div>
-    <button class="submenu-item min-w-[72px] shrink-0 flex flex-col items-center justify-center h-[56px] outline-none"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg><span class="toolbar-text">Image</span></button>
+    <button id="btn-insert-img" class="submenu-item min-w-[72px] shrink-0 flex flex-col items-center justify-center h-[56px] outline-none"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg><span class="toolbar-text">Image</span></button>
+    <input type="file" id="image-upload-input" accept="image/*" style="display: none;">
     <!-- New: Delete Image button -->
     <button id="btn-delete-img" class="submenu-item min-w-[72px] shrink-0 flex flex-col items-center justify-center h-[56px] outline-none text-red-400 hover:text-red-600">
         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>
@@ -1081,226 +1082,43 @@ labelBtns.forEach(btn => {
             document.getElementById('btn-undo').addEventListener('click', () => EEngine.State.undo());
             document.getElementById('btn-redo').addEventListener('click', () => EEngine.State.redo());
 
-            // Connect UI Interactive functions to Engine
-            EEngine.Canvas.setActive = setActive;
-            EEngine.Canvas.makeInteractive = makeInteractive;
-
             // ==========================================
-            // 3. Selection, Drag/Drop & Resize Logic
+            // 3. Smart Drag/Drop & Resize Logic (Handled by Engine)
             // ==========================================
-            function createResizeHandle() {
-    // ── Resize Handle (নিচে-ডানে কোণায়) ──
-    let handle = document.createElement('div');
-    handle.id = 'resize-handle';
-    handle.className = 'absolute w-7 h-7 bg-white border border-gray-300 rounded-md shadow-md z-[60] cursor-se-resize touch-none flex justify-center items-center';
-    handle.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 14 14" fill="none"><path fill="none" stroke="#000000" stroke-linecap="round" stroke-linejoin="round" d="m13.5 13.5l-5-5m4 0h-4v4M.5.5l5 5m-4 0h4v-4"/></svg>';
-
-    let isResizing = false;
-    let startX, startY, startWidth, startHeight, startLeft, startTop;
-
-    function initResize(e) {
-        e.stopPropagation();
-        e.preventDefault();
-        if (!activeElement) return;
-        isResizing = true;
-        
-        let evt = e.type.includes('touch') ? e.touches[0] : e;
-        startX = evt.clientX;
-        startY = evt.clientY;
-        startWidth = activeElement.offsetWidth;
-        startHeight = activeElement.offsetHeight;
-        startLeft = activeElement.offsetLeft;
-        startTop = activeElement.offsetTop;
-
-        document.addEventListener('mousemove', resizeElement);
-        document.addEventListener('touchmove', resizeElement, { passive: false });
-        document.addEventListener('mouseup', stopResize);
-        document.addEventListener('touchend', stopResize);
-    }
-
-    function resizeElement(e) {
-        if (!isResizing || !activeElement) return;
-        e.preventDefault();
-
-        // ক্যানভাস জুম অবস্থায় থাকলে তার পারফেক্ট ক্যালকুলেশন
-        let scale = typeof currentScale !== 'undefined' ? currentScale : 1;
-        
-        let evt = e.type.includes('touch') ? e.touches[0] : e;
-        let dx = (evt.clientX - startX) / scale;
-        let dy = (evt.clientY - startY) / scale;
-
-        if (activeElement.tagName === 'IMG') {
-            // ছবির Aspect Ratio (মৌলিক আকার) ঠিক রাখার লজিক
-            let ratio = startWidth / startHeight;
-            let newWidth = Math.max(40, startWidth + dx); // কমপক্ষে 40px হতে হবে
-            let newHeight = newWidth / ratio;
-            activeElement.style.width = newWidth + 'px';
-            activeElement.style.height = newHeight + 'px';
-        } else {
-            // টেক্সট বা অন্যান্য বক্সের জন্য ফ্রি-রিসাইজ
-            activeElement.style.width = Math.max(40, startWidth + dx) + 'px';
-            activeElement.style.height = Math.max(40, startHeight + dy) + 'px';
-        }
-
-        updateResizeHandlePosition();
-    }
-
-    function stopResize() {
-        isResizing = false;
-        document.removeEventListener('mousemove', resizeElement);
-        document.removeEventListener('touchmove', resizeElement);
-        document.removeEventListener('mouseup', stopResize);
-        document.removeEventListener('touchend', stopResize);
-        saveState(); // নতুন সাইজ সেভ হবে
-    }
-
-    handle.addEventListener('mousedown', initResize);
-    handle.addEventListener('touchstart', initResize, { passive: false });
-
-    canvasContainer.appendChild(handle);
-
-    // ── Delete Handle (উপরে-বামে কোণায় — resize-এর বিপরীতে) ──
-    let deleteHandle = document.createElement('div');
-    deleteHandle.id = 'delete-handle';
-    deleteHandle.className = 'absolute w-7 h-7 bg-white border border-gray-300 rounded-md shadow-md z-[60] cursor-pointer touch-none flex justify-center items-center';
-    deleteHandle.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none"><path fill="none" stroke="#000000" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M6 18L18 6M6 6l12 12"/></svg>';
-
-    deleteHandle.addEventListener('mousedown', (e) => { e.stopPropagation(); e.preventDefault(); });
-    deleteHandle.addEventListener('touchstart', (e) => { e.stopPropagation(); e.preventDefault(); }, { passive: false });
-
-    deleteHandle.addEventListener('click', (e) => {
-        e.stopPropagation();
-        if (activeElement) {
-            const toRemove = activeElement;
-            setActive(null);
-            toRemove.remove();
-            saveState();
-        }
-    });
-
-    deleteHandle.addEventListener('touchend', (e) => {
-        e.stopPropagation();
-        e.preventDefault();
-        if (activeElement) {
-            const toRemove = activeElement;
-            setActive(null);
-            toRemove.remove();
-            saveState();
-        }
-    });
-
-    canvasContainer.appendChild(deleteHandle);
-}
-
-            function updateResizeHandlePosition() {
-    let handle = document.getElementById('resize-handle');
-    let deleteHandle = document.getElementById('delete-handle');
-    if (activeElement && handle) {
-        // Resize handle — নিচে-ডানে কোণায় (অর্ধেক বাইরে যাবে, তাই -14px)
-        handle.style.left = (activeElement.offsetLeft + activeElement.offsetWidth - 14) + 'px';
-        handle.style.top = (activeElement.offsetTop + activeElement.offsetHeight - 14) + 'px';
-    }
-    if (activeElement && deleteHandle) {
-        // Delete handle — উপরে-বামে কোণায় (resize-এর বিপরীতে)
-        deleteHandle.style.left = (activeElement.offsetLeft - 14) + 'px';
-        deleteHandle.style.top = (activeElement.offsetTop - 14) + 'px';
-    }
-}
-
+            
+            // Local wrapper to keep Editor UI state synced with Engine
             function setActive(el) {
-    if (activeElement) {
-        activeElement.style.outline = 'none';
-        activeElement.style.boxShadow = 'none';
-    }
-    
-    // নতুন কিছু সিলেক্ট করার আগে আগের resize ও delete handle মুছে ফেলা
-    let handle = document.getElementById('resize-handle');
-    if (handle) handle.remove();
-    let deleteHandle = document.getElementById('delete-handle');
-    if (deleteHandle) deleteHandle.remove();
-    
-    activeElement = el;
-    
-    if (activeElement) {
-        activeElement.style.outline = '2px dashed #3b82f6';
-        activeElement.style.outlineOffset = '4px';
-        
-        // নতুন সিলেক্টেড ইলিমেন্টের সাথে resize ও delete handle যুক্ত করা
-        createResizeHandle();
-        updateResizeHandlePosition();
-    }
-}
-            // ক্যানভাসের ফাঁকা জায়গায় ক্লিক করলে সিলেকশন বাতিল হবে
-            canvasContainer.addEventListener('click', (e) => {
-                if (e.target === canvasContainer || e.target.id === 'main-bg-image' || e.target.id === 'canvas-watermark') {
+                activeElement = el;
+                EEngine.Canvas.setActive(el);
+            }
+
+            function makeInteractive(el) {
+                EEngine.Canvas.makeInteractive(el);
+            }
+
+            // ক্যানভাস বা পেজের যেকোনো ফাঁকা জায়গায় (বাইরে) ক্লিক করলে সিলেকশন বাতিল হবে
+            document.addEventListener('mousedown', (e) => {
+                // যদি ক্লিক করা অংশটি কোনো টুলবার, মেনু বা সিলেক্টেড এলিমেন্ট না হয়, তবে সিলেকশন বাতিল হবে
+                if (!e.target.closest('.inserted-element') && 
+                    !e.target.closest('header') && 
+                    !e.target.closest('footer') && 
+                    !e.target.closest('#floating-toolbox') && 
+                    !e.target.closest('.submenu-panel') &&
+                    !e.target.closest('.toast-slide-in')) {
                     setActive(null);
                 }
             });
 
-            function makeInteractive(el) {
-                el.classList.add('inserted-element');
-                
-                // Allow selection and text editing
-                el.addEventListener('click', (e) => {
-                    e.stopPropagation();
-                    setActive(el);
-                });
-
-                // Auto-save state when text is changed
-                if(el.contentEditable === 'true') {
-                    el.addEventListener('blur', saveState);
+            document.addEventListener('touchstart', (e) => {
+                if (!e.target.closest('.inserted-element') && 
+                    !e.target.closest('header') && 
+                    !e.target.closest('footer') && 
+                    !e.target.closest('#floating-toolbox') && 
+                    !e.target.closest('.submenu-panel') &&
+                    !e.target.closest('.toast-slide-in')) {
+                    setActive(null);
                 }
-
-                // Drag functionality
-                let pos1 = 0, pos2 = 0, pos3 = 0, pos4 = 0;
-                
-                el.onmousedown = dragMouseDown;
-                el.ontouchstart = dragMouseDown;
-
-                function dragMouseDown(e) {
-                    // ডটে ক্লিক করলে যাতে ড্র্যাগ না হয়, তার প্রটেকশন
-                    if (e.target.id === 'resize-handle' || e.target.closest('#resize-handle')) return;
-                    
-                    if (e.target !== el && !el.contains(e.target)) return;
-                    e.stopPropagation();
-                    setActive(el);
-                    
-                    let evt = e.type.includes('touch') ? e.touches[0] : e;
-                    pos3 = evt.clientX;
-                    pos4 = evt.clientY;
-                    
-                    document.onmouseup = closeDragElement;
-                    document.ontouchend = closeDragElement;
-                    document.onmousemove = elementDrag;
-                    document.ontouchmove = elementDrag;
-                }
-
-                function elementDrag(e) {
-                    if (e.cancelable) e.preventDefault(); 
-                    
-                    // জুম অবস্থায় ড্র্যাগিং স্পিড পারফেক্ট করার ক্যালকুলেশন
-                    let scale = typeof currentScale !== 'undefined' ? currentScale : 1;
-                    let evt = e.type.includes('touch') ? e.touches[0] : e;
-                    
-                    pos1 = (pos3 - evt.clientX) / scale;
-                    pos2 = (pos4 - evt.clientY) / scale;
-                    pos3 = evt.clientX;
-                    pos4 = evt.clientY;
-                    
-                    el.style.top = (el.offsetTop - pos2) + "px";
-                    el.style.left = (el.offsetLeft - pos1) + "px";
-                    
-                    updateResizeHandlePosition(); // ড্র্যাগ করার সময় ডট সাথে মুভ করবে
-                }
-
-                function closeDragElement() {
-                    document.onmouseup = null;
-                    document.onmousemove = null;
-                    document.ontouchend = null;
-                    document.ontouchmove = null;
-                    saveState(); // Save state after moving element
-                }
-            }
+            }, { passive: true });
 
             // ==========================================
             // 4. Header Actions (Menu, Options, Export)
@@ -2601,6 +2419,76 @@ document.getElementById('btn-effects-watermark').addEventListener('click', () =>
                 qaInnerEl.addEventListener('focus', (e) => {
                     e.target.blur();
                 }, true);
+            }
+
+            // ==========================================
+            // 11. INSERT & DELETE IMAGE LOGIC
+            // ==========================================
+            const btnInsertImg = document.getElementById('btn-insert-img');
+            const imageUploadInput = document.getElementById('image-upload-input');
+            const btnDeleteImg = document.getElementById('btn-delete-img');
+
+            if (btnInsertImg && imageUploadInput) {
+                // বাটনে ক্লিক করলে লুকানো ফাইল ইনপুট ওপেন হবে
+                btnInsertImg.addEventListener('click', () => {
+                    imageUploadInput.click();
+                });
+
+                // ছবি সিলেক্ট করার পর ক্যানভাসে যুক্ত করার লজিক
+                imageUploadInput.addEventListener('change', function(e) {
+                    const file = e.target.files[0];
+                    if (!file) return;
+
+                    const reader = new FileReader();
+                    reader.onload = function(event) {
+                        const img = document.createElement('img');
+                        img.src = event.target.result;
+                        // 'rounded-md' ক্লাসটি ছবির এজ (কোণা) স্মুথ/কমে যাওয়ার জন্য কাজ করবে, 'shadow-sm' হালকা শ্যাডো দেবে
+                        img.className = 'absolute z-50 cursor-pointer object-contain rounded-md shadow-sm';
+                        img.style.width = '150px'; 
+                        img.style.top = '40%';
+                        img.style.left = '40%';
+
+                        // ক্যানভাসে ছবি যুক্ত করা
+                        canvasContainer.appendChild(img);
+
+                        // ছবিকে ড্র্যাগ এবং রিসাইজ করার জন্য ইন্টারঅ্যাক্টিভ করা
+                        makeInteractive(img);
+                        setActive(img);
+
+                        // হিস্ট্রি সেভ করা (Undo/Redo এর জন্য)
+                        saveState();
+                        
+                        // একই ছবি আবার সিলেক্ট করার জন্য ইনপুট ক্লিয়ার করা
+                        imageUploadInput.value = '';
+                        showToast("Image inserted successfully", "success");
+                    };
+                    reader.readAsDataURL(file);
+                });
+            }
+
+            // সিলেক্ট করা ছবি ডিলিট করার লজিক (আপডেটেড: Smart Selection & Touch Support)
+            if (btnDeleteImg) {
+                // click এবং touchstart দুটোই ব্যবহার করা হলো যাতে মোবাইলে দ্রুত কাজ করে এবং selection হারিয়ে না যায়
+                ['click', 'touchstart'].forEach(eventType => {
+                    btnDeleteImg.addEventListener(eventType, (e) => {
+                        e.stopPropagation(); // ইভেন্ট বাবলিং বন্ধ করা (যাতে ডক্যুমেন্টে ক্লিক না পড়ে)
+                        e.preventDefault(); // ডাবল ইভেন্ট ফায়ার বন্ধ করা
+                        
+                        // Editor.html এর লোকাল activeElement অথবা E-Engine এর স্টেট থেকে অ্যাক্টিভ এলিমেন্ট নেওয়া
+                        const currentTarget = activeElement || EEngine.State.activeElement;
+                        
+                        if (currentTarget && currentTarget.tagName === 'IMG' && currentTarget.id !== 'main-bg-image') {
+                            const toRemove = currentTarget;
+                            setActive(null); // সিলেকশন সরানো
+                            toRemove.remove(); // DOM থেকে মুছে ফেলা
+                            saveState(); // হিস্ট্রিতে সেভ করা (Undo এর জন্য)
+                            showToast("Image deleted successfully", "success");
+                        } else {
+                            showToast("Please select an inserted image first", "warning");
+                        }
+                    }, { passive: false });
+                });
             }
 
                 });
