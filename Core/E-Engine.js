@@ -1371,7 +1371,7 @@ window.EEngine = (function () {
     };
 
     // ==========================================
-    // 8. EXPORT ENGINE (Extreme Print-Quality WYSIWYD Implementation)
+    // 8. EXPORT ENGINE (Ultimate Crisp Text WYSIWYD Implementation)
     // ==========================================
     const ExportEngine = {
         async processExport(canvasElement, format, qualityScale) {
@@ -1381,12 +1381,15 @@ window.EEngine = (function () {
             const exactWidth = Math.round(rect.width);
             const exactHeight = Math.round(rect.height);
             
+            const scale = qualityScale; // Manual DOM scale to bypass tiny-text pixelation
+            
             const cloneWrapper = document.createElement('div');
             cloneWrapper.style.position = 'fixed';
             cloneWrapper.style.left = '-9999px';
             cloneWrapper.style.top = '0';
-            cloneWrapper.style.width = exactWidth + 'px';
-            cloneWrapper.style.height = exactHeight + 'px';
+            // Scale the wrapper to hold the enlarged DOM smoothly
+            cloneWrapper.style.width = (exactWidth * scale) + 'px';
+            cloneWrapper.style.height = (exactHeight * scale) + 'px';
             cloneWrapper.style.overflow = 'hidden';
             cloneWrapper.style.zIndex = '-9999';
             cloneWrapper.style.pointerEvents = 'none';
@@ -1432,21 +1435,22 @@ window.EEngine = (function () {
             cloneWrapper.appendChild(targetNode);
             document.body.appendChild(cloneWrapper);
 
-            // Give browser slightly more time to apply sub-pixel antialiasing
             await new Promise(resolve => requestAnimationFrame(resolve));
             await new Promise(resolve => setTimeout(resolve, 300)); 
 
             const isPng = format.includes('PNG');
             const options = {
                 quality: 1.0, 
-                pixelRatio: qualityScale, 
+                pixelRatio: 1, // Reset pixelRatio to 1 because we are enforcing physical DOM scale below
                 backgroundColor: isPng ? null : '#ffffff',
-                width: exactWidth,
-                height: exactHeight,
+                width: exactWidth * scale,
+                height: exactHeight * scale,
                 cacheBust: true, 
                 style: {
-                    transform: 'none',
-                    transformOrigin: 'top left'
+                    transform: `scale(${scale})`, // Fixes small text blur by natively rendering larger text
+                    transformOrigin: 'top left',
+                    width: exactWidth + 'px',
+                    height: exactHeight + 'px'
                 }
             };
 
@@ -1514,7 +1518,7 @@ window.EEngine = (function () {
                     await navigator.share({
                         title: 'My Print-Quality Note',
                         text: 'Check out this exported Ultra HD note!',
-                        files: [file]
+                        files:[file]
                     });
                     if (onSuccess) onSuccess();
                 } else {
