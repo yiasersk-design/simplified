@@ -1085,41 +1085,64 @@ function showToast(message, type = 'info', duration = 3000) {
             let historyIndex = -1;
 
             function saveState() {
-                // Remove selection border before saving
-                let previouslyActive = activeElement;
-                setActive(null);
-                
-                let currentState = canvasContainer.innerHTML;
-                
-                // If we are overriding undone history
-                if (historyIndex < history.length - 1) {
-                    history = history.slice(0, historyIndex + 1);
-                }
-                
-                history.push(currentState);
-                historyIndex++;
-                updateHeaderButtons();
+    // Remove selection border before saving
+    let previouslyActive = activeElement;
+    setActive(null);
 
-                // ── Persist to localStorage (Session Specific) ────────────────
-                try {
-                    const sessionId = localStorage.getItem('aiNoteMaker_currentId');
-                    const canvasKey = sessionId ? 'editor_canvas_html_' + sessionId : 'editor_canvas_html';
-                    localStorage.setItem(canvasKey, currentState);
-                } catch (e) {}
+    // ── [FIX] Canvas snapshot থেকে qa-content-zone exclude করে save করা ──
+    // কারণ: qa-content-inner এর content sync engine আলাদাভাবে manage করে।
+    // canvas HTML-এ embedded করলে restoreCanvasFromStorage-এ stale content
+    // ফিরে আসে এবং sync engine এর latest render overwrite হয়ে যায়।
+    const qZoneEl = document.getElementById('qa-content-zone');
+    let qZoneDisplay = '';
+    if (qZoneEl) {
+        qZoneDisplay = qZoneEl.style.display;
+        qZoneEl.style.display = 'none'; // temporarily hide
+    }
 
-                // QA zone-এর formatted HTML current session ID অনুযায়ী save করা
-                const qInnerEl = document.getElementById('qa-content-inner');
-                if (qInnerEl && qInnerEl.innerHTML.trim()) {
-                    try {
-                        const sessionId = localStorage.getItem('aiNoteMaker_currentId');
-                        const key = sessionId ? 'editor_qa_formatted_html_' + sessionId : 'editor_qa_formatted_html';
-                        localStorage.setItem(key, qInnerEl.innerHTML);
-                    } catch (e) {}
-                }
-                
-                // Reselect the element after saving
-                if(previouslyActive) setActive(previouslyActive);
-            }
+    let currentState = canvasContainer.innerHTML;
+
+    if (qZoneEl) {
+        qZoneEl.style.display = qZoneDisplay; // restore
+    }
+
+    // If we are overriding undone history
+    if (historyIndex < history.length - 1) {
+        history = history.slice(0, historyIndex + 1);
+    }
+
+    history.push(currentState);
+    historyIndex++;
+    updateHeaderButtons();
+
+    // ── Persist canvas to localStorage (Session Specific) ─────────
+    try {
+        const sessionId = localStorage.getItem('aiNoteMaker_currentId');
+        const canvasKey = sessionId ? 'editor_canvas_html_' + sessionId : 'editor_canvas_html';
+        localStorage.setItem(canvasKey, currentState);
+    } catch (e) {}
+
+    // ── [FIX] QA formatted HTML সবসময় save করো ──────────────────
+    // আগে condition ছিল: qInnerEl.innerHTML.trim() non-empty হলে
+    // সমস্যা: formatting এর মাঝে extractContents() এর পরে
+    // সাময়িক empty হলে saveState() stale key রেখে দিত।
+    // Fix: qInner আছে কিনা শুধু সেটাই check করো;
+    //      empty হলে key remove করো যাতে stale data না থাকে।
+    const qInnerEl = document.getElementById('qa-content-inner');
+    try {
+        const sessionId = localStorage.getItem('aiNoteMaker_currentId');
+        const key = sessionId ? 'editor_qa_formatted_html_' + sessionId : 'editor_qa_formatted_html';
+        if (qInnerEl && qInnerEl.innerHTML.trim()) {
+            localStorage.setItem(key, qInnerEl.innerHTML);
+        } else {
+            // Empty হলে stale key মুছে দাও — sync engine fresh render করবে
+            localStorage.removeItem(key);
+        }
+    } catch (e) {}
+
+    // Reselect the element after saving
+    if (previouslyActive) setActive(previouslyActive);
+}
 
             function updateHeaderButtons() {
                 const btnUndo = document.getElementById('btn-undo');
@@ -1151,9 +1174,42 @@ function showToast(message, type = 'info', duration = 3000) {
     const sessionId = localStorage.getItem('aiNoteMaker_currentId');
     const canvasKey = sessionId ? 'editor_canvas_html_' + sessionId : 'editor_canvas_html';
     const savedHtml = localStorage.getItem(canvasKey);
-    
+
     if (savedHtml) {
+        // ── [FIX] Canvas restore করার সময় qa-content-zone এর current DOM
+        // আলাদা করে রেখে দাও, restore-এর পরে ফিরিয়ে দাও।
+        // কারণ: canvasContainer.innerHTML = savedHtml করলে qa-content-zone
+        // destroy হয়ে নতুন তৈরি হয়। sync engine এর init() পরে এটা
+        // নিজেই populate করবে — তাই canvas snapshot-এর embedded content
+        // দিয়ে overwrite হওয়া ঠেকাতে হবে।
+        const existingQaZone = document.getElementById('qa-content-zone');
+        const existingQaHint = document.getElementById('qa-empty-hint');
+
+        // Current qa-content-zone এবং empty hint-এর reference ও display state save করো
+        let savedQaZoneOuterHTML = existingQaZone ? existingQaZone.outerHTML : null;
+        let savedQaHintOuterHTML = existingQaHint ? existingQaHint.outerHTML : null;
+
+        // Canvas HTML set করো
         canvasContainer.innerHTML = savedHtml;
+
+        // ── Restore qa-content-zone: canvas snapshot-এ embedded যা আছে সেটা
+        // sync engine manage করবে — তাই canvas-restored zone সরিয়ে
+        // original blank zone রাখো যাতে sync engine init()-এ fresh populate করতে পারে
+        const restoredQaZone = document.getElementById('qa-content-zone');
+        const restoredQaHint = document.getElementById('qa-empty-hint');
+
+        if (restoredQaZone) {
+            // Content clear করো — sync engine init() এই zone populate করবে
+            const inner = restoredQaZone.querySelector('#qa-content-inner');
+            if (inner) inner.innerHTML = '';
+            // display:none রাখো — sync engine applyTemplateStyles() এ 'block' করবে
+            restoredQaZone.style.display = 'none';
+        }
+
+        if (restoredQaHint) {
+            restoredQaHint.style.display = 'block';
+        }
+
         // Restored inserted elements-কে interactive করা
         const elements = canvasContainer.querySelectorAll('.inserted-element');
         elements.forEach(el => makeInteractive(el));
@@ -3401,25 +3457,25 @@ document.getElementById('btn-effects-watermark').addEventListener('click', () =>
     let activeConfig = null;
     let renderedCount = 0;
 
-    // ─── Page.html Font Sync: selected font config Editor-এ apply করা ─────
+    // ─── [NEW] Same-tab sync-এর জন্য last seen nb_qa_pending value ───────────
+    // localStorage storage event same-tab-এ fire হয় না,
+    // তাই আমরা নিজেই poll করে check করবো
+    let _lastSeenQaPending = null;
+    let _lastSeenSessionId = null;
+
+    // ─── Page.html Font Sync ─────────────────────────────────────────────────
     function applyPageFontSync(fontConfig) {
         if (!fontConfig) return;
         const qInner = document.getElementById('qa-content-inner');
         if (!qInner) return;
-
-        // qInner-এর base font — answer text inherit করবে
         qInner.style.fontFamily = fontConfig.subFont;
-
-        // প্রতিটি entry-র p elements-এ সরাসরি apply করা
         qInner.querySelectorAll('.qa-entry-block p').forEach(function (p) {
             if (p.style.fontWeight === 'bold') {
-                // Question line → mainFont
                 p.style.fontFamily    = fontConfig.mainFont;
                 p.style.fontWeight    = fontConfig.mainWeight;
                 p.style.fontStyle     = 'normal';
                 p.style.letterSpacing = '';
             } else {
-                // Answer line → subFont
                 p.style.fontFamily    = fontConfig.subFont;
                 p.style.fontWeight    = fontConfig.subWeight;
                 p.style.fontStyle     = fontConfig.subStyle;
@@ -3428,7 +3484,7 @@ document.getElementById('btn-effects-watermark').addEventListener('click', () =>
         });
     }
 
-    // ─── Default fallback config (কোনো template select না করলে) ────────────
+    // ─── Default config ───────────────────────────────────────────────────────
     const DEFAULT_CONFIG = {
         slideId: 1,
         bgColor: '#ffffff',
@@ -3453,7 +3509,14 @@ document.getElementById('btn-effects-watermark').addEventListener('click', () =>
                 return JSON.parse(localStorage.getItem('nb_qa_entries_' + sessionId) || '[]');
             }
             return [];
-        } catch (_) { return[]; }
+        } catch (_) { return []; }
+    }
+
+    // ─── DOM থেকে actual rendered block count sync করা ───────────────────────
+    function syncRenderedCount() {
+        const qInner = document.getElementById('qa-content-inner');
+        if (!qInner) { renderedCount = 0; return; }
+        renderedCount = qInner.querySelectorAll('.qa-entry-block').length;
     }
 
     // ─── Template styles apply ────────────────────────────────────────────────
@@ -3467,8 +3530,6 @@ document.getElementById('btn-effects-watermark').addEventListener('click', () =>
 
         if (designCanvas) {
             designCanvas.style.backgroundColor = config.bgColor || '#ffffff';
-
-            // ── Canvas Size Sync: template-এর aspectRatio Editor canvas-এ apply করা ──
             if (config.aspectRatio) {
                 designCanvas.classList.remove(
                     'aspect-square', 'aspect-video',
@@ -3482,10 +3543,8 @@ document.getElementById('btn-effects-watermark').addEventListener('click', () =>
         qZone.style.display = 'block';
 
         const s = qInner.style;
-        s.fontFamily    = config.fontFamily   || "'Tiro Bangla', serif";
-        
-        // ── 1. Smart Layout-Based Font Size System (With Persistence) ──
-        // Check if user has explicitly saved a font size in localStorage
+        s.fontFamily = config.fontFamily || "'Tiro Bangla', serif";
+
         let savedFontSize = null;
         try {
             const sessionId = localStorage.getItem('aiNoteMaker_currentId');
@@ -3494,18 +3553,13 @@ document.getElementById('btn-effects-watermark').addEventListener('click', () =>
         } catch (e) {}
 
         if (savedFontSize) {
-            // User-defined saved size takes highest priority
             s.fontSize = savedFontSize;
         } else if (config.layout === 'double') {
-            // Two-column mode active হলে content fit এবং optimal readability-এর জন্য default size 7px
             s.fontSize = '7px';
         } else {
-            // Single column-এ original default size
             s.fontSize = config.fontSize || '7.5px';
         }
 
-        // Layout পরিবর্তনের সময় আগের কোনো inline font-size override থাকলে তা clear করে দেওয়া
-        // (যাতে Global rule ঠিকমতো priority পায় এবং text structure break না হয়)
         qInner.querySelectorAll('span[style*="font-size"]').forEach(span => {
             span.style.fontSize = '';
         });
@@ -3527,22 +3581,21 @@ document.getElementById('btn-effects-watermark').addEventListener('click', () =>
         s.height        = '100%';
         s.overflow      = 'hidden';
 
-        // ── 2. Column Structure Setting ──
         if (config.layout === 'double') {
-            s.display      = 'block';
-            s.columnCount  = '2';
-            s.columnGap    = '0.8rem';
-            s.columnFill   = 'auto';
+            s.display       = 'block';
+            s.columnCount   = '2';
+            s.columnGap     = '0.8rem';
+            s.columnFill    = 'auto';
             s.flexDirection = '';
             s.gap           = '';
-            qInner.classList.add('layout-double'); // Add structural class
+            qInner.classList.add('layout-double');
         } else {
             s.display       = 'flex';
             s.flexDirection = 'column';
             s.gap           = config.gap || '4px';
             s.columnCount   = '';
             s.columnGap     = '';
-            qInner.classList.remove('layout-double'); // Remove structural class
+            qInner.classList.remove('layout-double');
         }
 
         const existingDivider = qZone.querySelector('.qa-column-divider');
@@ -3551,9 +3604,6 @@ document.getElementById('btn-effects-watermark').addEventListener('click', () =>
         if (config.useSeparator && config.layout === 'double') {
             const divEl = document.createElement('div');
             divEl.className = 'qa-column-divider';
-            // margin-aware: content area-র exact boundary অনুযায়ী divider clip করা
-            // config থেকে padding পড়ে top/bottom dynamically set করলে
-            // যেকোনো margin size-এ divider automatically adjust হবে
             divEl.style.top    = config.paddingTop    || '2.5rem';
             divEl.style.bottom = config.paddingBottom || '0.8rem';
             qZone.appendChild(divEl);
@@ -3576,9 +3626,9 @@ document.getElementById('btn-effects-watermark').addEventListener('click', () =>
         qEl.textContent = item.q;
 
         const aEl = document.createElement('p');
-aEl.style.marginTop = '1px';
-aEl.style.margin    = '1px 0 0 0';
-aEl.appendChild(document.createTextNode(item.a));
+        aEl.style.marginTop = '1px';
+        aEl.style.margin    = '1px 0 0 0';
+        aEl.appendChild(document.createTextNode(item.a));
 
         block.appendChild(qEl);
         block.appendChild(aEl);
@@ -3601,15 +3651,15 @@ aEl.appendChild(document.createTextNode(item.a));
         if (!forceRaw) {
             const savedFormatted = localStorage.getItem(getFormattedHtmlKey());
             if (savedFormatted && savedFormatted.trim()) {
-                qInner.innerHTML = ''; 
+                qInner.innerHTML = '';
                 qInner.insertAdjacentHTML('beforeend', savedFormatted);
-                renderedCount = qInner.querySelectorAll('.qa-entry-block').length;
+                syncRenderedCount();
                 updateEmptyHint();
                 return;
             }
         }
 
-        qInner.innerHTML = ''; 
+        qInner.innerHTML = '';
         renderedCount = 0;
 
         const fragment = document.createDocumentFragment();
@@ -3621,18 +3671,22 @@ aEl.appendChild(document.createTextNode(item.a));
         updateEmptyHint();
     }
 
-    // ─── শুধু নতুন entry append করা (re-render ছাড়া) ────────────────────────
+    // ─── শুধু নতুন entry append করা — formatted content unaffected ──────────
     function appendNewEntry(item) {
         const qInner = document.getElementById('qa-content-inner');
         if (!qInner) return;
+
         if (!activeConfig) {
             const cfgJson = localStorage.getItem('editor_template_config');
             let cfg = DEFAULT_CONFIG;
             if (cfgJson) { try { cfg = JSON.parse(cfgJson); } catch (_) {} }
             applyTemplateStyles(cfg);
         }
-        qInner.appendChild(createQaBlock(item));
-        renderedCount++;
+
+        const newBlock = createQaBlock(item);
+        qInner.appendChild(newBlock);
+
+        syncRenderedCount();
         updateEmptyHint();
 
         try {
@@ -3653,15 +3707,60 @@ aEl.appendChild(document.createTextNode(item.a));
         } catch (_) { return null; }
     }
 
-    // ─── Init: page load-এ সব কিছু initialize করা ───────────────────────────
+    // ─── [NEW] nb_qa_pending change হলে entry sync করার central handler ───────
+    // storage event (cross-tab) এবং poll (same-tab) উভয়ই এই function call করবে
+    function handleQaPendingChange() {
+        const qInner = document.getElementById('qa-content-inner');
+        const entries = getStoredEntries();
+
+        if (entries.length === 0) {
+            if (qInner) qInner.innerHTML = '';
+            renderedCount = 0;
+            localStorage.removeItem(getFormattedHtmlKey());
+            updateEmptyHint();
+            return;
+        }
+
+        syncRenderedCount();
+
+        if (renderedCount < entries.length) {
+            if (entries.length - renderedCount === 1) {
+                appendNewEntry(entries[entries.length - 1]);
+            } else {
+                const savedFormatted = localStorage.getItem(getFormattedHtmlKey());
+                if (savedFormatted && savedFormatted.trim()) {
+                    const newEntries = entries.slice(renderedCount);
+                    newEntries.forEach(item => {
+                        if (qInner) qInner.appendChild(createQaBlock(item));
+                    });
+                    syncRenderedCount();
+                    updateEmptyHint();
+                    try {
+                        localStorage.setItem(getFormattedHtmlKey(), qInner ? qInner.innerHTML : '');
+                    } catch (_) {}
+                } else {
+                    renderAllEntries(entries, activeConfig, true);
+                }
+            }
+        } else if (renderedCount > entries.length) {
+            localStorage.removeItem(getFormattedHtmlKey());
+            renderAllEntries(entries, activeConfig, true);
+        }
+    }
+
+    // ─── Init ────────────────────────────────────────────────────────────────
     function init() {
         const qInner = document.getElementById('qa-content-inner');
         const templateActive = localStorage.getItem('editor_template_active');
         const config  = getStoredConfig();
         const entries = getStoredEntries();
 
+        // same-tab polling-এর জন্য initial state record করো
+        _lastSeenQaPending = localStorage.getItem('nb_qa_pending');
+        _lastSeenSessionId = localStorage.getItem('aiNoteMaker_currentId');
+
         if (!entries || entries.length === 0) {
-            if (qInner) qInner.innerHTML = ''; 
+            if (qInner) qInner.innerHTML = '';
             renderedCount = 0;
             localStorage.removeItem(getFormattedHtmlKey());
             updateEmptyHint();
@@ -3675,54 +3774,53 @@ aEl.appendChild(document.createTextNode(item.a));
             applyTemplateStyles(config);
         }
 
-        // ── Font Sync: page load-এ Page.html-এর saved font apply করা ──
         try {
             const savedFont = localStorage.getItem('page_font_config');
             if (savedFont) applyPageFontSync(JSON.parse(savedFont));
         } catch (_) {}
+
+        // ─── [NEW] Same-tab polling: 800ms interval-এ nb_qa_pending check ────
+        // কারণ: same tab-এ Notebook → Editor navigate করলে storage event আসে না
+        setInterval(function () {
+            const currentPending  = localStorage.getItem('nb_qa_pending');
+            const currentSession  = localStorage.getItem('aiNoteMaker_currentId');
+
+            // Session switch হলে reload
+            if (currentSession !== _lastSeenSessionId) {
+                _lastSeenSessionId  = currentSession;
+                _lastSeenQaPending  = currentPending;
+                window.location.reload();
+                return;
+            }
+
+            // nb_qa_pending value নতুন হলে entry sync করো
+            if (currentPending !== _lastSeenQaPending) {
+                _lastSeenQaPending = currentPending;
+                handleQaPendingChange();
+            }
+        }, 800);
     }
 
-    // ─── Storage event: multi-tab sync ─────────────────────────────────────────
+    // ─── Storage event: cross-tab sync ─────────────────────────────────────
     window.addEventListener('storage', function (e) {
-        const qInner = document.getElementById('qa-content-inner');
-        const qZone = document.getElementById('qa-content-zone');
-        const emptyHint = document.getElementById('qa-empty-hint');
+        const qZone       = document.getElementById('qa-content-zone');
+        const emptyHint   = document.getElementById('qa-empty-hint');
         const designCanvas = document.getElementById('design-canvas');
+        const qInner      = document.getElementById('qa-content-inner');
 
-        // ── Multi-chat Isolation: Session switch ──
+        // Session switch হলে full reload
         if (e.key === 'nb_session_switched') {
-            // চ্যাট পরিবর্তন বা নতুন চ্যাট তৈরি হলে Editor পেজটি সম্পূর্ণ রিলোড হবে, 
-            // যাতে আগের চ্যাটের কোনো cached Canvas বা HTML DOM স্ক্রিনে আটকে থাকতে না পারে!
             window.location.reload();
             return;
         }
 
-        // nb_qa_pending update হলে — নতুন entry অথবা সব cleared
+        // nb_qa_pending — cross-tab entry update
         if (e.key === 'nb_qa_pending') {
-            const entries = getStoredEntries();
-
-            if (entries.length === 0) {
-                if (qInner) qInner.innerHTML = '';
-                renderedCount = 0;
-                localStorage.removeItem(getFormattedHtmlKey());
-                updateEmptyHint();
-                return;
-            }
-
-            if (renderedCount < entries.length) {
-                localStorage.removeItem(getFormattedHtmlKey());
-                if (entries.length - renderedCount === 1) {
-                    appendNewEntry(entries[entries.length - 1]);
-                } else {
-                    renderAllEntries(entries, activeConfig, true);
-                }
-            } else if (renderedCount > entries.length) {
-                localStorage.removeItem(getFormattedHtmlKey());
-                renderAllEntries(entries, activeConfig, true);
-            }
+            _lastSeenQaPending = e.newValue; // poll-এর সাথে sync রাখো
+            handleQaPendingChange();
         }
 
-        // Template পরিবর্তন হলো Page.html থেকে
+        // Template পরিবর্তন হলো
         if (e.key === 'editor_template_config' && e.newValue) {
             let cfg = null;
             try { cfg = JSON.parse(e.newValue); } catch (_) {}
@@ -3731,14 +3829,13 @@ aEl.appendChild(document.createTextNode(item.a));
             applyTemplateStyles(cfg);
             localStorage.removeItem(getFormattedHtmlKey());
             renderAllEntries(entries, cfg, true);
-            // ── Template change-এর পরও Page font বজায় রাখা ──
             try {
                 const savedFont = localStorage.getItem('page_font_config');
                 if (savedFont) applyPageFontSync(JSON.parse(savedFont));
             } catch (_) {}
         }
 
-        // Template বন্ধ করা হলো
+        // Template বন্ধ
         if (e.key === 'editor_template_active' && e.newValue === 'false') {
             if (qZone) qZone.style.display = 'none';
             if (emptyHint) emptyHint.style.display = 'block';
@@ -3748,12 +3845,11 @@ aEl.appendChild(document.createTextNode(item.a));
             localStorage.removeItem(getFormattedHtmlKey());
         }
 
-        // ── Real-time Font Sync: Page.html থেকে font change হলো ──
+        // Font sync
         if (e.key === 'page_font_config') {
             if (e.newValue) {
                 try { applyPageFontSync(JSON.parse(e.newValue)); } catch (_) {}
             } else {
-                // Font reset হলে template-এর original font ফিরিয়ে দাও
                 const cfg = getStoredConfig();
                 if (qInner && cfg) {
                     qInner.style.fontFamily = cfg.fontFamily || "'Tiro Bangla', serif";
