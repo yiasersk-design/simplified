@@ -1371,9 +1371,29 @@ window.EEngine = (function () {
     };
 
     // ==========================================
-    // 8. EXPORT ENGINE (Ultimate Crisp Text WYSIWYD Implementation)
+    // 8. EXPORT ENGINE (Ultimate Crisp Text & Automatic Unique Filename)
     // ==========================================
     const ExportEngine = {
+        
+        // Time-based unique filename generator (e.g., Note_10-45-33PM.png)
+        generateUniqueFileName(extension) {
+            const date = new Date();
+            let hours = date.getHours();
+            let minutes = date.getMinutes();
+            let seconds = date.getSeconds();
+            const ampm = hours >= 12 ? 'PM' : 'AM';
+            
+            hours = hours % 12;
+            hours = hours ? hours : 12; // 0 hour should be 12
+            
+            // Double digit formatting
+            const hoursStr = hours < 10 ? '0' + hours : hours;
+            const minutesStr = minutes < 10 ? '0' + minutes : minutes;
+            const secondsStr = seconds < 10 ? '0' + seconds : seconds;
+            
+            return `Note_${hoursStr}-${minutesStr}-${secondsStr}${ampm}.${extension}`;
+        },
+
         async processExport(canvasElement, format, qualityScale) {
             await document.fonts.ready;
 
@@ -1487,8 +1507,11 @@ window.EEngine = (function () {
                 const result = await this.processExport(canvas, format, scaleVal);
                 const extension = result.isPng ? 'png' : 'jpg';
 
+                // Automatically generate time-based unique filename
+                const uniqueFileName = this.generateUniqueFileName(extension);
+
                 const link = document.createElement('a');
-                link.download = `Print-Quality-Note.${extension}`;
+                link.download = uniqueFileName;
                 link.href = result.dataUrl;
                 link.click();
                 
@@ -1512,13 +1535,15 @@ window.EEngine = (function () {
                 const extension = result.isPng ? 'png' : 'jpg';
                 const mimeType = result.isPng ? 'image/png' : 'image/jpeg';
 
-                const file = new File([result.blob], `Shared-Print-Quality.${extension}`, { type: mimeType });
+                // Automatically generate time-based unique filename for sharing as well
+                const uniqueFileName = this.generateUniqueFileName(extension);
+                const file = new File([result.blob], uniqueFileName, { type: mimeType });
 
                 if (navigator.canShare && navigator.canShare({ files: [file] })) {
                     await navigator.share({
-                        title: 'My Print-Quality Note',
+                        title: uniqueFileName, // Set file name as title
                         text: 'Check out this exported Ultra HD note!',
-                        files:[file]
+                        files: [file]
                     });
                     if (onSuccess) onSuccess();
                 } else {
