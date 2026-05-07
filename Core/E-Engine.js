@@ -1,7 +1,7 @@
 /**
  * ============================================================================
  * FILE: /Modules/Core/E-Engine.js
- * PURPOSE: Core Engine for Editor (State, Formatting, Sync, Rendering, Storage, Labeling)
+ * PURPOSE: Core Engine for Editor (State, Formatting, Sync, Rendering, Storage, Labeling, Spacing)
  * ============================================================================
  */
 
@@ -664,6 +664,87 @@ window.EEngine = (function () {
                 State.save();
                 Utils.toast(`Global Text Size: ${newSize}px`, 'success');
             }
+        },
+
+        // NEW: Adjust Spacing (Line Spacing & Group Spacing)
+        adjustSpacing(type, isIncrease) {
+            const qInner = document.getElementById('qa-content-inner');
+            if (!qInner) return;
+
+            // Spacing Configuration Limits
+            const LINE_HEIGHT_STEP = 0.1;
+            const MIN_LINE_HEIGHT = 0.8;
+            const MAX_LINE_HEIGHT = 4.0;
+
+            const GAP_STEP = 2; // px
+            const MIN_GAP = 0;
+            const MAX_GAP = 60;
+
+            // Get Current Config or fallback to defaults
+            let config = State.activeConfig;
+            if (!config) {
+                try {
+                    config = JSON.parse(localStorage.getItem('editor_template_config')) || Sync.DEFAULT_CONFIG;
+                } catch (e) {
+                    config = Sync.DEFAULT_CONFIG;
+                }
+            }
+
+            if (type === 'line') {
+                // --- 1. Q&A Spacing (Line Height) Adjustments ---
+                let currentLineHeight = parseFloat(qInner.style.lineHeight) || parseFloat(config.lineHeight) || 1.25;
+                let newLineHeight = isIncrease ? currentLineHeight + LINE_HEIGHT_STEP : currentLineHeight - LINE_HEIGHT_STEP;
+                
+                // Keep values within clamped bounds
+                newLineHeight = Math.max(MIN_LINE_HEIGHT, Math.min(newLineHeight, MAX_LINE_HEIGHT));
+                
+                // Apply to DOM
+                qInner.style.lineHeight = newLineHeight.toFixed(2);
+                
+                // Apply to Active Config and LocalStorage
+                config.lineHeight = newLineHeight.toFixed(2);
+                State.activeConfig = config;
+                localStorage.setItem('editor_template_config', JSON.stringify(config));
+                
+                Utils.toast(`Line Spacing: ${newLineHeight.toFixed(2)}`, 'success');
+                
+            } else if (type === 'group') {
+                // --- 2. Group Spacing (Gap & Margin-Bottom) Adjustments ---
+                const isDouble = qInner.classList.contains('layout-double');
+                let currentGapStr = config.gap || qInner.style.gap || '4px';
+                
+                if (isDouble) {
+                    const firstBlock = qInner.querySelector('.qa-entry-block');
+                    if (firstBlock && firstBlock.style.marginBottom) {
+                        currentGapStr = firstBlock.style.marginBottom;
+                    }
+                }
+                
+                let currentGap = parseInt(currentGapStr) || 0;
+                let newGap = isIncrease ? currentGap + GAP_STEP : currentGap - GAP_STEP;
+                
+                // Keep values within clamped bounds
+                newGap = Math.max(MIN_GAP, Math.min(newGap, MAX_GAP));
+                
+                // Apply to DOM based on layout type
+                if (isDouble) {
+                    qInner.querySelectorAll('.qa-entry-block').forEach(block => {
+                        block.style.marginBottom = newGap + 'px';
+                    });
+                } else {
+                    qInner.style.gap = newGap + 'px';
+                }
+
+                // Apply to Active Config and LocalStorage
+                config.gap = newGap + 'px';
+                State.activeConfig = config;
+                localStorage.setItem('editor_template_config', JSON.stringify(config));
+
+                Utils.toast(`Group Spacing: ${newGap}px`, 'success');
+            }
+
+            // Save visual layout to core engine history
+            State.save();
         }
     };
 
@@ -782,7 +863,7 @@ window.EEngine = (function () {
         getStoredEntries() {
             try {
                 const sessionId = localStorage.getItem('aiNoteMaker_currentId');
-                return sessionId ? JSON.parse(localStorage.getItem('nb_qa_entries_' + sessionId) || '[]') : [];
+                return sessionId ? JSON.parse(localStorage.getItem('nb_qa_entries_' + sessionId) || '[]') :[];
             } catch (_) { return[]; }
         },
 
@@ -808,6 +889,8 @@ window.EEngine = (function () {
             const block = document.createElement('div');
             block.className = 'qa-entry-block';
             block.style.breakInside = 'avoid';
+            
+            // Apply Spacing from Config dynamically
             block.style.marginBottom = c.gap || '4px';
 
             const qEl = document.createElement('p');
@@ -967,7 +1050,7 @@ window.EEngine = (function () {
         appendNewEntry(item) {
             const qInner = document.getElementById('qa-content-inner');
             if (!qInner) return;
-            const newBlock = this.createQaBlock(item);
+            const newBlock = this.createQaBlock(item, State.activeConfig);
             qInner.appendChild(newBlock);
             this.syncRenderedCount();
             this.updateEmptyHint();
@@ -997,7 +1080,7 @@ window.EEngine = (function () {
                     const savedFormatted = localStorage.getItem(this.getFormattedHtmlKey());
                     if (savedFormatted && savedFormatted.trim()) {
                         const fragment = document.createDocumentFragment();
-                        entries.slice(State.renderedCount).forEach(item => fragment.appendChild(this.createQaBlock(item)));
+                        entries.slice(State.renderedCount).forEach(item => fragment.appendChild(this.createQaBlock(item, State.activeConfig)));
                         if (qInner) qInner.appendChild(fragment);
                         this.syncRenderedCount();
                         this.updateEmptyHint();
