@@ -173,7 +173,9 @@ span[data-qa-fmt="ul-wavy"]    { text-decoration: underline; text-decoration-sty
     inset: 0;
     z-index: 5;
     overflow: hidden;
-    pointer-events: auto;  /* ← none থেকে auto করা হলো */
+    pointer-events: auto;
+    /* Export clone-এ zone-এর exact boundary match করার জন্য box-sizing নিশ্চিত করা */
+    box-sizing: border-box;
 }
 
 #qa-content-inner {
@@ -186,6 +188,16 @@ span[data-qa-fmt="ul-wavy"]    { text-decoration: underline; text-decoration-sty
     cursor: default;
     -webkit-user-select: text;
     user-select: text;
+    /* Preview-export font rendering consistency:
+       text-size-adjust বন্ধ করা — mobile browser landscape-এ auto font-size scale করে,
+       এটি preview-এ ঘটলেও export clone-এ ঘটে না → inconsistency তৈরি হয় */
+    text-size-adjust: 100%;
+    -webkit-text-size-adjust: 100%;
+    /* font-feature-settings normalize করা — preview ও export উভয়তে kern active থাকবে */
+    font-feature-settings: "kern" 1;
+    /* word-break এবং overflow-wrap নিশ্চিত করা — উভয় context-এ একই text wrapping */
+    word-break: break-word;
+    overflow-wrap: break-word;
 }
 
         #qa-content-inner.layout-double {
@@ -316,6 +328,10 @@ span[data-qa-fmt="ul-wavy"]    { text-decoration: underline; text-decoration-sty
     -webkit-box-decoration-break: clone;
     box-decoration-break: clone;
     border-radius: 1px;
+    /* Highlight opacity consistency: mix-blend-mode এবং print-color-adjust normalize করা
+       preview ও export উভয়তে একই visual opacity দেখাবে */
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
 }
 
 /* Inserted text element-এর highlight — compact */
