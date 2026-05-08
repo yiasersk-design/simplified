@@ -65,24 +65,27 @@
 .pushable:focus:not(:focus-visible) {
     outline: none;
 } /* ===== Underline Style Spans ===== */
-span[data-qa-fmt^="ul-"] {
+span[data-qa-fmt^="ul-"], span[data-qa-fmt="underline"] {
     display: inline;
     -webkit-box-decoration-break: clone;
     box-decoration-break: clone;
+    /* Underline-কে টেক্সটের একদম নিচে লাগানোর জন্য offset zero করা হলো */
+    text-underline-offset: 0px; 
+    /* ইংলিশ descenders বা বাংলা কার-এর কাছে underline break না হওয়ার জন্য */
+    text-decoration-skip-ink: none; 
 }
-span[data-qa-fmt="ul-solid"]   { text-decoration: underline; text-decoration-style: solid; }
+span[data-qa-fmt="ul-solid"], span[data-qa-fmt="underline"] { text-decoration: underline; text-decoration-style: solid; }
 span[data-qa-fmt="ul-dotted"]  { text-decoration: underline; text-decoration-style: dotted; }
 span[data-qa-fmt="ul-dashed"]  { text-decoration: underline; text-decoration-style: dashed; }
 span[data-qa-fmt="ul-double"]  { text-decoration: underline; text-decoration-style: double; }
 span[data-qa-fmt="ul-wavy"] {
     text-decoration: none;
-    /* wave বড় করা হয়েছে (background-size বাড়ানো) এবং লেখার ঠিক নিচে ঘেঁষানো হয়েছে
-       padding-bottom = background-size height → wave text content-এর একদম নিচে বসে */
     background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='4' viewBox='0 0 12 4'%3E%3Cpath d='M0 3 Q1.5 0.5 3 3 T6 3 T9 3 T12 3' fill='none' stroke='%231f2937' stroke-width='1'/%3E%3C/svg%3E");
     background-repeat: repeat-x;
     background-position: left bottom;
     background-size: 0.85em 0.42em;
-    padding-bottom: 0.4em;
+    /* Gap পুরোপুরি remove করার জন্য padding 0.4em থেকে 0.20em এ কমানো হলো */
+    padding-bottom: 0.20em; 
 } /* ======= NEW TOAST ANIMATION ======= */
 @keyframes toastSlideIn {
     from { opacity: 0; transform: translateY(10px); }
@@ -347,6 +350,12 @@ span[data-qa-fmt="ul-wavy"] {
 .inserted-element[style*="background-color"] {
     padding-top: 0 !important;
     padding-bottom: 0 !important;
+}
+
+/* Inserted text element-এর underline — attached (No extra space) */
+.inserted-element[style*="underline"] {
+    text-underline-offset: 0px;
+    text-decoration-skip-ink: none;
 }
 
 /* QA zone-এর qa-entry-block এবং paragraph-এর line-height lock */
