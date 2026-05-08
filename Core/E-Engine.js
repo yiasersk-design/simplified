@@ -1395,83 +1395,110 @@ window.EEngine = (function () {
         },
 
         async processExport(canvasElement, format, qualityScale) {
+            // Step 1: Fonts fully loaded হওয়ার জন্য অপেক্ষা
             await document.fonts.ready;
+            // Additional font settle time — fonts loaded হলেই layout compute সম্পন্ন হয় না
+            await new Promise(resolve => setTimeout(resolve, 250));
 
-            const rect = canvasElement.getBoundingClientRect();
-            const exactWidth = Math.round(rect.width);
-            const exactHeight = Math.round(rect.height);
-            
-            const scale = qualityScale; // Manual DOM scale to bypass tiny-text pixelation
-            
+            // Step 2: CSS layout dimensions নেওয়া (offsetWidth/offsetHeight)
+            // getBoundingClientRect() visual/transformed size দেয় — zoom active থাকলে wrong হয়
+            // offsetWidth/offsetHeight সবসময় CSS layout size দেয়, transform-independent
+            const cssWidth = canvasElement.offsetWidth;
+            const cssHeight = canvasElement.offsetHeight;
+
+            const scale = qualityScale;
+
+            // Step 3: Off-screen wrapper — CSS layout size-এ তৈরি করা
             const cloneWrapper = document.createElement('div');
             cloneWrapper.style.position = 'fixed';
-            cloneWrapper.style.left = '-9999px';
+            cloneWrapper.style.left = '-99999px';
             cloneWrapper.style.top = '0';
-            // Scale the wrapper to hold the enlarged DOM smoothly
-            cloneWrapper.style.width = (exactWidth * scale) + 'px';
-            cloneWrapper.style.height = (exactHeight * scale) + 'px';
+            cloneWrapper.style.width = cssWidth + 'px';
+            cloneWrapper.style.height = cssHeight + 'px';
             cloneWrapper.style.overflow = 'hidden';
             cloneWrapper.style.zIndex = '-9999';
             cloneWrapper.style.pointerEvents = 'none';
 
+            // Step 4: Canvas clone তৈরি
             const targetNode = canvasElement.cloneNode(true);
-            
-            // Layout Locking
+
+            // Step 5: Layout Lock — CSS layout dimensions-এ freeze করা
+            // inline style সবচেয়ে বেশি specificity রাখে, Tailwind classes override করে
             targetNode.style.transform = 'none';
             targetNode.style.margin = '0';
             targetNode.style.boxShadow = 'none';
-            targetNode.style.width = exactWidth + 'px';
-            targetNode.style.height = exactHeight + 'px';
-            targetNode.style.minWidth = exactWidth + 'px';
-            targetNode.style.maxWidth = exactWidth + 'px';
-            targetNode.style.minHeight = exactHeight + 'px';
-            targetNode.style.maxHeight = exactHeight + 'px';
+            targetNode.style.width = cssWidth + 'px';
+            targetNode.style.height = cssHeight + 'px';
+            targetNode.style.minWidth = cssWidth + 'px';
+            targetNode.style.maxWidth = cssWidth + 'px';
+            targetNode.style.minHeight = cssHeight + 'px';
+            targetNode.style.maxHeight = cssHeight + 'px';
             targetNode.style.boxSizing = 'border-box';
-            
-            // EXTREME QUALITY ENFORCEMENT - CSS LEVEL
-            targetNode.style.textRendering = 'geometricPrecision';
-            targetNode.style.webkitFontSmoothing = 'antialiased';
-            targetNode.style.mozOsxFontSmoothing = 'grayscale';
-            targetNode.style.setProperty('image-rendering', 'high-quality', 'important');
-            
+            targetNode.style.overflow = 'hidden';
             targetNode.style.outline = 'none';
+
+            // Step 6: Transition class সরানো — clone capture-এর সময় animation থাকলে inconsistency হয়
+            targetNode.classList.remove('transition-all', 'duration-300', 'transition', 'ease-in-out');
+
+            // Step 7: UI handle এবং selection artifact সরানো
             targetNode.querySelectorAll('#resize-handle, #delete-handle').forEach(el => el.remove());
-            
-            // DEEP NODE QUALITY ENFORCEMENT (All child elements)
-            targetNode.querySelectorAll('*').forEach(el => {
-                if (el.style) {
-                    el.style.textRendering = 'geometricPrecision';
-                    el.style.webkitFontSmoothing = 'antialiased';
+
+            // Step 8: QA content inner-এ rem → px conversion
+            // rem values সবসময় html root font-size থেকে compute হয় (সাধারণত 16px)
+            // এই conversion explicit করে দিলে off-screen context-এও consistent থাকে
+            const clonedQaInner = targetNode.querySelector('#qa-content-inner');
+            if (clonedQaInner) {
+                const ROOT_PX = 16; // browser default root font-size
+                const remProps = ['paddingTop', 'paddingRight', 'paddingBottom', 'paddingLeft'];
+                remProps.forEach(prop => {
+                    const val = clonedQaInner.style[prop];
+                    if (val && val.endsWith('rem')) {
+                        clonedQaInner.style[prop] = (parseFloat(val) * ROOT_PX) + 'px';
+                    }
+                });
+                // column-gap rem → px (double layout-এর জন্য)
+                const colGap = clonedQaInner.style.columnGap;
+                if (colGap && colGap.endsWith('rem')) {
+                    clonedQaInner.style.columnGap = (parseFloat(colGap) * ROOT_PX) + 'px';
                 }
+            }
+
+            // Step 9: সব child element-এ inserted-element outline সরানো
+            // textRendering এবং fontSmoothing override করা হচ্ছে না —
+            // কারণ preview-এ এগুলো নেই, export-এ যোগ করলে font metrics আলাদা হয়ে যায়
+            // এবং line break, letter spacing পরিবর্তিত হয়
+            targetNode.querySelectorAll('*').forEach(el => {
                 if (el.classList && el.classList.contains('inserted-element')) {
                     el.style.outline = 'none';
-                    el.style.border = 'none';
                 }
                 if (el.tagName === 'IMG') {
                     el.style.setProperty('image-rendering', 'high-quality', 'important');
                 }
             });
-            
+
             cloneWrapper.appendChild(targetNode);
             document.body.appendChild(cloneWrapper);
 
+            // Step 10: Layout stabilization — দুইটি rAF নিশ্চিত করে layout fully computed
             await new Promise(resolve => requestAnimationFrame(resolve));
-            await new Promise(resolve => setTimeout(resolve, 300)); 
+            await new Promise(resolve => requestAnimationFrame(resolve));
+            await new Promise(resolve => setTimeout(resolve, 350));
 
             const isPng = format.includes('PNG');
+
+            // Step 11: pixelRatio ব্যবহার করা — CSS transform scale()-এর বদলে
+            // pixelRatio approach: CSS layout 1x-এ compute হয় (preview-এর মতো),
+            //   কিন্তু output canvas scale গুণ বড় হয় → pixel-perfect identical layout
+            // CSS transform approach: SVG foreignObject-এ scale apply হয় →
+            //   html-to-image-এর SVG rendering pipeline-এ font metrics আলাদাভাবে compute হয়
+            //   → preview-এর সাথে line break ও spacing mismatch তৈরি করে
             const options = {
-                quality: 1.0, 
-                pixelRatio: 1, // Reset pixelRatio to 1 because we are enforcing physical DOM scale below
+                quality: 1.0,
+                pixelRatio: scale,
                 backgroundColor: isPng ? null : '#ffffff',
-                width: exactWidth * scale,
-                height: exactHeight * scale,
-                cacheBust: true, 
-                style: {
-                    transform: `scale(${scale})`, // Fixes small text blur by natively rendering larger text
-                    transformOrigin: 'top left',
-                    width: exactWidth + 'px',
-                    height: exactHeight + 'px'
-                }
+                width: cssWidth,
+                height: cssHeight,
+                cacheBust: true,
             };
 
             let dataUrl = '';
@@ -1483,7 +1510,7 @@ window.EEngine = (function () {
                 } else {
                     dataUrl = await window.htmlToImage.toJpeg(targetNode, options);
                 }
-                
+
                 const response = await fetch(dataUrl);
                 blob = await response.blob();
             } catch (err) {
