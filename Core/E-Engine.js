@@ -9,7 +9,7 @@ window.EEngine = (function () {
     'use strict';
 
     // ==========================================
-    // 1. STATE MANAGEMENT & HISTORY
+    // 1. STATE MANAGEMENT & HISTORY (Targeted DOM Patching)
     // ==========================================
     const State = {
         history:[],
@@ -28,41 +28,46 @@ window.EEngine = (function () {
 
         save() {
             const canvasContainer = document.getElementById('design-canvas');
-            const qZoneEl = document.getElementById('qa-content-zone');
+            const qInnerEl = document.getElementById('qa-content-inner');
+            const qHint = document.getElementById('qa-empty-hint');
             
-            let qZoneDisplay = '';
-            if (qZoneEl) {
-                qZoneDisplay = qZoneEl.style.display;
-                qZoneEl.style.display = 'none';
+            if (!canvasContainer) return;
+
+            // ১. শুধু Inserted Image, Floating Text বা Watermark আলাদা করে এক্সট্রাক্ট করা (পুরো DOM নয়)
+            const insertedNodes = Array.from(canvasContainer.children).filter(el => 
+                el.classList.contains('inserted-element') || el.id === 'canvas-watermark'
+            );
+            const insertedHTML = insertedNodes.map(el => el.outerHTML).join('');
+
+            // ২. Structural State Object তৈরি (DOM Hide বা Clone করার কোনো দরকার নেই)
+            const currentState = {
+                canvasClass: canvasContainer.className,
+                canvasStyle: canvasContainer.style.cssText,
+                qaHTML: qInnerEl ? qInnerEl.innerHTML : '',
+                qaStyle: qInnerEl ? qInnerEl.style.cssText : '',
+                emptyHintDisplay: qHint ? qHint.style.display : 'none',
+                insertedElements: insertedHTML
+            };
+
+            // ৩. পর পর একই স্টেট দু'বার সেভ হওয়া থেকে আটকানো
+            if (this.historyIndex >= 0) {
+                const lastState = this.history[this.historyIndex];
+                if (JSON.stringify(lastState) === JSON.stringify(currentState)) {
+                    return; 
+                }
             }
 
-            let currentState = canvasContainer ? canvasContainer.innerHTML : '';
-
-            if (qZoneEl) {
-                qZoneEl.style.display = qZoneDisplay;
-            }
-
+            // ৪. History Stack আপডেট
             if (this.historyIndex < this.history.length - 1) {
                 this.history = this.history.slice(0, this.historyIndex + 1);
             }
+            
             this.history.push(currentState);
             this.historyIndex++;
             this.notifyHistory();
 
-            try {
-                const sessionId = localStorage.getItem('aiNoteMaker_currentId');
-                const canvasKey = sessionId ? 'editor_canvas_html_' + sessionId : 'editor_canvas_html';
-                localStorage.setItem(canvasKey, currentState);
-            } catch (e) {}
-
-            const qInnerEl = document.getElementById('qa-content-inner');
-            if (qInnerEl && qInnerEl.innerHTML.trim() !== "") {
-                try {
-                    const sessionId = localStorage.getItem('aiNoteMaker_currentId');
-                    const key = sessionId ? 'editor_qa_formatted_html_' + sessionId : 'editor_qa_formatted_html';
-                    localStorage.setItem(key, qInnerEl.innerHTML);
-                } catch (e) {}
-            }
+            // ৫. Storage Sync
+            this.syncStorage(currentState);
         },
 
         undo() {
@@ -79,30 +84,56 @@ window.EEngine = (function () {
             }
         },
 
-        restore(content) {
+        // THE MAGIC: Targeted DOM Patching (No Full DOM replacing, No Blank screens)
+        restore(stateObj) {
+            if (!stateObj) return;
             CanvasInteractions.setActive(null);
-            const canvasContainer = document.getElementById('design-canvas');
-            if (canvasContainer) {
-                canvasContainer.innerHTML = content;
-                const elements = canvasContainer.querySelectorAll('.inserted-element');
-                elements.forEach(el => CanvasInteractions.makeInteractive(el));
-            }
             
-            this.notifyHistory();
-
-            try {
-                const sessionId = localStorage.getItem('aiNoteMaker_currentId');
-                const canvasKey = sessionId ? 'editor_canvas_html_' + sessionId : 'editor_canvas_html';
-                localStorage.setItem(canvasKey, content);
-            } catch (e) {}
-
+            const canvasContainer = document.getElementById('design-canvas');
             const qInnerEl = document.getElementById('qa-content-inner');
-            if (qInnerEl && qInnerEl.innerHTML.trim()) {
-                try {
-                    const sessionId = localStorage.getItem('aiNoteMaker_currentId');
-                    const key = sessionId ? 'editor_qa_formatted_html_' + sessionId : 'editor_qa_formatted_html';
-                    localStorage.setItem(key, qInnerEl.innerHTML);
-                } catch (e) {}
+            const qHint = document.getElementById('qa-empty-hint');
+            const qZoneEl = document.getElementById('qa-content-zone');
+
+            // ১. Canvas Attribute Patching (Background, Margin, Ratio)
+            if (canvasContainer) {
+                canvasContainer.className = stateObj.canvasClass || '';
+                canvasContainer.style.cssText = stateObj.canvasStyle || '';
+                
+                // শুধুমাত্র চলমান Image/Watermark রিমুভ করে হিস্ট্রির Image ইনজেক্ট করা
+                canvasContainer.querySelectorAll('.inserted-element, #canvas-watermark').forEach(el => el.remove());
+                if (stateObj.insertedElements) {
+                    canvasContainer.insertAdjacentHTML('beforeend', stateObj.insertedElements);
+                    // ইনজেক্ট করা এলিমেন্টগুলোতে পুনরায় Drag Interaction বাইন্ড করা
+                    canvasContainer.querySelectorAll('.inserted-element').forEach(el => {
+                        CanvasInteractions.makeInteractive(el);
+                    });
+                }
+            }
+
+            // ২. Q&A Text & Style Patching (Bold, Italic, Color, Underline, Formatting)
+            if (qInnerEl) {
+                qInnerEl.innerHTML = stateObj.qaHTML || '';
+                qInnerEl.style.cssText = stateObj.qaStyle || '';
+                
+                // Blank না হওয়ার জন্য Visibility Auto-fix
+                if (qZoneEl) {
+                    qZoneEl.style.display = (stateObj.qaHTML && stateObj.qaHTML.trim() !== '') ? 'block' : 'none';
+                }
+            }
+
+            // ৩. Empty Ribbon Hint Patching
+            if (qHint) {
+                qHint.style.display = stateObj.emptyHintDisplay || 'none';
+            }
+
+            this.notifyHistory();
+            this.syncStorage(stateObj);
+            
+            // Sync ইঞ্জিনকে কাউন্ট আপডেট করার নির্দেশ দেওয়া
+            if (window.EEngine && EEngine.Sync && typeof EEngine.Sync.syncRenderedCount === 'function') {
+                EEngine.Sync.syncRenderedCount();
+            } else if (Sync && typeof Sync.syncRenderedCount === 'function') {
+                Sync.syncRenderedCount();
             }
         },
 
@@ -112,10 +143,52 @@ window.EEngine = (function () {
             this.uiHooks.onHistoryChange(canUndo, canRedo);
         },
 
+        syncStorage(stateObj) {
+            try {
+                const sessionId = localStorage.getItem('aiNoteMaker_currentId');
+                const stateKey = sessionId ? 'editor_state_' + sessionId : 'editor_state';
+                const qaKey = sessionId ? 'editor_qa_formatted_html_' + sessionId : 'editor_qa_formatted_html';
+                
+                // নতুন JSON State Format
+                localStorage.setItem(stateKey, JSON.stringify(stateObj));
+                // অন্যান্য মডিউলের জন্য লেগাসি HTML স্ট্রিং 
+                localStorage.setItem(qaKey, stateObj.qaHTML || '');
+            } catch (e) {}
+        },
+
         loadCanvasFromStorage() {
-            const canvasContainer = document.getElementById('design-canvas');
             const sessionId = localStorage.getItem('aiNoteMaker_currentId');
+            const stateKey = sessionId ? 'editor_state_' + sessionId : 'editor_state';
             const canvasKey = sessionId ? 'editor_canvas_html_' + sessionId : 'editor_canvas_html';
+            const savedStateStr = localStorage.getItem(stateKey);
+            
+            // প্রথমে নতুন JSON State খোঁজার চেষ্টা
+            if (savedStateStr) {
+                try {
+                    const parsedState = JSON.parse(savedStateStr);
+                    this.history = [parsedState];
+                    this.historyIndex = 0;
+                    this.restore(parsedState);
+                } catch(e) {
+                    this.fallbackLoad(canvasKey);
+                }
+            } else {
+                this.fallbackLoad(canvasKey); // পুরনো সেভ করা HTML থাকলে সেটি লোড করবে
+            }
+
+            try {
+                const bgKey = sessionId ? 'editor_bg_image_' + sessionId : 'editor_bg_image';
+                const savedBg = localStorage.getItem(bgKey);
+                if (savedBg) {
+                    const bgImage = document.getElementById('main-bg-image');
+                    if (bgImage) bgImage.src = savedBg;
+                }
+            } catch (e) {}
+        },
+
+        fallbackLoad(canvasKey) {
+            // Backward compatibility for old raw HTML storage
+            const canvasContainer = document.getElementById('design-canvas');
             const savedHtml = localStorage.getItem(canvasKey);
 
             if (savedHtml && canvasContainer) {
@@ -133,16 +206,6 @@ window.EEngine = (function () {
                 const elements = canvasContainer.querySelectorAll('.inserted-element');
                 elements.forEach(el => CanvasInteractions.makeInteractive(el));
             }
-
-            try {
-                const bgKey = sessionId ? 'editor_bg_image_' + sessionId : 'editor_bg_image';
-                const savedBg = localStorage.getItem(bgKey);
-                if (savedBg) {
-                    const bgImage = document.getElementById('main-bg-image');
-                    if (bgImage) bgImage.src = savedBg;
-                }
-            } catch (e) {}
-            
             this.save();
         }
     };
@@ -1574,7 +1637,7 @@ window.EEngine = (function () {
                     await navigator.share({
                         title: uniqueFileName, // Set file name as title
                         text: 'Check out this exported Ultra HD note!',
-                        files: [file]
+                        files:[file]
                     });
                     if (onSuccess) onSuccess();
                 } else {
