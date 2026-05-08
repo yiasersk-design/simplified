@@ -921,13 +921,12 @@ Goal: Make every response Clean, Structured, Compact, and Easy to read.`;
     });
 
     let watchdogTimer = null;
+    let captionSyncInterval = null; // নতুন ক্যাপশন ইঞ্জিন ভেরিয়েবল
 
     function startTalkingSequence(text) {
         currentFullText = text; 
         globalCharIndex = 0; 
         localCharIndex = 0;
-        
-        // ভিডিও এখানে স্টার্ট হবে না। ভিডিও স্টার্ট হবে ঠিক তখন, যখন অডিও স্পিকার থেকে আওয়াজ বের হওয়া শুরু হবে (onstart-এ)
         playAudioChunk();
     }
 
@@ -960,17 +959,34 @@ Goal: Make every response Clean, Structured, Compact, and Easy to read.`;
         
         utterance.onstart = () => { 
             if (globalCharIndex === 0) startTimer(); 
-            
-            // অডিও ইঞ্জিন আওয়াজ শুরু করেছে, এখন lip-sync অ্যানিমেশন স্টার্ট করো
             switchToVideo('talkingStart');
             
+            // Smart Caption Sync System (Android/WebView Support)
+            if (captionSyncInterval) clearInterval(captionSyncInterval);
             captionBox.classList.add('active'); 
-            let initialWords = textToSpeak.trim().split(/\s+/);
-            captionBox.innerText = initialWords.slice(0, 6).join(' ');
             
-            // Watchdog Timer: মোবাইল ডিভাইসে অনেক সময় onend ফায়ার হয় না। এটি ব্যাকআপ হিসেবে কাজ করবে।
+            let words = textToSpeak.trim().split(/\s+/);
+            const blockSize = 5; // প্রতি স্ক্রিনে ৫টি করে শব্দ দেখাবে
+            let currentWordIndex = 0;
+            
+            // আনুমানিক কতোক্ষণ অডিও চলবে (গড় ১৪ ক্যারেক্টার প্রতি সেকেন্ড হিসেবে)
+            let estimatedTimeMs = (textToSpeak.length / 14) * 1000;
+            // প্রতিটি শব্দের জন্য বরাদ্দ সময়
+            let timePerWord = words.length > 0 ? estimatedTimeMs / words.length : 300;
+            
+            // প্রথম ৫টি শব্দ দেখিয়ে দেওয়া হলো
+            captionBox.innerText = words.slice(0, blockSize).join(' ');
+            
+            // অডিওর সাথে সাথে ক্যাপশন নিজে থেকে স্লাইড করবে (যদি ব্রাউজার onboundary ফায়ার না করে)
+            captionSyncInterval = setInterval(() => {
+                currentWordIndex++;
+                if (currentWordIndex < words.length) {
+                    let endIdx = Math.min(words.length, currentWordIndex + blockSize);
+                    captionBox.innerText = words.slice(currentWordIndex, endIdx).join(' ');
+                }
+            }, Math.max(timePerWord, 250)); // খুব দ্রুত যেন না যায় তাই সর্বনিম্ন 250ms রাখা হলো
+            
             if (watchdogTimer) clearTimeout(watchdogTimer);
-            let estimatedTimeMs = (textToSpeak.length / 12) * 1000; 
             watchdogTimer = setTimeout(() => {
                 if (currentVideoState === 'talkingLoop' || currentVideoState === 'talkingStart') {
                     finishTalkingSequence();
@@ -979,29 +995,23 @@ Goal: Make every response Clean, Structured, Compact, and Easy to read.`;
         };
         
         utterance.onboundary = (e) => {
+            // ব্রাউজার যদি onboundary সাপোর্ট করে তবে এটি আরও নিখুঁতভাবে রিয়েল-টাইম ট্র্যাকিং করবে
             if (e.name === 'sentence') return;
             localCharIndex = e.charIndex; 
             
-            let textChunk = currentFullText.substring(globalCharIndex); 
-            if(!textChunk) return;
+            let spokenText = textToSpeak.substring(0, e.charIndex).trim();
+            let wordCount = spokenText === "" ? 0 : spokenText.split(/\s+/).length;
             
-            let words = textChunk.trim().split(/\s+/);
-            let spokenText = textChunk.substring(0, e.charIndex).trim();
-            let currentIndex = spokenText === "" ? 0 : spokenText.split(/\s+/).length;
+            let words = textToSpeak.trim().split(/\s+/);
+            const blockSize = 5;
             
-            const blockSize = 6; 
-            let chunkIndex = Math.floor(currentIndex / blockSize);
-            let startIdx = chunkIndex * blockSize;
-            let endIdx = Math.min(words.length, startIdx + blockSize);
-            
-            let visibleText = words.slice(startIdx, endIdx).join(' ');
-            
-            captionBox.classList.add('active');
-            captionBox.innerText = visibleText.replace(/\*/g, '');
+            let endIdx = Math.min(words.length, wordCount + blockSize);
+            captionBox.innerText = words.slice(wordCount, endIdx).join(' ');
         };
         
         utterance.onend = () => { 
             if (watchdogTimer) clearTimeout(watchdogTimer);
+            if (captionSyncInterval) clearInterval(captionSyncInterval);
             if (!isAudioPaused && utterance === currentUtterance) {
                 finishTalkingSequence(); 
             }
@@ -1009,6 +1019,7 @@ Goal: Make every response Clean, Structured, Compact, and Easy to read.`;
         
         utterance.onerror = (e) => { 
             if (watchdogTimer) clearTimeout(watchdogTimer);
+            if (captionSyncInterval) clearInterval(captionSyncInterval);
             if (e.error !== 'canceled' && !isAudioPaused && utterance === currentUtterance) {
                 finishTalkingSequence(); 
             }
@@ -1019,23 +1030,19 @@ Goal: Make every response Clean, Structured, Compact, and Easy to read.`;
 
     function finishTalkingSequence() {
         if (watchdogTimer) clearTimeout(watchdogTimer);
+        if (captionSyncInterval) clearInterval(captionSyncInterval); // টাইমার স্টপ করা হলো
         
-        // কথা শেষ হওয়ার সাথে সাথেই সাথে ভিডিওকে আইডল স্টেটে পাঠিয়ে পজ করা হলো
         switchToVideo('introIdle');
-        
         isProcessing = false; 
 
-        // AI এর অ্যানিমেশন স্টপ করে দেবে
         const allLoaders = document.querySelectorAll('.jevis-loader');
         allLoaders.forEach(loader => loader.classList.add('stopped'));
         
-        // সেন্ড আইকন রিস্টোর করবে
         const sendBtn = document.getElementById('send-btn');
         if(sendBtn) {
             sendBtn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="w-5 h-5"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>`;
         }
         
-        // ক্যাপশন তাৎক্ষণিকভাবে সরিয়ে নেওয়া
         captionBox.classList.remove('active'); 
         captionBox.innerText = "";
         
