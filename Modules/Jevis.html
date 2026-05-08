@@ -920,60 +920,68 @@ Goal: Make every response Clean, Structured, Compact, and Easy to read.`;
         if(this.value === '') this.style.height = 'auto'; 
     });
 
+    let watchdogTimer = null;
+
     function startTalkingSequence(text) {
-        currentFullText = text; globalCharIndex = 0; localCharIndex = 0;
-        switchToVideo('talkingStart');
+        currentFullText = text; 
+        globalCharIndex = 0; 
+        localCharIndex = 0;
         
-        captionBox.classList.add('active'); 
+        // ভিডিও এখানে স্টার্ট হবে না। ভিডিও স্টার্ট হবে ঠিক তখন, যখন অডিও স্পিকার থেকে আওয়াজ বের হওয়া শুরু হবে (onstart-এ)
         playAudioChunk();
     }
 
-    function startCaptionTimerFallback(textToRead) {
-        if(captionFallbackTimer) clearInterval(captionFallbackTimer);
-        let wordsList = textToRead.trim().split(/\s+/); 
-        let currentIndex = 0;
-        const blockSize = 6; 
-        
-        captionBox.classList.add('active'); 
-        
-        captionFallbackTimer = setInterval(() => {
-            if (currentIndex < wordsList.length) {
-                let chunkIndex = Math.floor(currentIndex / blockSize);
-                let startIdx = chunkIndex * blockSize;
-                let endIdx = Math.min(wordsList.length, startIdx + blockSize);
-                
-                captionBox.innerText = wordsList.slice(startIdx, endIdx).join(' ').replace(/\*/g, ''); 
-                currentIndex++;
-            } else {
-                clearInterval(captionFallbackTimer);
-            }
-        }, 400);
-    }
-
     function playAudioChunk() {
-        if (globalCharIndex >= currentFullText.length || !currentFullText.substring(globalCharIndex).trim()) { finishTalkingSequence(); return; }
+        if (globalCharIndex >= currentFullText.length || !currentFullText.substring(globalCharIndex).trim()) { 
+            finishTalkingSequence(); 
+            return; 
+        }
+        
         const rawTextToSpeak = currentFullText.substring(globalCharIndex);
         const textToSpeak = rawTextToSpeak.replace(/\*/g, ' '); 
         
-        let utterance = new SpeechSynthesisUtterance(textToSpeak); currentUtterance = utterance; localCharIndex = 0;
+        let utterance = new SpeechSynthesisUtterance(textToSpeak); 
+        currentUtterance = utterance; 
+        localCharIndex = 0;
+        
         if (selectedVoiceURI) {
             const voice = availableVoices.find(v => v.voiceURI === selectedVoiceURI);
-            if (voice) { utterance.voice = voice; utterance.lang = voice.lang; }
-        } else utterance.lang = 'en-IN'; 
+            if (voice) { 
+                utterance.voice = voice; 
+                utterance.lang = voice.lang; 
+            }
+        } else {
+            utterance.lang = 'en-IN'; 
+        }
         
         const genderCheck = overlay.querySelector('input[name="gender-filter"]:checked');
-        utterance.pitch = (genderCheck && genderCheck.value === 'female') ? 1.4 : 1.0; utterance.rate = 1.05;
+        utterance.pitch = (genderCheck && genderCheck.value === 'female') ? 1.4 : 1.0; 
+        utterance.rate = 1.05;
         
         utterance.onstart = () => { 
             if (globalCharIndex === 0) startTimer(); 
+            
+            // অডিও ইঞ্জিন আওয়াজ শুরু করেছে, এখন lip-sync অ্যানিমেশন স্টার্ট করো
+            switchToVideo('talkingStart');
+            
             captionBox.classList.add('active'); 
-            startCaptionTimerFallback(rawTextToSpeak); 
+            let initialWords = textToSpeak.trim().split(/\s+/);
+            captionBox.innerText = initialWords.slice(0, 6).join(' ');
+            
+            // Watchdog Timer: মোবাইল ডিভাইসে অনেক সময় onend ফায়ার হয় না। এটি ব্যাকআপ হিসেবে কাজ করবে।
+            if (watchdogTimer) clearTimeout(watchdogTimer);
+            let estimatedTimeMs = (textToSpeak.length / 12) * 1000; 
+            watchdogTimer = setTimeout(() => {
+                if (currentVideoState === 'talkingLoop' || currentVideoState === 'talkingStart') {
+                    finishTalkingSequence();
+                }
+            }, estimatedTimeMs + 2500);
         };
         
         utterance.onboundary = (e) => {
             if (e.name === 'sentence') return;
-            if (captionFallbackTimer) { clearInterval(captionFallbackTimer); captionFallbackTimer = null; }
             localCharIndex = e.charIndex; 
+            
             let textChunk = currentFullText.substring(globalCharIndex); 
             if(!textChunk) return;
             
@@ -993,46 +1001,50 @@ Goal: Make every response Clean, Structured, Compact, and Easy to read.`;
         };
         
         utterance.onend = () => { 
-            if(captionFallbackTimer) clearInterval(captionFallbackTimer); 
-            if (!isAudioPaused && utterance === currentUtterance) finishTalkingSequence(); 
+            if (watchdogTimer) clearTimeout(watchdogTimer);
+            if (!isAudioPaused && utterance === currentUtterance) {
+                finishTalkingSequence(); 
+            }
         };
         
         utterance.onerror = (e) => { 
-            if(captionFallbackTimer) clearInterval(captionFallbackTimer); 
-            if (e.error !== 'canceled' && !isAudioPaused && utterance === currentUtterance) finishTalkingSequence(); 
+            if (watchdogTimer) clearTimeout(watchdogTimer);
+            if (e.error !== 'canceled' && !isAudioPaused && utterance === currentUtterance) {
+                finishTalkingSequence(); 
+            }
         };
         
         speechSynthesis.speak(utterance);
     }
 
     function finishTalkingSequence() {
-        mainAvatarVideo.style.transition = 'none';
-        mainAvatarVideo.style.opacity = '0';
-        mainAvatarVideo.pause();
-
+        if (watchdogTimer) clearTimeout(watchdogTimer);
+        
+        // কথা শেষ হওয়ার সাথে সাথেই সাথে ভিডিওকে আইডল স্টেটে পাঠিয়ে পজ করা হলো
         switchToVideo('introIdle');
+        
         isProcessing = false; 
 
-        // AI এর রিপ্লাই বা কথা বলা শেষ হলে অ্যানিমেশন স্টপ করে দেবে
+        // AI এর অ্যানিমেশন স্টপ করে দেবে
         const allLoaders = document.querySelectorAll('.jevis-loader');
         allLoaders.forEach(loader => loader.classList.add('stopped'));
         
-        // কথা বলা শেষ হলে সেন্ড আইকন আবার রিস্টোর করবে
-        getEl('send-btn').innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="w-5 h-5"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>`;
+        // সেন্ড আইকন রিস্টোর করবে
+        const sendBtn = document.getElementById('send-btn');
+        if(sendBtn) {
+            sendBtn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="w-5 h-5"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>`;
+        }
         
-        setTimeout(() => {
-            mainAvatarVideo.style.transition = '';
-            mainAvatarVideo.style.opacity = '1';
-        }, 50);
-
-        setTimeout(() => {
-            captionBox.classList.remove('active'); 
-            captionBox.innerText = "";
-        }, 1500);
+        // ক্যাপশন তাৎক্ষণিকভাবে সরিয়ে নেওয়া
+        captionBox.classList.remove('active'); 
+        captionBox.innerText = "";
         
         isAudioPaused = true; 
-        getEl('icon-pause').style.display = 'none'; 
-        getEl('icon-play').style.display = 'block';
+        const iconPause = document.getElementById('icon-pause');
+        const iconPlay = document.getElementById('icon-play');
+        if(iconPause) iconPause.style.display = 'none'; 
+        if(iconPlay) iconPlay.style.display = 'block';
+        
         if (currentFullText) globalCharIndex = currentFullText.length;
     }
 
