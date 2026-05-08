@@ -552,7 +552,8 @@ function setupChatContextMenu() {
             let session = chatSessions.find(s => s.id === contextActiveSessionId);
             if (session) {
                 session.isPinned = !session.isPinned;
-                localStorage.setItem('metaAINotes_sessions', JSON.stringify(chatSessions));
+                // ✅ ঠিক করা হয়েছে: এখন শুধুমাত্র Notebook-এর Key তেই সেভ হবে
+                localStorage.setItem('aiNoteMaker_sessions', JSON.stringify(chatSessions));
                 updateSidebarList();
             }
             hideChatContextMenu();
