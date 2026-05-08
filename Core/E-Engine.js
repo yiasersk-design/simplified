@@ -518,7 +518,11 @@ window.EEngine = (function () {
 
                 if (command === 'bold') wrapper.style.fontWeight = 'bold';
                 else if (command === 'italic') wrapper.style.fontStyle = 'italic';
-                else if (command === 'underline') wrapper.style.textDecoration = 'underline';
+                else if (command === 'underline') {
+                    wrapper.style.textDecoration = 'underline';
+                    wrapper.style.textUnderlineOffset = '0px';
+                    wrapper.style.textDecorationSkipInk = 'none';
+                }
                 else if (command === 'strikeThrough') wrapper.style.textDecoration = 'line-through';
                 else if (command === 'backColor') wrapper.style.backgroundColor = value || 'rgba(253, 224, 71, 0.7)';
                 else if (command === 'foreColor') wrapper.style.color = value;
