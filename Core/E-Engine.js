@@ -84,7 +84,6 @@ window.EEngine = (function () {
             }
         },
 
-        // THE MAGIC: Targeted DOM Patching (No Full DOM replacing, No Blank screens)
         restore(stateObj) {
             if (!stateObj) return;
             CanvasInteractions.setActive(null);
@@ -94,34 +93,28 @@ window.EEngine = (function () {
             const qHint = document.getElementById('qa-empty-hint');
             const qZoneEl = document.getElementById('qa-content-zone');
 
-            // ১. Canvas Attribute Patching (Background, Margin, Ratio)
             if (canvasContainer) {
                 canvasContainer.className = stateObj.canvasClass || '';
                 canvasContainer.style.cssText = stateObj.canvasStyle || '';
                 
-                // শুধুমাত্র চলমান Image/Watermark রিমুভ করে হিস্ট্রির Image ইনজেক্ট করা
                 canvasContainer.querySelectorAll('.inserted-element, #canvas-watermark').forEach(el => el.remove());
                 if (stateObj.insertedElements) {
                     canvasContainer.insertAdjacentHTML('beforeend', stateObj.insertedElements);
-                    // ইনজেক্ট করা এলিমেন্টগুলোতে পুনরায় Drag Interaction বাইন্ড করা
                     canvasContainer.querySelectorAll('.inserted-element').forEach(el => {
                         CanvasInteractions.makeInteractive(el);
                     });
                 }
             }
 
-            // ২. Q&A Text & Style Patching (Bold, Italic, Color, Underline, Formatting)
             if (qInnerEl) {
                 qInnerEl.innerHTML = stateObj.qaHTML || '';
                 qInnerEl.style.cssText = stateObj.qaStyle || '';
                 
-                // Blank না হওয়ার জন্য Visibility Auto-fix
                 if (qZoneEl) {
                     qZoneEl.style.display = (stateObj.qaHTML && stateObj.qaHTML.trim() !== '') ? 'block' : 'none';
                 }
             }
 
-            // ৩. Empty Ribbon Hint Patching
             if (qHint) {
                 qHint.style.display = stateObj.emptyHintDisplay || 'none';
             }
@@ -129,7 +122,6 @@ window.EEngine = (function () {
             this.notifyHistory();
             this.syncStorage(stateObj);
             
-            // Sync ইঞ্জিনকে কাউন্ট আপডেট করার নির্দেশ দেওয়া
             if (window.EEngine && EEngine.Sync && typeof EEngine.Sync.syncRenderedCount === 'function') {
                 EEngine.Sync.syncRenderedCount();
             } else if (Sync && typeof Sync.syncRenderedCount === 'function') {
@@ -149,9 +141,7 @@ window.EEngine = (function () {
                 const stateKey = sessionId ? 'editor_state_' + sessionId : 'editor_state';
                 const qaKey = sessionId ? 'editor_qa_formatted_html_' + sessionId : 'editor_qa_formatted_html';
                 
-                // নতুন JSON State Format
                 localStorage.setItem(stateKey, JSON.stringify(stateObj));
-                // অন্যান্য মডিউলের জন্য লেগাসি HTML স্ট্রিং 
                 localStorage.setItem(qaKey, stateObj.qaHTML || '');
             } catch (e) {}
         },
@@ -162,7 +152,6 @@ window.EEngine = (function () {
             const canvasKey = sessionId ? 'editor_canvas_html_' + sessionId : 'editor_canvas_html';
             const savedStateStr = localStorage.getItem(stateKey);
             
-            // প্রথমে নতুন JSON State খোঁজার চেষ্টা
             if (savedStateStr) {
                 try {
                     const parsedState = JSON.parse(savedStateStr);
@@ -173,7 +162,7 @@ window.EEngine = (function () {
                     this.fallbackLoad(canvasKey);
                 }
             } else {
-                this.fallbackLoad(canvasKey); // পুরনো সেভ করা HTML থাকলে সেটি লোড করবে
+                this.fallbackLoad(canvasKey);
             }
 
             try {
@@ -187,7 +176,6 @@ window.EEngine = (function () {
         },
 
         fallbackLoad(canvasKey) {
-            // Backward compatibility for old raw HTML storage
             const canvasContainer = document.getElementById('design-canvas');
             const savedHtml = localStorage.getItem(canvasKey);
 
@@ -733,12 +721,10 @@ window.EEngine = (function () {
             }
         },
 
-        // NEW: Adjust Spacing (Line Spacing & Group Spacing)
         adjustSpacing(type, isIncrease) {
             const qInner = document.getElementById('qa-content-inner');
             if (!qInner) return;
 
-            // Spacing Configuration Limits
             const LINE_HEIGHT_STEP = 0.1;
             const MIN_LINE_HEIGHT = 0.8;
             const MAX_LINE_HEIGHT = 4.0;
@@ -747,7 +733,6 @@ window.EEngine = (function () {
             const MIN_GAP = 0;
             const MAX_GAP = 60;
 
-            // Get Current Config or fallback to defaults
             let config = State.activeConfig;
             if (!config) {
                 try {
@@ -758,17 +743,13 @@ window.EEngine = (function () {
             }
 
             if (type === 'line') {
-                // --- 1. Q&A Spacing (Line Height) Adjustments ---
                 let currentLineHeight = parseFloat(qInner.style.lineHeight) || parseFloat(config.lineHeight) || 1.25;
                 let newLineHeight = isIncrease ? currentLineHeight + LINE_HEIGHT_STEP : currentLineHeight - LINE_HEIGHT_STEP;
                 
-                // Keep values within clamped bounds
                 newLineHeight = Math.max(MIN_LINE_HEIGHT, Math.min(newLineHeight, MAX_LINE_HEIGHT));
                 
-                // Apply to DOM
                 qInner.style.lineHeight = newLineHeight.toFixed(2);
                 
-                // Apply to Active Config and LocalStorage
                 config.lineHeight = newLineHeight.toFixed(2);
                 State.activeConfig = config;
                 localStorage.setItem('editor_template_config', JSON.stringify(config));
@@ -776,7 +757,6 @@ window.EEngine = (function () {
                 Utils.toast(`Line Spacing: ${newLineHeight.toFixed(2)}`, 'success');
                 
             } else if (type === 'group') {
-                // --- 2. Group Spacing (Gap & Margin-Bottom) Adjustments ---
                 const isDouble = qInner.classList.contains('layout-double');
                 let currentGapStr = config.gap || qInner.style.gap || '4px';
                 
@@ -790,10 +770,8 @@ window.EEngine = (function () {
                 let currentGap = parseInt(currentGapStr) || 0;
                 let newGap = isIncrease ? currentGap + GAP_STEP : currentGap - GAP_STEP;
                 
-                // Keep values within clamped bounds
                 newGap = Math.max(MIN_GAP, Math.min(newGap, MAX_GAP));
                 
-                // Apply to DOM based on layout type
                 if (isDouble) {
                     qInner.querySelectorAll('.qa-entry-block').forEach(block => {
                         block.style.marginBottom = newGap + 'px';
@@ -802,7 +780,6 @@ window.EEngine = (function () {
                     qInner.style.gap = newGap + 'px';
                 }
 
-                // Apply to Active Config and LocalStorage
                 config.gap = newGap + 'px';
                 State.activeConfig = config;
                 localStorage.setItem('editor_template_config', JSON.stringify(config));
@@ -810,7 +787,6 @@ window.EEngine = (function () {
                 Utils.toast(`Group Spacing: ${newGap}px`, 'success');
             }
 
-            // Save visual layout to core engine history
             State.save();
         }
     };
@@ -857,7 +833,6 @@ window.EEngine = (function () {
                 if (savedFont) this.applyPageFontSync(JSON.parse(savedFont));
             } catch (e) {}
 
-            // Same-tab Polling
             setInterval(() => {
                 const currentPending = localStorage.getItem('nb_qa_pending');
                 const currentSession = localStorage.getItem('aiNoteMaker_currentId');
@@ -875,7 +850,6 @@ window.EEngine = (function () {
                 }
             }, 800);
 
-            // Cross-tab Event Listener
             window.addEventListener('storage', (e) => {
                 const qZone = document.getElementById('qa-content-zone');
                 const emptyHint = document.getElementById('qa-empty-hint');
@@ -957,7 +931,6 @@ window.EEngine = (function () {
             block.className = 'qa-entry-block';
             block.style.breakInside = 'avoid';
             
-            // Apply Spacing from Config dynamically
             block.style.marginBottom = c.gap || '4px';
 
             const qEl = document.createElement('p');
@@ -1175,7 +1148,6 @@ window.EEngine = (function () {
                 State.activeElement.style.boxShadow = 'none';
             }
             
-            // Cleanup old manual visual handles if they exist in history
             const handle = document.getElementById('resize-handle');
             if (handle) handle.remove();
             const deleteHandle = document.getElementById('delete-handle');
@@ -1184,7 +1156,6 @@ window.EEngine = (function () {
             State.activeElement = el;
             
             if (State.activeElement) {
-                // 1px solid line (সরু সুতোর মতো)
                 State.activeElement.style.outline = '1px solid #3b82f6';
                 State.activeElement.style.outlineOffset = '0px';
             }
@@ -1194,20 +1165,18 @@ window.EEngine = (function () {
             el.classList.add('inserted-element');
             const isImage = el.tagName === 'IMG';
 
-            // Selection
             el.addEventListener('click', (e) => {
                 e.stopPropagation();
                 this.setActive(el);
             });
 
-            // Auto-save on text blur
             if(el.contentEditable === 'true') {
                 el.addEventListener('blur', () => State.save());
             }
 
             let isDragging = false;
             let isResizing = false;
-            let resizeCorner = ''; // 'br', 'bl', 'tr', 'tl'
+            let resizeCorner = ''; 
             let startX, startY, startWidth, startHeight, startLeft, startTop;
 
             const handleDown = (e) => {
@@ -1219,13 +1188,11 @@ window.EEngine = (function () {
                 startX = evt.clientX;
                 startY = evt.clientY;
                 
-                // Get accurate relative position based on zoom scale
                 let scale = typeof window.currentScale !== 'undefined' ? window.currentScale : 1;
                 let rect = el.getBoundingClientRect();
                 let relX = evt.clientX - rect.left;
                 let relY = evt.clientY - rect.top;
                 
-                // 35px scaled invisible hit zone for corners
                 let threshold = 35 * scale; 
 
                 if (relX > rect.width - threshold && relY > rect.height - threshold) resizeCorner = 'br';
@@ -1314,7 +1281,6 @@ window.EEngine = (function () {
             el.addEventListener('mousedown', handleDown);
             el.addEventListener('touchstart', handleDown, { passive: false });
 
-            // Dynamic Desktop Hover Cursor System
             el.addEventListener('mousemove', (e) => {
                 if (isDragging || isResizing) return;
                 if (!isImage) {
@@ -1346,7 +1312,6 @@ window.EEngine = (function () {
     // ==========================================
     const Label = {
         init() {
-            // Initial render if needed
             this.updateAll(true);
         },
 
@@ -1366,7 +1331,7 @@ window.EEngine = (function () {
             if (qText) localStorage.setItem('qa_custom_q_label', qText);
             if (aText) localStorage.setItem('qa_custom_a_label', aText);
             
-            this.updateAll(false); // Update DOM and trigger State.save()
+            this.updateAll(false);
         },
 
         _toBengaliNum(num) {
@@ -1386,7 +1351,6 @@ window.EEngine = (function () {
             const { q: customQ, a: customA } = this.getCustomLabels();
             const blocks = qInner.querySelectorAll('.qa-entry-block');
 
-            // 1. Remove all existing labels (to prevent duplicate stacking)
             qInner.querySelectorAll('.qa-text-label').forEach(el => el.remove());
 
             if (mode === 'none') {
@@ -1394,7 +1358,6 @@ window.EEngine = (function () {
                 return;
             }
 
-            // 2. Inject fresh labels dynamically
             blocks.forEach((block, index) => {
                 const pElements = block.querySelectorAll('p');
                 if (pElements.length < 2) return; 
@@ -1413,7 +1376,6 @@ window.EEngine = (function () {
                     aLabelStr = customA + ' ';
                 }
 
-                // Helper to insert label AFTER any pointer dots (so formatting stays intact)
                 const insertLabel = (targetP, text) => {
                     if (!text.trim()) return;
                     const span = document.createElement('span');
@@ -1422,7 +1384,6 @@ window.EEngine = (function () {
                     span.textContent = text;
                     
                     let insertRef = targetP.firstChild;
-                    // Skip pointer elements if they exist at the start
                     while (insertRef && (insertRef.classList?.contains('qa-pointer') || insertRef.className === 'qa-pointer-br')) {
                         insertRef = insertRef.nextSibling;
                     }
@@ -1438,11 +1399,10 @@ window.EEngine = (function () {
     };
 
     // ==========================================
-    // 8. EXPORT ENGINE (Ultimate Crisp Text & Automatic Unique Filename)
+    // 8. EXPORT ENGINE (Ultra HD, Advanced Anti-aliasing & DPI Optimization)
     // ==========================================
     const ExportEngine = {
         
-        // Time-based unique filename generator (e.g., Note_10-45-33PM.png)
         generateUniqueFileName(extension) {
             const date = new Date();
             let hours = date.getHours();
@@ -1451,9 +1411,8 @@ window.EEngine = (function () {
             const ampm = hours >= 12 ? 'PM' : 'AM';
             
             hours = hours % 12;
-            hours = hours ? hours : 12; // 0 hour should be 12
+            hours = hours ? hours : 12; 
             
-            // Double digit formatting
             const hoursStr = hours < 10 ? '0' + hours : hours;
             const minutesStr = minutes < 10 ? '0' + minutes : minutes;
             const secondsStr = seconds < 10 ? '0' + seconds : seconds;
@@ -1462,20 +1421,14 @@ window.EEngine = (function () {
         },
 
         async processExport(canvasElement, format, qualityScale) {
-            // Step 1: Fonts fully loaded হওয়ার জন্য অপেক্ষা
             await document.fonts.ready;
-            // Additional font settle time — fonts loaded হলেই layout compute সম্পন্ন হয় না
-            await new Promise(resolve => setTimeout(resolve, 250));
+            await new Promise(resolve => setTimeout(resolve, 350));
 
-            // Step 2: CSS layout dimensions নেওয়া (offsetWidth/offsetHeight)
-            // getBoundingClientRect() visual/transformed size দেয় — zoom active থাকলে wrong হয়
-            // offsetWidth/offsetHeight সবসময় CSS layout size দেয়, transform-independent
-            const cssWidth = canvasElement.offsetWidth;
-            const cssHeight = canvasElement.offsetHeight;
-
+            // Fractional Pixel Blur এড়ানোর জন্য Math.ceil
+            const cssWidth = Math.ceil(canvasElement.offsetWidth);
+            const cssHeight = Math.ceil(canvasElement.offsetHeight);
             const scale = qualityScale;
 
-            // Step 3: Off-screen wrapper — CSS layout size-এ তৈরি করা
             const cloneWrapper = document.createElement('div');
             cloneWrapper.style.position = 'fixed';
             cloneWrapper.style.left = '-99999px';
@@ -1486,11 +1439,9 @@ window.EEngine = (function () {
             cloneWrapper.style.zIndex = '-9999';
             cloneWrapper.style.pointerEvents = 'none';
 
-            // Step 4: Canvas clone তৈরি
             const targetNode = canvasElement.cloneNode(true);
 
-            // Step 5: Layout Lock — CSS layout dimensions-এ freeze করা
-            // inline style সবচেয়ে বেশি specificity রাখে, Tailwind classes override করে
+            // Transform Scale থেকে হওয়া ব্লার আটকানো
             targetNode.style.transform = 'none';
             targetNode.style.margin = '0';
             targetNode.style.boxShadow = 'none';
@@ -1504,36 +1455,26 @@ window.EEngine = (function () {
             targetNode.style.overflow = 'hidden';
             targetNode.style.outline = 'none';
 
-            // Step 6: Transition class সরানো — clone capture-এর সময় animation থাকলে inconsistency হয়
             targetNode.classList.remove('transition-all', 'duration-300', 'transition', 'ease-in-out');
-
-            // Step 7: UI handle এবং selection artifact সরানো
             targetNode.querySelectorAll('#resize-handle, #delete-handle').forEach(el => el.remove());
 
-            // Step 8: QA content inner-এ rem → px conversion
-            // rem values সবসময় html root font-size থেকে compute হয় (সাধারণত 16px)
-            // এই conversion explicit করে দিলে off-screen context-এও consistent থাকে
             const clonedQaInner = targetNode.querySelector('#qa-content-inner');
             if (clonedQaInner) {
-                const ROOT_PX = 16; // browser default root font-size
-                const remProps = ['paddingTop', 'paddingRight', 'paddingBottom', 'paddingLeft'];
+                const ROOT_PX = 16; 
+                const remProps =['paddingTop', 'paddingRight', 'paddingBottom', 'paddingLeft'];
                 remProps.forEach(prop => {
                     const val = clonedQaInner.style[prop];
                     if (val && val.endsWith('rem')) {
                         clonedQaInner.style[prop] = (parseFloat(val) * ROOT_PX) + 'px';
                     }
                 });
-                // column-gap rem → px (double layout-এর জন্য)
                 const colGap = clonedQaInner.style.columnGap;
                 if (colGap && colGap.endsWith('rem')) {
                     clonedQaInner.style.columnGap = (parseFloat(colGap) * ROOT_PX) + 'px';
                 }
             }
 
-            // Step 9: সব child element-এ inserted-element outline সরানো
-            // textRendering এবং fontSmoothing override করা হচ্ছে না —
-            // কারণ preview-এ এগুলো নেই, export-এ যোগ করলে font metrics আলাদা হয়ে যায়
-            // এবং line break, letter spacing পরিবর্তিত হয়
+            // 🔥 Ultra HD Anti-Aliasing Enforcements (Crystal Clear SVG foreignObject)
             targetNode.querySelectorAll('*').forEach(el => {
                 if (el.classList && el.classList.contains('inserted-element')) {
                     el.style.outline = 'none';
@@ -1541,37 +1482,46 @@ window.EEngine = (function () {
                 if (el.tagName === 'IMG') {
                     el.style.setProperty('image-rendering', 'high-quality', 'important');
                 }
+                if (el.nodeType === 1 && el.style) { 
+                    el.style.setProperty('text-rendering', 'geometricPrecision', 'important');
+                    el.style.setProperty('-webkit-font-smoothing', 'antialiased', 'important');
+                    el.style.setProperty('-moz-osx-font-smoothing', 'grayscale', 'important');
+                }
             });
 
             cloneWrapper.appendChild(targetNode);
             document.body.appendChild(cloneWrapper);
 
-            // Step 10: Layout stabilization — দুইটি rAF নিশ্চিত করে layout fully computed
             await new Promise(resolve => requestAnimationFrame(resolve));
             await new Promise(resolve => requestAnimationFrame(resolve));
             await new Promise(resolve => setTimeout(resolve, 350));
 
             const isPng = format.includes('PNG');
 
-            // Step 11: pixelRatio ব্যবহার করা — CSS transform scale()-এর বদলে
-            // pixelRatio approach: CSS layout 1x-এ compute হয় (preview-এর মতো),
-            //   কিন্তু output canvas scale গুণ বড় হয় → pixel-perfect identical layout
-            // CSS transform approach: SVG foreignObject-এ scale apply হয় →
-            //   html-to-image-এর SVG rendering pipeline-এ font metrics আলাদাভাবে compute হয়
-            //   → preview-এর সাথে line break ও spacing mismatch তৈরি করে
+            // html-to-image এর সেটিং (কোনো Error আসবে না, কিন্তু Text HD হবে)
             const options = {
                 quality: 1.0,
                 pixelRatio: scale,
                 backgroundColor: isPng ? null : '#ffffff',
                 width: cssWidth,
                 height: cssHeight,
+                useCORS: true, 
                 cacheBust: true,
+                skipAutoScale: true, // Prevents blurring from internal scaling
+                style: {
+                    'transform': 'none',
+                    'transform-origin': 'top left',
+                }
             };
 
             let dataUrl = '';
             let blob = null;
 
             try {
+                if (!window.htmlToImage) {
+                    throw new Error("html-to-image library is missing! Please check the script tag in your HTML.");
+                }
+
                 if (isPng) {
                     dataUrl = await window.htmlToImage.toPng(targetNode, options);
                 } else {
@@ -1582,7 +1532,8 @@ window.EEngine = (function () {
                 blob = await response.blob();
             } catch (err) {
                 document.body.removeChild(cloneWrapper);
-                throw err;
+                const errMsg = err && err.message ? err.message : "CORS or Network Error while loading images.";
+                throw new Error(errMsg);
             }
 
             document.body.removeChild(cloneWrapper);
@@ -1601,9 +1552,7 @@ window.EEngine = (function () {
                 const result = await this.processExport(canvas, format, scaleVal);
                 const extension = result.isPng ? 'png' : 'jpg';
 
-                // Automatically generate time-based unique filename
                 const uniqueFileName = this.generateUniqueFileName(extension);
-
                 const link = document.createElement('a');
                 link.download = uniqueFileName;
                 link.href = result.dataUrl;
@@ -1629,15 +1578,14 @@ window.EEngine = (function () {
                 const extension = result.isPng ? 'png' : 'jpg';
                 const mimeType = result.isPng ? 'image/png' : 'image/jpeg';
 
-                // Automatically generate time-based unique filename for sharing as well
                 const uniqueFileName = this.generateUniqueFileName(extension);
                 const file = new File([result.blob], uniqueFileName, { type: mimeType });
 
                 if (navigator.canShare && navigator.canShare({ files: [file] })) {
                     await navigator.share({
-                        title: uniqueFileName, // Set file name as title
+                        title: uniqueFileName,
                         text: 'Check out this exported Ultra HD note!',
-                        files:[file]
+                        files: [file]
                     });
                     if (onSuccess) onSuccess();
                 } else {
