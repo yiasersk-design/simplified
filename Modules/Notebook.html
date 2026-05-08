@@ -325,7 +325,7 @@
                 <button id="closeSearchBtn" onclick="closeFullScreenSearch(event)" class="hidden w-10 h-10 rounded-full bg-transparent text-gray-500 hover:text-blue-600 hover:bg-gray-200 transition-colors focus:outline-none flex items-center justify-center shrink-0">
                     <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18" /></svg>
                 </button>
-                <div id="searchBoxContainer" class="relative flex items-center flex-1 h-[44px] rounded-lg bg-white border border-gray-200 overflow-hidden focus-within:ring-2 focus-within:ring-blue-100 focus-within:border-blue-300 transition-all duration-300 shadow-sm">
+                <div id="searchBoxContainer" class="relative flex items-center flex-1 h-[44px] rounded-lg bg-white border border-gray-200 overflow-hidden transition-all duration-300 shadow-sm">
                     <div id="searchIconDiv" class="grid place-items-center h-full w-10 text-gray-400 transition-all duration-300 shrink-0">
                         <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
                     </div>
@@ -477,7 +477,7 @@ window.openFullScreenSearch = function() {
     sidebar.classList.remove('w-[280px]'); sidebar.classList.add('w-full');
     document.getElementById('searchIconDiv').classList.add('hidden');
     document.getElementById('closeSearchBtn').classList.remove('hidden');
-    document.getElementById('searchBoxContainer').classList.add('shadow-sm', 'ring-2', 'ring-blue-100', 'border-blue-300');
+    // no classList change needed for searchBoxContainer
     document.getElementById('sidebarTopMenu').classList.add('hidden');
     document.getElementById('sidebarDivider').classList.add('hidden');
 };
@@ -488,7 +488,7 @@ window.closeFullScreenSearch = function(e) {
     sidebar.classList.remove('w-full'); sidebar.classList.add('w-[280px]');
     document.getElementById('closeSearchBtn').classList.add('hidden');
     document.getElementById('searchIconDiv').classList.remove('hidden');
-    document.getElementById('searchBoxContainer').classList.remove('shadow-sm', 'ring-2', 'ring-blue-100', 'border-blue-300');
+    document.getElementById('searchBoxContainer').classList.remove('ring-2', 'ring-blue-100', 'border-blue-300');
     document.getElementById('sidebarTopMenu').classList.remove('hidden');
     document.getElementById('sidebarDivider').classList.remove('hidden');
     const searchInput = document.getElementById('sidebarSearchInput');
